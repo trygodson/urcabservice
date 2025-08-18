@@ -1,0 +1,169 @@
+import { Injectable, Logger } from '@nestjs/common';
+import * as admin from 'firebase-admin';
+import { Types } from 'mongoose';
+import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
+
+export interface RideNotificationData {
+  rideId: string;
+  passengerId: string;
+  passengerName: string;
+  passengerPhone: string;
+  pickupLocation: {
+    address: string;
+    coordinates: [number, number];
+    landmark?: string;
+  };
+  dropoffLocation: {
+    address: string;
+    coordinates: [number, number];
+    landmark?: string;
+  };
+  estimatedFare: number;
+  estimatedDistance: number;
+  estimatedDuration: number;
+  distanceToPickup: number;
+  estimatedArrivalTime: number;
+}
+
+@Injectable()
+export class FirebaseNotificationService {
+  private readonly logger = new Logger(FirebaseNotificationService.name);
+
+  constructor(@InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin) {
+    // Initialize Firebase Admin SDK if not already initialized
+  }
+
+  async sendRideRequestToDriver(
+    driverFCMToken: string,
+    driverId: Types.ObjectId,
+    notificationData: RideNotificationData,
+  ): Promise<boolean> {
+    try {
+      const message: admin.messaging.Message = {
+        token: driverFCMToken,
+        notification: {
+          title: '🚗 New Ride Request',
+          body: `Pickup: ${notificationData.pickupLocation.address}\nFare: RM${notificationData.estimatedFare.toFixed(
+            2,
+          )} • ${notificationData.distanceToPickup.toFixed(1)}km away`,
+        },
+        data: {
+          type: 'RIDE_REQUEST',
+          rideId: notificationData.rideId,
+          passengerId: notificationData.passengerId,
+          passengerName: notificationData.passengerName,
+          passengerPhone: notificationData.passengerPhone,
+          pickupAddress: notificationData.pickupLocation.address,
+          pickupLatitude: notificationData.pickupLocation.coordinates[1].toString(),
+          pickupLongitude: notificationData.pickupLocation.coordinates[0].toString(),
+          pickupLandmark: notificationData.pickupLocation.landmark || '',
+          dropoffAddress: notificationData.dropoffLocation.address,
+          dropoffLatitude: notificationData.dropoffLocation.coordinates[1].toString(),
+          dropoffLongitude: notificationData.dropoffLocation.coordinates[0].toString(),
+          dropoffLandmark: notificationData.dropoffLocation.landmark || '',
+          estimatedFare: notificationData.estimatedFare.toString(),
+          estimatedDistance: notificationData.estimatedDistance.toString(),
+          estimatedDuration: notificationData.estimatedDuration.toString(),
+          distanceToPickup: notificationData.distanceToPickup.toString(),
+          estimatedArrivalTime: notificationData.estimatedArrivalTime.toString(),
+          timestamp: new Date().toISOString(),
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'ride_requests',
+            priority: 'high',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+          },
+          ttl: 30000, // 30 seconds
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: '🚗 New Ride Request',
+                body: `Pickup: ${
+                  notificationData.pickupLocation.address
+                }\nFare: RM${notificationData.estimatedFare.toFixed(2)} • ${notificationData.distanceToPickup.toFixed(
+                  1,
+                )}km away`,
+              },
+              sound: 'default',
+              badge: 1,
+              'content-available': 1,
+            },
+          },
+          headers: {
+            'apns-priority': '10',
+            'apns-expiration': (Math.floor(Date.now() / 1000) + 30).toString(),
+          },
+        },
+      };
+
+      // const response = await this.firebase.messaging.send(message);
+      // this.logger.log(`Ride request notification sent to driver ${driverId}: ${response ?? ''}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send ride request notification to driver ${driverId}`, error.stack);
+      return false;
+    }
+  }
+
+  async sendRideStatusUpdate(
+    passengerFCMToken: string,
+    status: string,
+    rideId: string,
+    driverInfo?: any,
+  ): Promise<boolean> {
+    try {
+      let title = '';
+      let body = '';
+
+      switch (status) {
+        case 'DRIVER_ASSIGNED':
+          title = '✅ Driver Assigned';
+          body = `${driverInfo?.firstName} is on the way to pick you up`;
+          break;
+        case 'DRIVER_ARRIVED':
+          title = '📍 Driver Arrived';
+          body = `${driverInfo?.firstName} has arrived at pickup location`;
+          break;
+        case 'STARTED':
+          title = '🚗 Ride Started';
+          body = 'Your ride has started. Enjoy your trip!';
+          break;
+        case 'COMPLETED':
+          title = '🎉 Ride Completed';
+          body = 'You have reached your destination. Thank you for using UrCab!';
+          break;
+        default:
+          title = 'Ride Update';
+          body = `Your ride status: ${status}`;
+      }
+
+      const message: admin.messaging.Message = {
+        token: passengerFCMToken,
+        notification: { title, body },
+        data: {
+          type: 'RIDE_STATUS_UPDATE',
+          rideId,
+          status,
+          timestamp: new Date().toISOString(),
+          ...(driverInfo && {
+            driverName: `${driverInfo.firstName} ${driverInfo.lastName}`,
+            driverPhone: driverInfo.phone,
+            driverPhoto: driverInfo.photo || '',
+          }),
+        },
+      };
+
+      const response = await this.firebase.messaging.send(message);
+      this.logger.log(`Ride status notification sent: ${response}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send ride status notification`, error.stack);
+      return false;
+    }
+  }
+}
