@@ -122,6 +122,8 @@ export class AuthService {
               // needsOnboarding,
             },
           };
+        } else {
+          throw new BadRequestException('Not Your Specs');
         }
       }
     } catch (error) {

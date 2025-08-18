@@ -6,6 +6,7 @@ import {
   DriverLocation,
   DriverLocationDocument,
   DriverOnlineStatus,
+  User,
 } from '@urcab-workspace/shared';
 
 @Injectable()
@@ -135,6 +136,18 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
               },
             },
           },
+
+          {
+            $addFields: {
+              debugInfo: {
+                foundDriver: true,
+                distanceKm: { $divide: ['$distanceInMeters', 1000] },
+                lastUpdate: '$lastLocationUpdate',
+                status: '$status',
+                available: '$isAvailableForRides',
+              },
+            },
+          },
           {
             $lookup: {
               from: 'user',
@@ -145,7 +158,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                 {
                   $match: {
                     type: 2, // Driver role
-                    isDriverVerified: true,
+                    // isDriverVerified: true,
                     isActive: true,
                   },
                 },
@@ -175,7 +188,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   $match: {
                     isPrimary: true,
                     isActive: true,
-                    status: 'verified',
+                    // status: 'verified',
                   },
                 },
                 {
@@ -194,16 +207,26 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
             },
           },
           {
-            $match: {
-              'driver.0': { $exists: true }, // Ensure driver exists and is verified
-              'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
+            $addFields: {
+              debugLookup: {
+                hasDriver: { $gt: [{ $size: '$driver' }, 0] },
+                hasVehicle: { $gt: [{ $size: '$vehicle' }, 0] },
+                driverCount: { $size: '$driver' },
+                vehicleCount: { $size: '$vehicle' },
+              },
             },
           },
           {
-            $unwind: '$driver',
+            $match: {
+              'driver.0': { $exists: true }, // Ensure driver exists and is verified
+              // 'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
+            },
           },
           {
-            $unwind: '$vehicle',
+            $unwind: { path: '$driver', preserveNullAndEmptyArrays: false },
+          },
+          {
+            $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: false },
           },
           {
             $project: {
@@ -238,7 +261,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           {
             $sort: {
               distanceInMeters: 1, // Sort by distance (closest first)
-              'driver.rating': -1, // Then by driver rating (highest first)
+              // 'driver.rating': -1, // Then by driver rating (highest first)
             },
           },
           {
