@@ -664,7 +664,10 @@ export class RidesService {
         this.logger.warn('No drivers found, debug info:', debugInfo);
       }
 
-      return nearbyDrivers.map((driver) => this.mapToNearbyDriverResponseDto(driver));
+      return {
+        success: true,
+        data: nearbyDrivers.map((driver) => this.mapToNearbyDriverResponseDto(driver)),
+      };
     } catch (error) {
       this.logger.error(`Failed to find nearby drivers near [${longitude}, ${latitude}]`, error.stack);
       throw new BadRequestException('Failed to find nearby drivers');
@@ -677,37 +680,34 @@ export class RidesService {
     const estimatedArrivalTime = Math.round((distanceKm / 30) * 60); // 30 km/h average speed
 
     return {
-      success: true,
-      data: {
-        driverId: driver.driverId.toString(),
-        location: driver.location,
-        status: driver.status,
-        distance: Math.round(distanceKm * 100) / 100,
-        distanceInKm: distanceKm,
-        distanceInMeters: driver.distanceInMeters,
-        lastLocationUpdate: driver.lastLocationUpdate,
-        driver: {
-          firstName: driver.driver.firstName,
-          lastName: driver.driver.lastName,
-          phone: driver.driver.phone,
-          photo: driver.driver.photo,
-          email: driver.driver.email,
-          rating: driver.driver.rating,
-          totalRides: driver.driver.totalRides,
-        },
-        vehicle: {
-          make: driver.vehicle.make,
-          model: driver.vehicle.model,
-          year: driver.vehicle.year,
-          color: driver.vehicle.color,
-          licensePlate: driver.vehicle.licensePlate,
-          seatingCapacity: driver.vehicle.seatingCapacity,
-          vehicleType: driver.vehicle.vehicleType,
-        },
-        heading: driver.heading,
-        speed: driver.speed,
-        estimatedArrivalTime,
+      driverId: driver.driverId.toString(),
+      location: driver.location,
+      status: driver.status,
+      distance: Math.round(distanceKm * 100) / 100,
+      distanceInKm: distanceKm,
+      distanceInMeters: driver.distanceInMeters,
+      lastLocationUpdate: driver.lastLocationUpdate,
+      driver: {
+        firstName: driver.driver.firstName,
+        lastName: driver.driver.lastName,
+        phone: driver.driver.phone,
+        photo: driver.driver.photo,
+        email: driver.driver.email,
+        rating: driver.driver.rating,
+        totalRides: driver.driver.totalRides,
       },
+      vehicle: {
+        make: driver.vehicle.make,
+        model: driver.vehicle.model,
+        year: driver.vehicle.year,
+        color: driver.vehicle.color,
+        licensePlate: driver.vehicle.licensePlate,
+        seatingCapacity: driver.vehicle.seatingCapacity,
+        vehicleType: driver.vehicle.vehicleType,
+      },
+      heading: driver.heading,
+      speed: driver.speed,
+      estimatedArrivalTime,
     };
   }
 }
