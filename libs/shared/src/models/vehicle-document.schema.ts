@@ -262,6 +262,10 @@ export class VehicleDocumentRecord extends AbstractDocument {
     maxlength: 200,
   })
   originalFileName?: string; // Original filename when uploaded
+
+  @ApiProperty()
+  @Prop({ required: false })
+  lastUpdatedAt?: Date;
 }
 
 export const VehicleDocumentSchema = SchemaFactory.createForClass(VehicleDocumentRecord);

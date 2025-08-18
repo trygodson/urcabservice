@@ -37,7 +37,7 @@ export interface NearbyRideRequestDto {
   passengerCount: number;
   specialRequests?: string;
   createdAt: Date;
-  timeElapsed: number; // seconds since ride was created
+  timeElapsed?: number; // seconds since ride was created
 }
 
 export interface CompleteRideDto {
@@ -165,7 +165,7 @@ export class DriverRideService {
           const estimatedArrivalTime = Math.ceil((distanceToPickup / 30) * 60); // minutes
 
           // Calculate time elapsed since ride was created
-          const timeElapsed = Math.floor((Date.now() - ride?.createdAt.getTime()) / 1000);
+          // const timeElapsed = Math.floor((Date.now() - ride?.createdAt.getTime()) / 1000);
 
           const enrichedRide: NearbyRideRequestDto = {
             _id: ride._id.toString(),
@@ -192,8 +192,8 @@ export class DriverRideService {
             rideType: ride.rideType,
             passengerCount: ride.passengerCount,
             specialRequests: ride.specialRequests,
-            createdAt: ride?.createdAt,
-            timeElapsed,
+            createdAt: new Date(),
+            // timeElapsed,
           };
 
           enrichedRides.push(enrichedRide);

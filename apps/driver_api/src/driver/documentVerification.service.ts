@@ -174,7 +174,7 @@ export class DocumentVerificationStatusService {
         requiredCount: requiredDocuments.length,
         expiringSoonCount,
         lastUpdated:
-          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.updatedAt.getTime()))) : new Date(),
+          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
       };
     } catch (error) {
       this.logger.error(`Failed to get document verification status for driver ${driverId}`, error.stack);

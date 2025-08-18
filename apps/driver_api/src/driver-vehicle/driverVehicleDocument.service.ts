@@ -942,7 +942,7 @@ export class VehicleDocumentService {
         requiredCount: requiredTypes.length,
         expiringSoonCount,
         lastUpdated:
-          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.updatedAt.getTime()))) : new Date(),
+          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
       };
     } catch (error) {
       this.logger.error(`Failed to get vehicle documents summary for vehicle ${vehicleId}`, error.stack);

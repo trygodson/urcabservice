@@ -244,6 +244,10 @@ export class DriverDocument extends AbstractDocument {
     required: false,
   })
   expiryNotificationSentAt?: Date;
+
+  @ApiProperty()
+  @Prop({ required: false })
+  lastUpdatedAt?: Date;
 }
 
 export const DriverDocumentSchema = SchemaFactory.createForClass(DriverDocument);
