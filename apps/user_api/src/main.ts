@@ -9,7 +9,7 @@ import { HttpExceptionFilter } from '@urcab-workspace/shared';
 import * as compression from 'compression';
 import MockDate from 'mockdate';
 
-MockDate.set('2025-07-28T10:59:59');
+// MockDate.set('2025-07-28T10:59:59');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();

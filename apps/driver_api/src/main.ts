@@ -27,7 +27,7 @@ async function bootstrap() {
   // app.use(cookieParser());
   const configService = app.get(ConfigService);
   SwaggerModule.setup('swagger', app, document);
-  // await app.listen(process.env.PORT || configService.get('HTTP_PORT'));
-  await app.listen(3012);
+  await app.listen(process.env.PORT || configService.get('DRIVER_HTTP_PORT'));
+  // await app.listen(3012);
 }
 bootstrap();
