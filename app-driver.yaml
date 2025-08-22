@@ -58,15 +58,14 @@ liveness_check:
 # Network settings
 network:
   session_affinity: true
-
 # Skip files that don't need to be uploaded
-skip_files:
-  - ^(.*/)?#.*#$
-  - ^(.*/)?.*~$
-  - ^(.*/)?.*\.py[co]$
-  - ^(.*/)?.*/RCS/.*$
-  - ^(.*/)?\..*$
-  - ^(.*/)?node_modules/.*$
-  - ^(.*/)?coverage/.*$
-  - ^(.*/)?\.nyc_output/.*$
-  - ^(.*/)?dist/(?!apps/driver_api/).*$
+# skip_files:
+#   - ^(.*/)?#.*#$
+#   - ^(.*/)?.*~$
+#   - ^(.*/)?.*\.py[co]$
+#   - ^(.*/)?.*/RCS/.*$
+#   - ^(.*/)?\..*$
+#   - ^(.*/)?node_modules/.*$
+#   - ^(.*/)?coverage/.*$
+#   - ^(.*/)?\.nyc_output/.*$
+#   - ^(.*/)?dist/(?!apps/driver_api/).*$
