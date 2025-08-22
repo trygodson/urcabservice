@@ -5,7 +5,7 @@ service: driver-api
 
 # Build configuration for driver_api
 build_env_variables:
-  BUILD_COMMAND: 'npm run build && npm run driver && npm run dstart'
+  BUILD_COMMAND: 'npm run build && npm run driver && npm run start:duserprod'
 
 # Environment variables
 env_variables:

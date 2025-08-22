@@ -4,7 +4,7 @@ env: standard
 
 # Build configuration for user_api (default service)
 build_env_variables:
-  BUILD_COMMAND: 'npm run build && npm run ustart'
+  BUILD_COMMAND: 'npm run build && npm run start:userprod'
 
 # Environment variables
 env_variables:
