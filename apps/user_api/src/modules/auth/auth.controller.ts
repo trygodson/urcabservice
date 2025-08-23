@@ -13,8 +13,8 @@ import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { ForgotPasswordDto, GoogleSignDto, LoginDto, RegisterUserDto, ResetPasswordDto, VerifyOtpDto } from './dto';
 import { CurrentUser, JwtAuthGuard, LocalAuthGuard, User } from '@urcab-workspace/shared';
 
-@ApiTags('Auth')
-@Controller('auth')
+@ApiTags('Passenger Auth')
+@Controller('passenger/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

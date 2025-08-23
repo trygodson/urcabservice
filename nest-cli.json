@@ -19,15 +19,7 @@
         "tsConfigPath": "apps/user_api/tsconfig.app.json"
       }
     },
-    "driver_api": {
-      "type": "application",
-      "root": "apps/driver_api",
-      "entryFile": "main",
-      "sourceRoot": "apps/driver_api/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/driver_api/tsconfig.app.json"
-      }
-    },
+   
     "admin_api": {
       "type": "application",
       "root": "apps/admin_api",

@@ -7,6 +7,11 @@ import { UserModule } from './modules/user';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CacheModule } from '@nestjs/cache-manager';
 import { RidesModule } from './modules/rides/rides.modules';
+import { DriverAuthModule } from './driver-modules/auth';
+import { DriverLocationModule } from './driver-modules/driver-location/driverLocation.module';
+import { DriverModule } from './driver-modules/driver/driver.module';
+import { DriverRideModule } from './driver-modules/driver-ride/driverRide.module';
+import { DriverVehicleModule } from './driver-modules/driver-vehicle/driverVehicle.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
 @Module({
   imports: [
@@ -43,6 +48,14 @@ import { RidesModule } from './modules/rides/rides.modules';
     AuthModule,
     UserModule,
     RidesModule,
+
+    //
+
+    DriverAuthModule,
+    DriverModule,
+    DriverRideModule,
+    DriverVehicleModule,
+    DriverLocationModule,
   ],
   // providers: [TransactionService],
 })
