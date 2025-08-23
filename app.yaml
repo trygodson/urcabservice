@@ -13,6 +13,7 @@ env_variables:
 
   # JWT Configuration
   JWT_SECRET: jsuhjshbkjhgkvjghvvseuytuyguyhsjsbsjbskj
+  JWT_DSECRET: jsuhjshbkjhgkvjgsii2vseuytuyguyhsjsbsjbskjsjhjhjjnjs
   JWT_EXPIRATION: 48
 
   # Database Configuration
