@@ -16,6 +16,7 @@ import { RidesController } from './rides.controller';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { DriverLocationRepository } from './repository/driver-location.repository';
+import { JwtStrategy, LocalStrategy } from '../auth/strategies';
 
 @Module({
   imports: [

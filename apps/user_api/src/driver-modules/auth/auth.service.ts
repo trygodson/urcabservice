@@ -24,6 +24,9 @@ import {
   JwtDSign,
   JwtDSignRefresh,
   JwtDVerify,
+  JwtSign,
+  JwtSignRefresh,
+  JwtVerify,
   RefreshTokenRepository,
   Role,
   timeZoneMoment,
@@ -61,7 +64,7 @@ export class AuthService {
         emailConfirmationCode: otp,
         emailConfirmationExpiryDate: expiry,
       };
-      const verificationToken = JwtDSign({
+      const verificationToken = JwtSign({
         email: dd.email,
         type: dd?.type,
         expiry: dd.emailConfirmationExpiryDate,
@@ -92,7 +95,7 @@ export class AuthService {
         );
 
         if (updateRepo) {
-          const verification_token = JwtDSign({
+          const verification_token = JwtSign({
             email: updateRepo.email,
             type: updateRepo.type,
             expiry: updateRepo.emailConfirmationExpiryDate,
@@ -325,7 +328,7 @@ export class AuthService {
 
   async verifyUserOtp(verifyToken: VerifyOtpDto, ipAddress: string) {
     try {
-      const decodedToken = JwtDVerify(verifyToken.verificationToken);
+      const decodedToken = JwtVerify(verifyToken.verificationToken);
       if (timeZoneMoment(decodedToken.data?.expiry).toDate() < timeZoneMoment().toDate())
         throw new BadRequestException('Verification Token Expired');
 
@@ -408,7 +411,7 @@ export class AuthService {
       user_id: user._id,
       email: user.email,
     };
-    const access_token = JwtDSignRefresh(accessTokenPayload, refresh_token);
+    const access_token = JwtSignRefresh(accessTokenPayload, refresh_token);
     return access_token;
   }
 

@@ -6,7 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { JwtModule, JwtService } from '@nestjs/jwt';
 
-import { JwtStrategy, LocalStrategy } from './strategies';
+import { JwtDStrategy, LocalStrategy } from './strategies';
 import {
   DatabaseModule,
   LoggerModule,
@@ -23,7 +23,7 @@ import {
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
         return {
-          secret: configService.getOrThrow('JWT_DSECRET'),
+          secret: configService.getOrThrow('JWT_SECRET'),
           signOptions: {
             expiresIn: `${configService.getOrThrow('JWT_EXPIRATION')}s`,
           },
@@ -43,7 +43,7 @@ import {
     // forwardRef(() => WalletsModule),
   ],
   controllers: [AuthController],
-  providers: [JwtStrategy, LocalStrategy, AuthService, UserRepository, RefreshTokenRepository],
+  providers: [AuthService, UserRepository, RefreshTokenRepository],
   exports: [AuthService],
 })
 export class DriverAuthModule {}

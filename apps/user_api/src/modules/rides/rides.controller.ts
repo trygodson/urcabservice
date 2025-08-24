@@ -48,6 +48,8 @@ export class RidesController {
     type: 'number',
     example: 10,
   })
+  @SetRolesMetaData(Role.PASSENGER)
+
   // @ApiResponse({
   //   status: HttpStatus.OK,
   //   description: 'Nearby drivers retrieved successfully',

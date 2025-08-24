@@ -8,7 +8,7 @@ import { Types } from 'mongoose';
 import { JwtDVerify, JwtVerify } from '@urcab-workspace/shared';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtDStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly usersService: AuthService,
     private readonly configService: ConfigService,

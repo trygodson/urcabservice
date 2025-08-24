@@ -27,20 +27,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   override handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
       throw err || new UnauthorizedException();
-      // if (
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageOneCandidateList') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageTwoCandidateList') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageThreeCandidateList') ||
-      //   context.switchToHttp().getRequest().url.includes('/singleElection/getSingleElectionCandidateList') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageOneDetails') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageTwoDetails') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/getStageThreeDetails') ||
-      //   context.switchToHttp().getRequest().url.includes('/stagedElection/voteStagedCandidateInElection')
-      // ) {
-      //   return false;
-      // } else {
-      //
-      // }
     }
     const requiredRoles = this.reflector.get<Role[]>(ROLES_KEY, context.getHandler());
     if (!requiredRoles) {

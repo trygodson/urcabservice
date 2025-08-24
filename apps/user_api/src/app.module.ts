@@ -46,12 +46,14 @@ import { DriverVehicleModule } from './driver-modules/driver-vehicle/driverVehic
     }),
     LoggerModule,
     AuthModule,
+
+    DriverAuthModule,
+
     UserModule,
     RidesModule,
 
     //
 
-    DriverAuthModule,
     DriverModule,
     DriverRideModule,
     DriverVehicleModule,
