@@ -40,6 +40,14 @@ export class Ride extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: User.name,
+    required: false,
+  })
+  selectedDriverId?: Types.ObjectId;
+
+  @ApiProperty()
+  @Prop({
     type: String,
     enum: RideStatus,
     default: RideStatus.SEARCHING_DRIVER,
@@ -61,7 +69,6 @@ export class Ride extends AbstractDocument {
     coordinates: { type: [Number] }, // [longitude, latitude]
     address: { type: String },
     placeId: { type: String },
-    landmark: { type: String },
   })
   pickupLocation: GeoJSONPoint;
 
@@ -71,7 +78,6 @@ export class Ride extends AbstractDocument {
     coordinates: { type: [Number] }, // [longitude, latitude]
     address: { type: String },
     placeId: { type: String },
-    landmark: { type: String },
   })
   dropoffLocation: GeoJSONPoint;
 
@@ -117,6 +123,28 @@ export class Ride extends AbstractDocument {
     required: false,
   })
   cancelledBy?: Types.ObjectId;
+
+  @ApiProperty()
+  @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: User.name,
+    required: false,
+  })
+  rejectedBy?: Types.ObjectId;
+
+  @ApiProperty()
+  @Prop({
+    type: Date,
+    required: false,
+  })
+  rejectedAt?: Date;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: false,
+  })
+  cancelReason?: string;
 
   @ApiProperty()
   @Prop({

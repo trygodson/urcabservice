@@ -11,6 +11,7 @@ import { CreateRideDto, UpdateRideDto, RideResponseDto } from './dtos';
 import { RideStatus, RideType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
+import { FirebaseRideService } from './firebase-ride.service';
 
 @Injectable()
 export class RidesService {
@@ -20,6 +21,7 @@ export class RidesService {
     private readonly rideRepository: RideRepository,
     private readonly driverLocationRepository: DriverLocationRepository,
     private readonly userRepository: UserRepository,
+    private readonly firebaseRideService: FirebaseRideService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
   ) {}
 
@@ -42,27 +44,28 @@ export class RidesService {
         throw new NotFoundException('Passenger not found');
       }
 
-      // 5. If a specific driver is selected, validate driver availability
-      let selectedDriver = null;
-      if (createRideDto.selectedDriverId) {
-        selectedDriver = await this.validateSelectedDriver(
-          createRideDto.selectedDriverId,
-          createRideDto.pickupLocation.coordinates,
-        );
+      // 4. Validate selected driver if provided
+      if (!createRideDto.selectedDriverId) {
+        throw new BadRequestException('Please select a driver from the available drivers list');
       }
 
-      // 4. Create ride record
-      const ride = await this.rideRepository.create({
+      const selectedDriver = await this.validateSelectedDriver(
+        createRideDto.selectedDriverId,
+        createRideDto.pickupLocation.coordinates,
+      );
+
+      // 5. Create ride request (not confirmed yet)
+      const rideRequest = await this.rideRepository.create({
         passengerId,
+        selectedDriverId: new Types.ObjectId(createRideDto.selectedDriverId),
         pickupLocation: {
           type: 'Point',
           coordinates: [
             createRideDto.pickupLocation.coordinates.longitude,
             createRideDto.pickupLocation.coordinates.latitude,
           ],
-          address: createRideDto.pickupLocation.address.formatted,
+          address: createRideDto.pickupLocation.address,
           placeId: createRideDto.pickupLocation.placeId,
-          landmark: createRideDto.pickupLocation.landmark,
         },
         dropoffLocation: {
           type: 'Point',
@@ -70,33 +73,25 @@ export class RidesService {
             createRideDto.dropoffLocation.coordinates.longitude,
             createRideDto.dropoffLocation.coordinates.latitude,
           ],
-          address: createRideDto.dropoffLocation.address.formatted,
+          address: createRideDto.dropoffLocation.address,
           placeId: createRideDto.dropoffLocation.placeId,
-          landmark: createRideDto.dropoffLocation.landmark,
         },
         rideType: createRideDto.rideType,
-        scheduledTime: createRideDto.scheduledTime,
+        scheduledTime: createRideDto.rideType === RideType.IMMEDIATE ? new Date() : createRideDto.scheduledTime,
         passengerCount: createRideDto.passengerCount || 1,
         specialRequests: createRideDto.specialRequests,
         estimatedFare: rideDetails.estimatedFare,
         estimatedDistance: rideDetails.distance,
         estimatedDuration: rideDetails.duration,
-        status: createRideDto.rideType === RideType.IMMEDIATE ? RideStatus.SEARCHING_DRIVER : RideStatus.SCHEDULED,
+        status: RideStatus.PENDING_DRIVER_ACCEPTANCE, // New status
         paymentMethod: PaymentMethod.CASH,
         paymentStatus: PaymentStatus.PENDING,
       });
 
-      // 7. Handle immediate rides
-      if (createRideDto.rideType === RideType.IMMEDIATE) {
-        if (selectedDriver) {
-          // Send notification to selected driver
-          await this.sendRideRequestToSelectedDriver(ride, selectedDriver, passenger);
-        } else {
-          // Find and notify nearby drivers
-          await this.findAndNotifyDrivers(ride, passenger);
-        }
-      }
-      return this.mapToResponseDto(ride);
+      // 6. Send ride request notification to selected driver and wait for response
+      await this.sendRideRequestToSelectedDriver(rideRequest, selectedDriver, passenger);
+
+      return this.mapToResponseDto(rideRequest);
     } catch (error) {
       throw new BadRequestException(`Failed to book ride: ${error.message}`);
     }
@@ -207,59 +202,35 @@ export class RidesService {
         throw new BadRequestException('Driver is not available for notifications');
       }
 
-      // Calculate estimated arrival time to pickup
-      const estimatedArrivalTime = Math.ceil((distanceToPickup / 30) * 60); // 30 km/h average speed
-
-      const notificationData: RideNotificationData = {
+      // Create ride request object for Firebase
+      const rideRequest = {
         rideId: ride._id.toString(),
         passengerId: passenger._id.toString(),
+        driverId: driver._id.toString(),
         passengerName: `${passenger.firstName} ${passenger.lastName}`,
         passengerPhone: passenger.phone,
         pickupLocation: {
           address: ride.pickupLocation.address,
-          coordinates: ride.pickupLocation.coordinates,
-          landmark: ride.pickupLocation.landmark,
+          coordinates: ride.pickupLocation.coordinates as [number, number],
+          landmark: ride.pickupLocation.landmark || '',
         },
         dropoffLocation: {
           address: ride.dropoffLocation.address,
-          coordinates: ride.dropoffLocation.coordinates,
-          landmark: ride.dropoffLocation.landmark,
+          coordinates: ride.dropoffLocation.coordinates as [number, number],
+          landmark: ride.dropoffLocation.landmark || '',
         },
         estimatedFare: ride.estimatedFare,
         estimatedDistance: ride.estimatedDistance,
         estimatedDuration: ride.estimatedDuration,
-        distanceToPickup,
-        estimatedArrivalTime,
+        requestTime: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 30000).toISOString(), // 30 seconds
       };
 
-      const notificationSent = await this.firebaseNotificationService.sendRideRequestToDriver(
-        driver.fcmToken,
-        driver._id,
-        notificationData,
-      );
+      // Use Firebase service for real-time ride requests
 
-      if (!notificationSent) {
-        this.logger.log(`Failed to send notification to selected driver ${driver._id}`);
-        // Fall back to finding nearby drivers
-        await this.findAndNotifyDrivers(ride, passenger);
-      } else {
-        // Set a timeout to auto-assign if driver doesn't respond within 30 seconds
-        setTimeout(async () => {
-          try {
-            const currentRide = await this.rideRepository.findById(ride._id.toString());
-            if (currentRide && currentRide.status === RideStatus.SEARCHING_DRIVER) {
-              this.logger.warn(
-                `Driver ${driver._id} did not respond to ride request ${ride._id}, finding alternatives`,
-              );
-              await this.findAndNotifyDrivers(currentRide, passenger);
-            }
-          } catch (error) {
-            this.logger.error(`Error in driver response timeout for ride ${ride._id}`, error.stack);
-          }
-        }, 30000); // 30 seconds timeout
-      }
+      await this.firebaseRideService.sendRideRequestToDriver(rideRequest, driver.fcmToken);
 
-      this.logger.log(`Ride request sent to selected driver ${driver._id} for ride ${ride._id}`);
+      this.logger.log(`Real-time ride request sent to selected driver ${driver._id} for ride ${ride._id}`);
     } catch (error) {
       this.logger.error(`Failed to send ride request to selected driver`, error.stack);
       // Fall back to finding nearby drivers
@@ -287,9 +258,9 @@ export class RidesService {
 
   private async validateLocations(pickup: any, dropoff: any): Promise<void> {
     // 1. Validate coordinates are within service area
-    if (!this.isWithinServiceArea(pickup.coordinates) || !this.isWithinServiceArea(dropoff.coordinates)) {
-      throw new BadRequestException('Location is outside service area');
-    }
+    // if (!this.isWithinServiceArea(pickup.coordinates) || !this.isWithinServiceArea(dropoff.coordinates)) {
+    //   throw new BadRequestException('Location is outside service area');
+    // }
 
     // 2. Validate minimum distance between pickup and dropoff
     const distance = this.calculateDistance(pickup.coordinates, dropoff.coordinates);
@@ -421,7 +392,17 @@ export class RidesService {
 
   private validateStatusChange(currentStatus: RideStatus, newStatus: RideStatus): void {
     const validTransitions: Record<RideStatus, RideStatus[]> = {
-      [RideStatus.SEARCHING_DRIVER]: [RideStatus.DRIVER_ASSIGNED, RideStatus.CANCELLED],
+      [RideStatus.SEARCHING_DRIVER]: [
+        RideStatus.PENDING_DRIVER_ACCEPTANCE,
+        RideStatus.DRIVER_ASSIGNED,
+        RideStatus.CANCELLED,
+      ],
+      [RideStatus.PENDING_DRIVER_ACCEPTANCE]: [
+        RideStatus.DRIVER_ASSIGNED,
+        RideStatus.REJECTED_BY_DRIVER,
+        RideStatus.CANCELLED,
+      ],
+      [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.CANCELLED],
       [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.CANCELLED],
       [RideStatus.DRIVER_ASSIGNED]: [RideStatus.STARTED, RideStatus.CANCELLED],
       [RideStatus.STARTED]: [RideStatus.COMPLETED, RideStatus.CANCELLED],

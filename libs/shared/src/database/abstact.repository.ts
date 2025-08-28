@@ -43,6 +43,10 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
       return null;
     }
 
+    if (document._id) {
+      (document as any)._id = document._id.toString();
+    }
+
     return document;
   }
   async findById(
@@ -70,6 +74,10 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
       this.logger.warn('Document was not found with filterQuery', id);
       // throw new NotFoundException('Document was not found');
       return null;
+    }
+
+    if (document._id) {
+      (document as any)._id = document._id.toString();
     }
 
     return document;
@@ -129,7 +137,9 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
       this.logger.warn('Document was not found with filterQuery', filterQuery);
       throw new NotFoundException('Document was not found');
     }
-
+    if (document._id) {
+      (document as any)._id = document._id.toString();
+    }
     return document;
   }
 

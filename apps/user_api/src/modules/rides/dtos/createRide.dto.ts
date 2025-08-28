@@ -58,7 +58,7 @@ export class CreateRideDto {
     required: false,
   })
   @IsOptional()
-  @IsDateString({}, { message: 'Scheduled time must be a valid ISO date string' })
+  @IsDateString({ strict: false }, { message: 'Scheduled time must be a valid ISO date string' })
   @Transform(({ value }) => (value ? new Date(value) : undefined))
   scheduledTime?: Date;
 

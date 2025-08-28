@@ -110,6 +110,8 @@ export class AuthService {
         // const needsOnboarding = !user.country || !user.isOnboardingComplete;
 
         if (user.type === Role.PASSENGER) {
+          body?.fcmToken &&
+            (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
           return {
             success: true,
             data: {

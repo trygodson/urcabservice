@@ -101,7 +101,7 @@ export class FirebaseNotificationService {
         },
       };
 
-      // const response = await this.firebase.messaging.send(message);
+      const response = await this.firebase.messaging.send(message);
       // this.logger.log(`Ride request notification sent to driver ${driverId}: ${response ?? ''}`);
       return true;
     } catch (error) {

@@ -12,9 +12,14 @@ export class UserService {
 
   async getUser({ _id }) {
     try {
-      return await this.userRepository.findOne({
-        _id,
-      });
+      const dd = await this.userRepository.findById(_id, []);
+
+      if (dd) {
+        return {
+          success: true,
+          data: dd,
+        };
+      }
     } catch (error) {
       throw new UnauthorizedException('User Does Not Exist');
     }

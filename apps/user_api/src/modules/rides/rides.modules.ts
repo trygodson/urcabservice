@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { RidesService } from './rides.service';
+import { FirebaseRideService } from './firebase-ride.service';
+import { FirebaseRideController } from './firebase-ride.controller';
 import {
   DatabaseModule,
   DriverLocation,
@@ -37,10 +39,10 @@ import { JwtStrategy, LocalStrategy } from '../auth/strategies';
       { name: Ride.name, schema: RideSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
     ]),
-
     NotificationsModule,
   ],
-  controllers: [RidesController],
-  providers: [RidesService, UserRepository, RideRepository, DriverLocationRepository],
+  controllers: [RidesController, FirebaseRideController],
+  providers: [RidesService, FirebaseRideService, UserRepository, RideRepository, DriverLocationRepository],
+  exports: [FirebaseRideService],
 })
 export class RidesModule {}

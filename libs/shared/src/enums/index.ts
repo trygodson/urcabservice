@@ -18,10 +18,12 @@ export enum Gender {
 export enum RideStatus {
   SEARCHING_DRIVER = 'searching_driver',
   SCHEDULED = 'scheduled',
+  PENDING_DRIVER_ACCEPTANCE = 'pending_driver_acceptance',
   DRIVER_ASSIGNED = 'driver_assigned',
   STARTED = 'started',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  REJECTED_BY_DRIVER = 'rejected_by_driver',
 }
 
 export enum BookingType {
@@ -36,6 +38,8 @@ export enum RideType {
 
 export enum PaymentMethod {
   CASH = 'cash',
+  CARD = 'card',
+  QR_CODE = 'qr_code',
 }
 
 export enum PaymentStatus {

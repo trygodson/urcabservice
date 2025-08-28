@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsNumber, Min, Max, IsString, IsNotEmpty, IsOptional, MaxLength, ValidateNested } from 'class-validator';
 
@@ -46,45 +46,45 @@ export class AddressDto {
   @MaxLength(200, { message: 'Street must not exceed 200 characters' })
   street?: string;
 
-  @ApiProperty({
-    example: 'Kuala Lumpur',
-    description: 'City name',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'City must be a string' })
-  @MaxLength(100, { message: 'City must not exceed 100 characters' })
-  city?: string;
+  // @ApiProperty({
+  //   example: 'Kuala Lumpur',
+  //   description: 'City name',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString({ message: 'City must be a string' })
+  // @MaxLength(100, { message: 'City must not exceed 100 characters' })
+  // city?: string;
 
-  @ApiProperty({
-    example: 'Selangor',
-    description: 'State or province',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'State must be a string' })
-  @MaxLength(100, { message: 'State must not exceed 100 characters' })
-  state?: string;
+  // @ApiProperty({
+  //   example: 'Selangor',
+  //   description: 'State or province',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString({ message: 'State must be a string' })
+  // @MaxLength(100, { message: 'State must not exceed 100 characters' })
+  // state?: string;
 
-  @ApiProperty({
-    example: '50200',
-    description: 'Postal code',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'Postal code must be a string' })
-  @MaxLength(20, { message: 'Postal code must not exceed 20 characters' })
-  postalCode?: string;
+  // @ApiProperty({
+  //   example: '50200',
+  //   description: 'Postal code',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString({ message: 'Postal code must be a string' })
+  // @MaxLength(20, { message: 'Postal code must not exceed 20 characters' })
+  // postalCode?: string;
 
-  @ApiProperty({
-    example: 'Malaysia',
-    description: 'Country name',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'Country must be a string' })
-  @MaxLength(100, { message: 'Country must not exceed 100 characters' })
-  country?: string;
+  // @ApiProperty({
+  //   example: 'Malaysia',
+  //   description: 'Country name',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString({ message: 'Country must be a string' })
+  // @MaxLength(100, { message: 'Country must not exceed 100 characters' })
+  // country?: string;
 }
 
 export class LocationDto {
@@ -96,13 +96,22 @@ export class LocationDto {
   @Type(() => CoordinatesDto)
   coordinates: CoordinatesDto;
 
-  @ApiProperty({
-    description: 'Address information for the location',
-    type: AddressDto,
+  // @ApiProperty({
+  //   description: 'Address information for the location',
+  //   type: AddressDto,
+  // })
+  // @ValidateNested()
+  // @Type(() => AddressDto)
+  // address: AddressDto;
+
+  @ApiPropertyOptional({
+    example: '123 Jalan Bukit Bintang, Kuala Lumpur, Malaysia',
+    description: 'Complete formatted address',
   })
-  @ValidateNested()
-  @Type(() => AddressDto)
-  address: AddressDto;
+  @IsString({ message: 'Formatted address must be a string' })
+  @IsOptional()
+  @MaxLength(500, { message: 'Formatted address must not exceed 500 characters' })
+  address: string;
 
   @ApiProperty({
     example: 'ChIJr8_eiQ8zMw4RpWLeMpGT6xo',
@@ -114,13 +123,13 @@ export class LocationDto {
   @MaxLength(200, { message: 'Place ID must not exceed 200 characters' })
   placeId?: string;
 
-  @ApiProperty({
-    example: 'Near KLCC Tower',
-    description: 'Notable landmark near the location',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'Landmark must be a string' })
-  @MaxLength(200, { message: 'Landmark must not exceed 200 characters' })
-  landmark?: string;
+  // @ApiProperty({
+  //   example: 'Near KLCC Tower',
+  //   description: 'Notable landmark near the location',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString({ message: 'Landmark must be a string' })
+  // @MaxLength(200, { message: 'Landmark must not exceed 200 characters' })
+  // landmark?: string;
 }

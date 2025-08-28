@@ -4,7 +4,18 @@ import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { Gender, Role } from '../enums';
 
-@Schema({ collection: 'user', timestamps: true })
+@Schema({
+  collection: 'user',
+  timestamps: true,
+  // toJSON: {
+  //   transform: (doc, ret) => {
+  //     if (ret._id && ret._id.buffer) {
+  //       ret._id = ret._id.buffer.toString('hex');
+  //     }
+  //     return ret;
+  //   },
+  // },
+})
 export class User extends AbstractDocument {
   @ApiProperty()
   @Prop({

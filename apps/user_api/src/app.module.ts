@@ -52,8 +52,6 @@ import { DriverVehicleModule } from './driver-modules/driver-vehicle/driverVehic
     UserModule,
     RidesModule,
 
-    //
-
     DriverModule,
     DriverRideModule,
     DriverVehicleModule,
