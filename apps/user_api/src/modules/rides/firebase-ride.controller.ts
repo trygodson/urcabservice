@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Param, Body, UseGuards, Logger } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { CurrentUser, JwtAuthGuard } from '@urcab-workspace/shared';
+import { CurrentUser, JwtAuthGuard, Role, SetRolesMetaData, User } from '@urcab-workspace/shared';
 import { FirebaseRideService } from './firebase-ride.service';
 import { Types } from 'mongoose';
 
@@ -35,18 +35,19 @@ export class FirebaseRideController {
     description: 'Driver response processed successfully',
     type: Object,
   })
+  @SetRolesMetaData(Role.DRIVER)
   async handleDriverResponse(
     @Param('rideId') rideId: string,
-    @CurrentUser() driver: any,
+    @CurrentUser() driver: User,
     @Body() responseDto: DriverResponseDto,
   ): Promise<DriverResponseResult> {
     try {
-      await this.firebaseRideService.sendDriverResponse(driver.sub, rideId, responseDto.action);
+      await this.firebaseRideService.sendDriverResponse(driver._id.toString(), rideId, responseDto.action);
 
       const message =
         responseDto.action === 'accept' ? 'Ride request accepted successfully' : 'Ride request rejected successfully';
 
-      this.logger.log(`Driver ${driver.sub} ${responseDto.action}ed ride ${rideId}`);
+      this.logger.log(`Driver ${driver._id} ${responseDto.action}ed ride ${rideId}`);
 
       return {
         success: true,
@@ -54,12 +55,12 @@ export class FirebaseRideController {
         rideId,
       };
     } catch (error) {
-      this.logger.error(`Failed to handle driver response: ${error.message}`);
-      return {
-        success: false,
-        message: error.message,
-        rideId,
-      };
+      throw error;
+      // return {
+      //   success: false,
+      //   message: error.message,
+      //   rideId,
+      // };
     }
   }
 
@@ -70,9 +71,10 @@ export class FirebaseRideController {
     description: 'Retrieved pending ride requests',
     type: Array,
   })
-  async getDriverPendingRequests(@CurrentUser() driver: any): Promise<any[]> {
+  @SetRolesMetaData(Role.DRIVER)
+  async getDriverPendingRequests(@CurrentUser() driver: User): Promise<any[]> {
     try {
-      const pendingRequests = await this.firebaseRideService.getDriverPendingRequests(driver.sub);
+      const pendingRequests = await this.firebaseRideService.getDriverPendingRequests(driver._id.toString());
       return pendingRequests;
     } catch (error) {
       this.logger.error(`Failed to get driver pending requests: ${error.message}`);

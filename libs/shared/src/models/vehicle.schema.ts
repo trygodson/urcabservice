@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { VehicleStatus } from '../enums';
+import { VehicleStatus, VehicleType } from '../enums';
 import { User } from './user.schema';
 
 @Schema({ collection: 'vehicle', timestamps: true })
@@ -93,8 +93,9 @@ export class Vehicle extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: String,
-    required: false,
-    maxlength: 50,
+    required: true,
+    enum: VehicleStatus,
+    default: VehicleType.TAXI,
   })
   vehicleType?: string; // e.g., 'sedan', 'suv', 'hatchback'
 

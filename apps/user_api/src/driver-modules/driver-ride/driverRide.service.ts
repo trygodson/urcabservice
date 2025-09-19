@@ -10,6 +10,7 @@ import { RideResponseDto } from 'apps/user_api/src/modules/rides/dtos';
 import { Types } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { DriverRideRepository } from './repository/driverRide.repository';
+import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
 
 export interface NearbyRideRequestDto {
   _id: string;
@@ -56,6 +57,7 @@ export class DriverRideService {
     private readonly driverRideRepository: DriverRideRepository,
     private readonly userRepository: UserRepository,
     private readonly firebaseNotificationService: FirebaseNotificationService,
+    private readonly firebaseRideService: FirebaseRideService,
   ) {}
 
   async acceptRide(rideId: string, driverId: Types.ObjectId): Promise<RideResponseDto> {
@@ -67,7 +69,7 @@ export class DriverRideService {
       }
 
       // Check if ride is still available for assignment
-      if (ride.status !== RideStatus.SEARCHING_DRIVER) {
+      if (!(ride.status === RideStatus.PENDING_DRIVER_ACCEPTANCE || ride.status === RideStatus.SEARCHING_DRIVER)) {
         throw new BadRequestException('Ride is no longer available');
       }
 
@@ -82,7 +84,7 @@ export class DriverRideService {
 
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
         driverId,
-        status: RideStatus.DRIVER_ASSIGNED,
+        status: RideStatus.DRIVER_ACCEPTED,
         driverAssignedAt: new Date(),
       });
 
@@ -98,9 +100,10 @@ export class DriverRideService {
       if (passenger?.fcmToken) {
         await this.firebaseNotificationService.sendRideStatusUpdate(
           passenger.fcmToken,
-          'DRIVER_ASSIGNED',
+          'DRIVER_ACCEPTED',
           rideId,
           driver,
+          updatedRide,
         );
       }
 
@@ -218,6 +221,55 @@ export class DriverRideService {
     }
   }
 
+  async driverAtPickupLocationRide(rideId: string, driverId: Types.ObjectId): Promise<RideResponseDto> {
+    try {
+      const ride = await this.rideRepository.findById(rideId);
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+
+      // Validate driver is assigned to this ride
+      if (!ride.driverId || !ride.driverId.equals(driverId)) {
+        throw new BadRequestException('You are not assigned to this ride');
+      }
+
+      // Check if ride can be started
+      // if (ride.status !== RideStatus.DRIVER_ACCEPTED) {
+      //   throw new BadRequestException(`Cannot start ride. Current status: ${ride.status}`);
+      // }
+
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, RideStatus.DRIVER_AT_PICKUPLOCATION as RideStatus);
+      }
+
+      // Update ride status
+      const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
+        status: RideStatus.DRIVER_AT_PICKUPLOCATION,
+        startedAt: new Date(),
+      });
+
+      // Get passenger and driver details for notifications
+      const passenger = await this.userRepository.findById(ride.passengerId?._id._id.toString());
+      const driver = await this.userRepository.findById(driverId.toString());
+
+      // Send notification to passenger
+      if (passenger?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.DRIVER_AT_PICKUPLOCATION,
+          rideId,
+          driver,
+          updatedRide,
+        );
+      }
+
+      this.logger.log(`Ride ${rideId} picked up Passenger ${passenger?._id} by driver ${driverId}`);
+      return this.mapToResponseDto(updatedRide);
+    } catch (error) {
+      this.logger.error(`Failed to start ride ${rideId} by driver ${driverId}`, error.stack);
+      throw error;
+    }
+  }
   async startRide(rideId: string, driverId: Types.ObjectId): Promise<RideResponseDto> {
     try {
       const ride = await this.rideRepository.findById(rideId);
@@ -231,15 +283,18 @@ export class DriverRideService {
       }
 
       // Check if ride can be started
-      if (ride.status !== RideStatus.DRIVER_ASSIGNED) {
-        throw new BadRequestException(`Cannot start ride. Current status: ${ride.status}`);
-      }
+      // if (ride.status !== RideStatus.DRIVER_AT_PICKUPLOCATION) {
+      //   throw new BadRequestException(`Cannot start ride. Current status: ${ride.status}`);
+      // }
 
       // Update ride status
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
-        status: RideStatus.STARTED,
+        status: RideStatus.RIDE_STARTED,
         startedAt: new Date(),
       });
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, RideStatus.RIDE_STARTED as RideStatus);
+      }
 
       // Get passenger and driver details for notifications
       const passenger = await this.userRepository.findById(ride.passengerId?._id._id.toString());
@@ -247,7 +302,13 @@ export class DriverRideService {
 
       // Send notification to passenger
       if (passenger?.fcmToken) {
-        await this.firebaseNotificationService.sendRideStatusUpdate(passenger.fcmToken, 'STARTED', rideId, driver);
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.RIDE_STARTED,
+          rideId,
+          driver,
+          updatedRide,
+        );
       }
 
       this.logger.log(`Ride ${rideId} started by driver ${driverId}`);
@@ -275,8 +336,12 @@ export class DriverRideService {
       }
 
       // Check if ride can be completed
-      if (ride.status !== RideStatus.STARTED) {
-        throw new BadRequestException(`Cannot complete ride. Current status: ${ride.status}`);
+      // if (ride.status !== RideStatus.RIDE_STARTED) {
+      //   throw new BadRequestException(`Cannot complete ride. Current status: ${ride.status}`);
+      // }
+
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, RideStatus.RIDE_COMPLETED as RideStatus);
       }
 
       // Calculate actual duration if not provided
@@ -290,7 +355,7 @@ export class DriverRideService {
 
       // Update ride with completion data
       const updateData = {
-        status: RideStatus.COMPLETED,
+        status: RideStatus.RIDE_COMPLETED,
         completedAt: new Date(),
         finalFare,
         actualDistance: completeData.actualDistance || ride.estimatedDistance,
@@ -309,7 +374,13 @@ export class DriverRideService {
 
       // Send completion notification to passenger
       if (passenger?.fcmToken) {
-        await this.firebaseNotificationService.sendRideStatusUpdate(passenger.fcmToken, 'COMPLETED', rideId, driver);
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.RIDE_COMPLETED,
+          rideId,
+          driver,
+          updatedRide,
+        );
       }
 
       this.logger.log(`Ride ${rideId} completed by driver ${driverId}. Final fare: RM${finalFare}`);
@@ -333,12 +404,12 @@ export class DriverRideService {
       }
 
       // Check if ride can be cancelled
-      if ([RideStatus.COMPLETED, RideStatus.CANCELLED].includes(ride.status as RideStatus)) {
+      if ([RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED].includes(ride.status as RideStatus)) {
         throw new BadRequestException('Cannot cancel a completed or already cancelled ride');
       }
 
       const updateData = {
-        status: RideStatus.CANCELLED,
+        status: RideStatus.RIDE_CANCELLED,
         cancelledAt: new Date(),
         cancelledBy: driverId,
         cancellationReason: reason || 'Cancelled by driver',
@@ -355,7 +426,13 @@ export class DriverRideService {
 
       // Send cancellation notification to passenger
       if (passenger?.fcmToken) {
-        await this.firebaseNotificationService.sendRideStatusUpdate(passenger.fcmToken, 'CANCELLED', rideId, driver);
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.RIDE_CANCELLED,
+          rideId,
+          driver,
+          updatedRide,
+        );
       }
 
       this.logger.log(`Ride ${rideId} cancelled by driver ${driverId}. Reason: ${reason}`);
@@ -450,11 +527,19 @@ export class DriverRideService {
         throw new BadRequestException('You are not assigned to this ride');
       }
 
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, ride.status as RideStatus);
+      }
       // Check if driver can mark as arrived
-      if (ride.status !== RideStatus.DRIVER_ASSIGNED) {
+      if (ride.status !== RideStatus.DRIVER_ACCEPTED) {
         throw new BadRequestException(`Cannot update arrival status. Current status: ${ride.status}`);
       }
 
+      const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
+        driverId,
+        status: RideStatus.DRIVER_AT_PICKUPLOCATION,
+        driverAssignedAt: new Date(),
+      });
       // For now, we can just send a notification without changing ride status
       // In the future, you might want to add an "ARRIVED" status
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
@@ -464,14 +549,65 @@ export class DriverRideService {
       if (passenger?.fcmToken) {
         await this.firebaseNotificationService.sendRideStatusUpdate(
           passenger.fcmToken,
-          'DRIVER_ARRIVED',
+          RideStatus.DRIVER_AT_PICKUPLOCATION,
           rideId,
           driver,
+          updatedRide,
         );
       }
 
       this.logger.log(`Driver ${driverId} marked as arrived for ride ${rideId}`);
       return this.mapToResponseDto(ride);
+    } catch (error) {
+      this.logger.error(`Failed to update arrival status for ride ${rideId} by driver ${driverId}`, error.stack);
+      throw error;
+    }
+  }
+  async updateDriverArrivalPickUpPassengerStatus(rideId: string, driverId: Types.ObjectId): Promise<RideResponseDto> {
+    console.log('=====reached here====');
+    try {
+      const ride = await this.rideRepository.findById(rideId);
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+
+      // Validate driver is assigned to this ride
+      if (!ride.driverId || !ride.driverId.equals(driverId)) {
+        throw new BadRequestException('You are not assigned to this ride');
+      }
+
+      // Check if driver can mark as arrived
+      // if (ride.status !== RideStatus.DRIVER_ACCEPTED) {
+      //   throw new BadRequestException(`Cannot update arrival status. Current status: ${ride.status}`);
+      // }
+      console.log(ride, '=====ride====');
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, RideStatus.DRIVER_HAS_PICKUP_PASSENGER as RideStatus);
+      }
+
+      const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
+        driverId,
+        status: RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+        driverAssignedAt: new Date(),
+      });
+      // For now, we can just send a notification without changing ride status
+      // In the future, you might want to add an "ARRIVED" status
+      const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+      const driver = await this.userRepository.findById(driverId.toString());
+
+      // Send arrival notification to passenger
+      if (passenger?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+          rideId,
+          driver,
+          updatedRide,
+        );
+      }
+
+      this.logger.log(`Driver ${driverId} marked as arrived for ride ${rideId}`);
+      return this.mapToResponseDto(updatedRide);
     } catch (error) {
       this.logger.error(`Failed to update arrival status for ride ${rideId} by driver ${driverId}`, error.stack);
       throw error;
@@ -525,10 +661,49 @@ export class DriverRideService {
     return degrees * (Math.PI / 180);
   }
 
+  private validateStatusChange(currentStatus: RideStatus, newStatus: RideStatus): void {
+    const validTransitions: Record<RideStatus, RideStatus[]> = {
+      [RideStatus.SEARCHING_DRIVER]: [
+        RideStatus.PENDING_DRIVER_ACCEPTANCE,
+        RideStatus.DRIVER_ACCEPTED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.PENDING_DRIVER_ACCEPTANCE]: [
+        RideStatus.DRIVER_ACCEPTED,
+        RideStatus.REJECTED_BY_DRIVER,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
+      [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_ACCEPTED]: [
+        RideStatus.DRIVER_AT_PICKUPLOCATION,
+        RideStatus.RIDE_CANCELLED,
+        RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+      ],
+      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
+        RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+        RideStatus.RIDE_STARTED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.DRIVER_HAS_PICKUP_PASSENGER]: [
+        RideStatus.RIDE_STARTED,
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.RIDE_COMPLETED]: [RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_CANCELLED]: [],
+    };
+
+    if (!validTransitions[currentStatus]?.includes(newStatus)) {
+      throw new BadRequestException(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+    }
+  }
   private mapToResponseDto(ride: any): RideResponseDto {
     return {
       _id: ride._id,
       passengerId: ride.passengerId,
+
       driverId: ride.driverId,
       pickupLocation: ride.pickupLocation,
       dropoffLocation: ride.dropoffLocation,

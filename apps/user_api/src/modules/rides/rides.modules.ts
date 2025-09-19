@@ -13,12 +13,18 @@ import {
   User,
   UserRepository,
   UserSchema,
+  Vehicle,
+  VehicleRepository,
+  VehicleSchema,
 } from '@urcab-workspace/shared';
 import { RidesController } from './rides.controller';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { JwtStrategy, LocalStrategy } from '../auth/strategies';
+import { RideWebSocketService } from './ride-websocket.service';
+import { RedisService } from './redis.service';
+import { RideGateway } from './gateway/ride.gateway';
 
 @Module({
   imports: [
@@ -37,12 +43,27 @@ import { JwtStrategy, LocalStrategy } from '../auth/strategies';
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Ride.name, schema: RideSchema },
+      { name: Vehicle.name, schema: VehicleSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
     ]),
     NotificationsModule,
   ],
-  controllers: [RidesController, FirebaseRideController],
-  providers: [RidesService, FirebaseRideService, UserRepository, RideRepository, DriverLocationRepository],
-  exports: [FirebaseRideService],
+  controllers: [RidesController],
+  providers: [
+    RidesService,
+    RideWebSocketService,
+    RedisService,
+    RideGateway,
+    VehicleRepository,
+    UserRepository,
+    RideRepository,
+    DriverLocationRepository,
+  ],
+  exports: [RidesService, RideWebSocketService, RideGateway],
 })
-export class RidesModule {}
+export class RidesModule {
+  constructor(private readonly rideWebSocketService: RideWebSocketService, private readonly rideGateway: RideGateway) {
+    // Resolve circular dependency
+    this.rideWebSocketService.setGateway(this.rideGateway);
+  }
+}

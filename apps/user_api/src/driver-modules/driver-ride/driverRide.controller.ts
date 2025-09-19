@@ -23,6 +23,20 @@ import { Types } from 'mongoose';
 @ApiBearerAuth()
 export class DriverRideController {
   constructor(private readonly driverRidesService: DriverRideService) {}
+
+  @Get('current')
+  @ApiOperation({ summary: 'Get current active ride for driver' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Current ride retrieved successfully (null if no active ride)',
+    type: RideResponseDto,
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async getCurrentRide(@CurrentUser() user: User) {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.driverRidesService.getCurrentRide(driverId);
+  }
+
   @Post(':id/accept')
   @ApiOperation({ summary: 'Accept a ride request (Driver only)' })
   @ApiParam({
@@ -226,7 +240,7 @@ export class DriverRideController {
     return await this.driverRidesService.cancelRide(rideId, driverId, body.reason);
   }
 
-  @Post(':id/arrived')
+  @Post(':id/arrivedAtPassengerLocation')
   @ApiOperation({ summary: 'Mark driver as arrived at pickup location' })
   @ApiParam({
     name: 'id',
@@ -245,7 +259,28 @@ export class DriverRideController {
     }
 
     const driverId = new Types.ObjectId(user._id);
-    return await this.driverRidesService.updateDriverArrivalStatus(rideId, driverId);
+    return await this.driverRidesService.driverAtPickupLocationRide(rideId, driverId);
+  }
+  @Post(':id/pickedUpPassenger')
+  @ApiOperation({ summary: 'Mark driver as arrived at pickup location' })
+  @ApiParam({
+    name: 'id',
+    description: 'Ride ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Arrival status updated successfully',
+    type: RideResponseDto,
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async pickedUpPassenger(@Param('id') rideId: string, @CurrentUser() user: User) {
+    if (!Types.ObjectId.isValid(rideId)) {
+      throw new BadRequestException('Invalid ride ID format');
+    }
+
+    const driverId = new Types.ObjectId(user._id);
+    return await this.driverRidesService.updateDriverArrivalPickUpPassengerStatus(rideId, driverId);
   }
 
   @Get('history')
@@ -302,19 +337,6 @@ export class DriverRideController {
 
     const driverId = new Types.ObjectId(user._id);
     return await this.driverRidesService.getDriverRideHistory(driverId, page, limit);
-  }
-
-  @Get('current')
-  @ApiOperation({ summary: 'Get current active ride for driver' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Current ride retrieved successfully (null if no active ride)',
-    type: RideResponseDto,
-  })
-  @SetRolesMetaData(Role.DRIVER)
-  async getCurrentRide(@CurrentUser() user: User) {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.driverRidesService.getCurrentRide(driverId);
   }
 
   @Get(':id')

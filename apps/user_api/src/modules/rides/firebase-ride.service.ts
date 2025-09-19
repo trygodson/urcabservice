@@ -1,5 +1,12 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { FirebaseNotificationService, RideRepository, RideStatus, RideNotificationData } from '@urcab-workspace/shared';
+import {
+  FirebaseNotificationService,
+  RideRepository,
+  RideStatus,
+  RideNotificationData,
+  UserRepository,
+  VehicleRepository,
+} from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
 // import * as admin from 'firebase-admin';
@@ -10,6 +17,8 @@ interface RideRequest {
   driverId: string;
   passengerName: string;
   passengerPhone: string;
+  passengerPhoto: string;
+  passengerCount?: any;
   pickupLocation: {
     address: string;
     coordinates: [number, number];
@@ -42,6 +51,8 @@ export class FirebaseRideService {
     @InjectFirebaseAdmin() private readonly admin: FirebaseAdmin,
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly rideRepository: RideRepository,
+    private readonly userRepository: UserRepository,
+    private readonly vehicleRepository: VehicleRepository,
   ) {}
 
   /**
@@ -49,6 +60,7 @@ export class FirebaseRideService {
    */
   async sendRideRequestToDriver(rideRequest: RideRequest, driverFcmToken: string): Promise<void> {
     try {
+      // console.log(rideRequest, '=====ride Request data=====');
       // 1. Store ride request in Firebase Realtime Database
       await this.storeRideRequestInFirebase(rideRequest);
 
@@ -58,6 +70,8 @@ export class FirebaseRideService {
         passengerId: rideRequest.passengerId,
         passengerName: rideRequest.passengerName,
         passengerPhone: rideRequest.passengerPhone,
+        passengerPhoto: rideRequest.passengerPhoto,
+        passengerCount: rideRequest.passengerCount,
         pickupLocation: rideRequest.pickupLocation,
         dropoffLocation: rideRequest.dropoffLocation,
         estimatedFare: rideRequest.estimatedFare,
@@ -78,7 +92,7 @@ export class FirebaseRideService {
       // 3. Set up auto-expiry (30 seconds)
       setTimeout(async () => {
         await this.handleRideRequestExpiry(rideRequest.rideId);
-      }, 30000);
+      }, 60000);
     } catch (error) {
       this.logger.error(`Failed to send ride request: ${error.message}`);
       throw new BadRequestException(`Failed to send ride request: ${error.message}`);
@@ -94,21 +108,58 @@ export class FirebaseRideService {
 
       // Store under both ride requests and driver's pending requests
       const updates = {};
+      // updates[`/ride_requests/${rideRequest.rideId}`] = {
+      //   ...rideRequest,
+      //   status: 'pending',
+      //   createdAt: new Date().toISOString(),
+      // };
+      // updates[`/driver_requests/${rideRequest.driverId}/${rideRequest.rideId}`] = {
+      //   rideId: rideRequest.rideId,
+      //   status: 'pending',
+      //   expiresAt: rideRequest.expiresAt,
+      //   createdAt: new Date().toISOString(),
+      // };
+      // updates[`/passenger_requests/${rideRequest.passengerId}/${rideRequest.rideId}`] = {
+      //   rideId: rideRequest.rideId,
+      //   driverId: rideRequest.driverId,
+      //   status: 'waiting_response',
+      //   createdAt: new Date().toISOString(),
+      // };
+
       updates[`/ride_requests/${rideRequest.rideId}`] = {
         ...rideRequest,
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
-      updates[`/driver_requests/${rideRequest.driverId}/${rideRequest.rideId}`] = {
+
+      // 2. Store under ride_requests/driver_{driverId} for driver's real-time listener
+      // This matches the React Native RealtimeService.listenForRideRequests() structure
+      updates[`/ride_requests/driver_${rideRequest.driverId}/${rideRequest.rideId}`] = {
+        requestId: rideRequest.rideId, // Add requestId for React Native
         rideId: rideRequest.rideId,
-        status: 'pending',
+        passengerId: rideRequest.passengerId,
+        passengerName: rideRequest.passengerName,
+        passengerPhone: rideRequest.passengerPhone,
+        pickupLocation: rideRequest.pickupLocation,
+        dropoffLocation: rideRequest.dropoffLocation,
+        estimatedFare: rideRequest.estimatedFare,
+        estimatedDistance: rideRequest.estimatedDistance,
+        estimatedDuration: rideRequest.estimatedDuration,
+        requestTime: rideRequest.requestTime,
         expiresAt: rideRequest.expiresAt,
+        status: 'pending',
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      updates[`/passenger_requests/${rideRequest.passengerId}/${rideRequest.rideId}`] = {
+
+      // 3. Store under ride_status_updates/passenger_{passengerId} for passenger's real-time updates
+      // This matches the React Native RealtimeService.listenForRideStatusUpdates() structure
+      updates[`/ride_status_updates/passenger_${rideRequest.passengerId}/${rideRequest.rideId}`] = {
         rideId: rideRequest.rideId,
         driverId: rideRequest.driverId,
-        status: 'waiting_response',
+        status: 'PENDING_DRIVER_ACCEPTANCE',
+        message: 'Waiting for driver response...',
+        timestamp: Date.now(),
         createdAt: new Date().toISOString(),
       };
 
@@ -124,10 +175,11 @@ export class FirebaseRideService {
    * Handle driver response (accept/reject)
    */
   async handleDriverResponse(rideId: string, driverId: string, action: 'accept' | 'reject'): Promise<void> {
+    console.log(rideId, '===incoming from driver app====', driverId, action);
     try {
       const database = this.admin.database;
       // Get ride request details
-      const rideRequestRef = database.ref(`/ride_requests/${rideId}`);
+      const rideRequestRef = database.ref(`/ride_requests/driver_${driverId}/${rideId}`);
       const snapshot = await rideRequestRef.once('value');
       const rideRequest = snapshot.val();
 
@@ -141,30 +193,79 @@ export class FirebaseRideService {
 
       // Update Firebase with driver response
       const updates = {};
-      updates[`/ride_requests/${rideId}/status`] = action === 'accept' ? 'accepted' : 'rejected';
-      updates[`/ride_requests/${rideId}/responseTime`] = new Date().toISOString();
-      updates[`/driver_requests/${driverId}/${rideId}/status`] = action === 'accept' ? 'accepted' : 'rejected';
-      updates[`/passenger_requests/${rideRequest.passengerId}/${rideId}/status`] =
-        action === 'accept' ? 'accepted' : 'rejected';
+      // updates[`/ride_requests/${rideId}/status`] = action === 'accept' ? 'accepted' : 'rejected';
+      // updates[`/ride_requests/${rideId}/responseTime`] = new Date().toISOString();
+      // updates[`/driver_requests/${driverId}/${rideId}/status`] = action === 'accept' ? 'accepted' : 'rejected';
+      // updates[`/passenger_requests/${rideRequest.passengerId}/${rideId}/status`] =
+      //   action === 'accept' ? 'accepted' : 'rejected';
 
-      await database.ref().update(updates);
+      // await database.ref().update(updates);
 
-      if (action === 'accept') {
-        // Accept ride - update MongoDB
-        await this.acceptRide(rideId, driverId, rideRequest.passengerId);
+      // if (action === 'accept') {
+      //   // Accept ride - update MongoDB
+      //   await this.acceptRide(rideId, driverId, rideRequest.passengerId);
 
-        // Notify passenger of acceptance
-        await this.notifyPassengerRideAccepted(rideRequest);
-      } else {
-        // Reject ride - update MongoDB and notify passenger
-        await this.rejectRide(rideId, driverId);
-        await this.notifyPassengerRideRejected(rideRequest);
-      }
+      //   // Notify passenger of acceptance
+      //   await this.notifyPassengerRideAccepted(rideRequest);
+      // } else {
+      //   // Reject ride - update MongoDB and notify passenger
+      //   await this.rejectRide(rideId, driverId);
+      //   await this.notifyPassengerRideRejected(rideRequest);
+      // }
 
       // Clean up Firebase data
+
+      updates[`status`] = action === 'accept' ? 'driver-accepted' : 'driver-rejected';
+      updates[`responseTime`] = new Date().toISOString();
+
+      // Remove from driver's pending requests (it will be cleaned up by React Native)
+      // updates[`/ride_requests/driver_${driverId}/${rideId}`] = null;
+
+      // Send status update to passenger using the correct structure
+      if (action === 'accept') {
+        // Accept ride - update MongoDB first
+
+        // Get driver info for passenger notification
+        const driver = await this.getUserById(driverId);
+        const driverVehicle = await this.getVehicleByDriverId(driverId);
+
+        // Send acceptance notification to passenger
+        updates[`status`] = RideStatus.DRIVER_ACCEPTED;
+        updates[`driverInfo`] = driver
+          ? {
+              name: `${driver.firstName} ${driver.lastName}`,
+
+              phone: driver.phone,
+              photo: driver.photo,
+              vehicle: driverVehicle, // You'll need to include vehicle info
+            }
+          : null;
+
+        updates[`updatedAt`] = Date.now();
+
+        rideRequestRef.update(updates);
+      } else {
+        // Reject ride - update MongoDB
+        await this.rejectRide(rideId, driverId);
+
+        // Send rejection notification to passenger
+        // updates[`/ride_status_updates/passenger_${rideRequest.passengerId}/${Date.now()}`] = {
+        //   rideId: rideId,
+        //   driverId: driverId,
+        //   status: 'REJECTED_BY_DRIVER',
+        //   message: 'Driver declined your request. We are finding another driver for you.',
+        //   timestamp: Date.now(),
+        //   createdAt: new Date().toISOString(),
+        // };
+        updates[`status`] = RideStatus.REJECTED_BY_DRIVER;
+        updates[`updatedAt`] = Date.now();
+        rideRequestRef.update(updates);
+      }
       setTimeout(async () => {
-        await this.cleanupFirebaseRideRequest(rideId, rideRequest.passengerId, driverId);
+        // await this.cleanupFirebaseRideRequest(rideId, rideRequest.passengerId, driverId);
       }, 5000);
+
+      // return true
     } catch (error) {
       this.logger.error(`Failed to handle driver response: ${error.message}`);
       throw error;
@@ -180,7 +281,7 @@ export class FirebaseRideService {
         { _id: new Types.ObjectId(rideId) },
         {
           driverId: new Types.ObjectId(driverId),
-          status: RideStatus.DRIVER_ASSIGNED,
+          status: RideStatus.DRIVER_ACCEPTED,
           driverAssignedAt: new Date(),
         },
       );
@@ -221,14 +322,23 @@ export class FirebaseRideService {
       const database = this.admin.database;
       const rideRequestRef = database.ref(`/ride_requests/${rideId}`);
       const snapshot = await rideRequestRef.once('value');
-      const rideRequest = snapshot.val();
+      const rideRequest = await this.rideRepository.findById(rideId);
 
       if (rideRequest && rideRequest.status === 'pending') {
         // Mark as expired in Firebase
+
         await rideRequestRef.update({
           status: 'expired',
           expiredAt: new Date().toISOString(),
         });
+
+        // Remove from driver's queue
+        const driverRequestUpdate = {};
+        driverRequestUpdate[`/ride_requests/driver_${rideRequest.driverId}/${rideId}`] = {
+          status: RideStatus.REJECTED_BY_DRIVER,
+          updatedAt: new Date().toISOString(),
+        };
+        await database.ref().update(driverRequestUpdate);
 
         // Update MongoDB
         await this.rideRepository.findOneAndUpdate(
@@ -240,8 +350,19 @@ export class FirebaseRideService {
           },
         );
 
-        // Notify passenger
-        await this.notifyPassengerRideExpired(rideRequest);
+        // Notify passenger about expiry using correct structure
+        // const passengerUpdate = {};
+        // passengerUpdate[`/ride_status_updates/passenger_${rideRequest.passengerId}/${Date.now()}`] = {
+        //   rideId: rideId,
+        //   driverId: rideRequest.driverId,
+        //   status: 'REJECTED_BY_DRIVER',
+        //   message: 'Driver did not respond in time. Please select another driver.',
+        //   reason: 'Driver did not respond in time',
+        //   timestamp: Date.now(),
+        //   createdAt: new Date().toISOString(),
+        // };
+
+        // await database.ref().update(passengerUpdate);
 
         this.logger.log(`Ride request ${rideId} expired`);
       }
@@ -322,14 +443,33 @@ export class FirebaseRideService {
       const database = this.admin.database;
 
       const updates = {};
-      updates[`/ride_requests/${rideId}`] = null;
-      updates[`/driver_requests/${driverId}/${rideId}`] = null;
+      // updates[`/ride_requests/${rideId}`] = null;
+      updates[`/ride_requests/${driverId}/${rideId}`] = null;
       updates[`/passenger_requests/${passengerId}/${rideId}`] = null;
 
       await database.ref().update(updates);
       this.logger.log(`Cleaned up Firebase data for ride ${rideId}`);
     } catch (error) {
       this.logger.error(`Failed to cleanup Firebase data: ${error.message}`);
+    }
+  }
+
+  private async getUserById(userId: string): Promise<any> {
+    try {
+      const user = await this.userRepository.findById(userId);
+      return user;
+    } catch (error) {
+      this.logger.error(`Failed to get user ${userId}:`, error.message);
+      return null;
+    }
+  }
+  private async getVehicleByDriverId(userId: string): Promise<any> {
+    try {
+      const user = await this.vehicleRepository.findById(userId);
+      return user;
+    } catch (error) {
+      this.logger.error(`Failed to get user ${userId}:`, error.message);
+      return null;
     }
   }
 
@@ -340,31 +480,18 @@ export class FirebaseRideService {
     try {
       const database = this.admin.database;
 
-      const snapshot = await database.ref(`/driver_requests/${driverId}`).once('value');
+      // Use the correct path that matches React Native listener
+      const snapshot = await database.ref(`/ride_requests/driver_${driverId}`).once('value');
       const requests = snapshot.val() || {};
 
       return Object.keys(requests).map((rideId) => ({
         rideId,
+        requestId: rideId, // Add requestId for compatibility
         ...requests[rideId],
       }));
     } catch (error) {
       this.logger.error(`Failed to get driver pending requests: ${error.message}`);
       return [];
-    }
-  }
-
-  /**
-   * Get passenger ride status
-   */
-  async getPassengerRideStatus(passengerId: string, rideId: string): Promise<any> {
-    try {
-      const database = this.admin.database;
-
-      const snapshot = await database.ref(`/passenger_requests/${passengerId}/${rideId}`).once('value');
-      return snapshot.val();
-    } catch (error) {
-      this.logger.error(`Failed to get passenger ride status: ${error.message}`);
-      return null;
     }
   }
 
@@ -395,16 +522,6 @@ export class FirebaseRideService {
    */
   async sendDriverResponse(driverId: string, rideId: string, action: 'accept' | 'reject'): Promise<void> {
     try {
-      const database = this.admin.database;
-
-      await database.ref(`/driver_responses/${driverId}`).push({
-        rideId,
-        driverId,
-        action,
-        responseTime: new Date().toISOString(),
-      });
-
-      // Also handle the response
       await this.handleDriverResponse(rideId, driverId, action);
     } catch (error) {
       this.logger.error(`Failed to send driver response: ${error.message}`);
@@ -439,9 +556,58 @@ export class FirebaseRideService {
     try {
       const database = this.admin.database;
 
-      await database.ref(`/passenger_notifications/${passengerId}`).remove();
+      // Clear status updates that are older than 5 minutes
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const snapshot = await database.ref(`/ride_status_updates/passenger_${passengerId}`).once('value');
+      const updates = snapshot.val() || {};
+
+      const cleanupUpdates = {};
+      Object.keys(updates).forEach((key) => {
+        if (updates[key].timestamp < fiveMinutesAgo) {
+          cleanupUpdates[`/ride_status_updates/passenger_${passengerId}/${key}`] = null;
+        }
+      });
+
+      if (Object.keys(cleanupUpdates).length > 0) {
+        await database.ref().update(cleanupUpdates);
+      }
     } catch (error) {
       this.logger.error(`Failed to clear passenger notifications: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get passenger ride status updates
+   */
+  async getPassengerRideStatus(passengerId: string, rideId?: string): Promise<any> {
+    try {
+      const database = this.admin.database;
+
+      if (rideId) {
+        // Get specific ride status
+        const snapshot = await database.ref(`/ride_status_updates/passenger_${passengerId}`).once('value');
+        const updates = snapshot.val() || {};
+
+        // Find the latest update for this ride
+        const rideUpdates = Object.keys(updates)
+          .map((key) => ({ id: key, ...updates[key] }))
+          .filter((update) => update.rideId === rideId)
+          .sort((a, b) => b.timestamp - a.timestamp);
+
+        return rideUpdates.length > 0 ? rideUpdates[0] : null;
+      } else {
+        // Get all status updates for passenger
+        const snapshot = await database.ref(`/ride_status_updates/passenger_${passengerId}`).once('value');
+        const updates = snapshot.val() || {};
+
+        return Object.keys(updates).map((key) => ({
+          id: key,
+          ...updates[key],
+        }));
+      }
+    } catch (error) {
+      this.logger.error(`Failed to get passenger ride status: ${error.message}`);
+      return null;
     }
   }
 }

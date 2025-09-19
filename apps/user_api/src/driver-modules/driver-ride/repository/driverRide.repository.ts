@@ -87,7 +87,12 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
         .findOne({
           driverId,
           status: {
-            $in: [RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED],
+            $in: [
+              RideStatus.DRIVER_ACCEPTED,
+              RideStatus.DRIVER_AT_PICKUPLOCATION,
+              RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+              RideStatus.RIDE_STARTED,
+            ],
           },
         })
         .populate('passengerId', 'firstName lastName phone photo email rating')
@@ -161,17 +166,21 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
               totalRides: { $sum: 1 },
               completedRides: {
                 $sum: {
-                  $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, 1, 0],
+                  $cond: [{ $eq: ['$status', RideStatus.RIDE_COMPLETED] }, 1, 0],
                 },
               },
               cancelledRides: {
                 $sum: {
-                  $cond: [{ $eq: ['$status', RideStatus.CANCELLED] }, 1, 0],
+                  $cond: [{ $eq: ['$status', RideStatus.RIDE_CANCELLED] }, 1, 0],
                 },
               },
               totalEarnings: {
                 $sum: {
-                  $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, { $ifNull: ['$finalFare', '$estimatedFare'] }, 0],
+                  $cond: [
+                    { $eq: ['$status', RideStatus.RIDE_COMPLETED] },
+                    { $ifNull: ['$finalFare', '$estimatedFare'] },
+                    0,
+                  ],
                 },
               },
               // For average rating, we would need a separate ratings collection
@@ -180,7 +189,7 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
                 $sum: {
                   $cond: [
                     {
-                      $and: [{ $eq: ['$status', RideStatus.COMPLETED] }, { $ne: ['$driverRating', null] }],
+                      $and: [{ $eq: ['$status', RideStatus.RIDE_COMPLETED] }, { $ne: ['$driverRating', null] }],
                     },
                     '$driverRating',
                     0,
@@ -191,7 +200,7 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
                 $sum: {
                   $cond: [
                     {
-                      $and: [{ $eq: ['$status', RideStatus.COMPLETED] }, { $ne: ['$driverRating', null] }],
+                      $and: [{ $eq: ['$status', RideStatus.RIDE_COMPLETED] }, { $ne: ['$driverRating', null] }],
                     },
                     1,
                     0,
@@ -275,7 +284,7 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
         .findOne({
           passengerId,
           status: {
-            $in: [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED],
+            $in: [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ACCEPTED, RideStatus.RIDE_STARTED],
           },
         })
         .populate('driverId', 'firstName lastName phone photo email rating')
@@ -410,13 +419,12 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
       );
 
       const matchStage: any = {
-        status: RideStatus.COMPLETED,
+        status: RideStatus.RIDE_COMPLETED,
         completedAt: {
           $gte: startDate,
           $lte: endDate,
         },
       };
-
       if (driverId) {
         matchStage.driverId = driverId;
       }

@@ -12,11 +12,15 @@ import {
   User,
   UserRepository,
   UserSchema,
+  Vehicle,
+  VehicleRepository,
+  VehicleSchema,
 } from '@urcab-workspace/shared';
 import { DriverRideService } from './driverRide.service';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { DriverRideController } from './driverRide.controller';
 import { DriverRideRepository } from './repository/driverRide.repository';
+import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
 
 @Module({
   imports: [
@@ -36,10 +40,19 @@ import { DriverRideRepository } from './repository/driverRide.repository';
       { name: User.name, schema: UserSchema },
       { name: Ride.name, schema: RideSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
+      { name: Vehicle.name, schema: VehicleSchema },
     ]),
     NotificationsModule,
   ],
   controllers: [DriverRideController],
-  providers: [DriverRideService, DriverRideRepository, RideRepository, UserRepository, DriverLocationRepository],
+  providers: [
+    DriverRideService,
+    FirebaseRideService,
+    VehicleRepository,
+    DriverRideRepository,
+    RideRepository,
+    UserRepository,
+    DriverLocationRepository,
+  ],
 })
 export class DriverRideModule {}

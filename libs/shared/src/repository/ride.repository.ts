@@ -29,12 +29,13 @@ export class RideRepository extends AbstractRepository<Ride> {
     rideId: string | Types.ObjectId,
     updateData: Partial<Ride>,
     options: { new?: boolean; runValidators?: boolean } = { new: true, runValidators: true },
-  ): Promise<RideDocument | null> {
+  ): Promise<Ride | null> {
     try {
       return await this.model
         .findByIdAndUpdate(rideId, updateData, options)
         .populate('passengerId', 'firstName lastName phone photo email')
         .populate('driverId', 'firstName lastName phone photo email')
+        .lean()
         .exec();
     } catch (error) {
       this.logger.error(`Failed to update ride by ID: ${rideId}`, error.stack);
@@ -92,7 +93,12 @@ export class RideRepository extends AbstractRepository<Ride> {
         .findOne({
           passengerId,
           status: {
-            $in: [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED, RideStatus.SCHEDULED],
+            $in: [
+              RideStatus.DRIVER_ACCEPTED,
+              RideStatus.DRIVER_AT_PICKUPLOCATION,
+              RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+              RideStatus.RIDE_STARTED,
+            ],
           },
         })
         .populate('driverId', 'firstName lastName phone photo email rating')
@@ -149,7 +155,7 @@ export class RideRepository extends AbstractRepository<Ride> {
       .findOne({
         passengerId,
         status: {
-          $in: [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED],
+          $in: [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ACCEPTED, RideStatus.RIDE_STARTED],
         },
       })
       .populate('driverId', 'firstName lastName phone photo')
@@ -161,7 +167,12 @@ export class RideRepository extends AbstractRepository<Ride> {
       .findOne({
         driverId,
         status: {
-          $in: [RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED],
+          $in: [
+            RideStatus.DRIVER_ACCEPTED,
+            RideStatus.DRIVER_AT_PICKUPLOCATION,
+            RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+            RideStatus.RIDE_STARTED,
+          ],
         },
       })
       .populate('passengerId', 'firstName lastName phone photo')
@@ -189,19 +200,27 @@ export class RideRepository extends AbstractRepository<Ride> {
           _id: null,
           totalRides: { $sum: 1 },
           completedRides: {
-            $sum: { $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ['$status', RideStatus.RIDE_COMPLETED] }, 1, 0] },
           },
           cancelledRides: {
-            $sum: { $cond: [{ $eq: ['$status', RideStatus.CANCELLED] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ['$status', RideStatus.RIDE_CANCELLED] }, 1, 0] },
           },
           totalRevenue: {
             $sum: {
-              $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, { $ifNull: ['$finalFare', '$estimatedFare'] }, 0],
+              $cond: [
+                { $eq: ['$status', RideStatus.RIDE_COMPLETED] },
+                { $ifNull: ['$finalFare', '$estimatedFare'] },
+                0,
+              ],
             },
           },
           averageFare: {
             $avg: {
-              $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, { $ifNull: ['$finalFare', '$estimatedFare'] }, null],
+              $cond: [
+                { $eq: ['$status', RideStatus.RIDE_COMPLETED] },
+                { $ifNull: ['$finalFare', '$estimatedFare'] },
+                null,
+              ],
             },
           },
         },
@@ -284,7 +303,7 @@ export class RideRepository extends AbstractRepository<Ride> {
       {
         $match: {
           driverId,
-          status: RideStatus.COMPLETED,
+          status: RideStatus.RIDE_COMPLETED,
           completedAt: { $gte: startDate, $lte: endDate },
         },
       },

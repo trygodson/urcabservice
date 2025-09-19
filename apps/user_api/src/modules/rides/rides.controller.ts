@@ -27,6 +27,69 @@ import { JwtAuthGuard, RolesGuard, Role, CurrentUser, User, SetRolesMetaData } f
 export class RidesController {
   constructor(private readonly ridesService: RidesService) {}
 
+  @Get('current')
+  @ApiOperation({ summary: 'Get current active ride for passenger' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Current ride retrieved successfully (null if no active ride)',
+    type: RideResponseDto,
+  })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getCurrentRide(@CurrentUser() user: User) {
+    console.log(user, '====current user===');
+    return await this.ridesService.getPassengerCurrentRide(user._id);
+  }
+
+  @Get('passenger/history')
+  @ApiOperation({ summary: 'Get passenger ride history' })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number',
+    required: false,
+    type: 'number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Number of items per page',
+    required: false,
+    type: 'number',
+    example: 10,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Passenger ride history retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        rides: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/RideResponseDto' },
+        },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+      },
+    },
+  })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getPassengerRideHistory(
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+    @CurrentUser() user: User,
+  ): Promise<{
+    rides: RideResponseDto[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    if (page < 1) page = 1;
+    if (limit < 1 || limit > 100) limit = 10;
+
+    const passengerId = new Types.ObjectId(user._id);
+    return await this.ridesService.getPassengerRideHistory(passengerId, page, limit);
+  }
+
   @Get('drivers/nearby')
   @ApiOperation({ summary: 'Get nearby available drivers' })
   @ApiQuery({
@@ -60,6 +123,7 @@ export class RidesController {
     @Query('longitude') longitude: number,
     @Query('radius', new ParseIntPipe({ optional: true })) radius: number = 10,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('passenger', new ParseIntPipe({ optional: true })) passenger: number = 4,
   ) {
     // console.log(longitude, latitude, radius, '=====');
     // Validate coordinates
@@ -79,7 +143,7 @@ export class RidesController {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
-    return await this.ridesService.findNearbyDrivers(longitude, latitude, radius);
+    return await this.ridesService.findNearbyDrivers(longitude, latitude, radius, 20, passenger);
   }
 
   @Post()
@@ -206,68 +270,6 @@ export class RidesController {
 
     const userId = new Types.ObjectId(user._id);
     return await this.ridesService.cancelRide(rideId, userId, reason);
-  }
-
-  @Get('current')
-  @ApiOperation({ summary: 'Get current active ride for passenger' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Current ride retrieved successfully (null if no active ride)',
-    type: RideResponseDto,
-  })
-  @SetRolesMetaData(Role.PASSENGER)
-  async getCurrentRide(@CurrentUser() user: User) {
-    return await this.ridesService.getPassengerCurrentRide(user._id);
-  }
-
-  @Get('passenger/history')
-  @ApiOperation({ summary: 'Get passenger ride history' })
-  @ApiQuery({
-    name: 'page',
-    description: 'Page number',
-    required: false,
-    type: 'number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    description: 'Number of items per page',
-    required: false,
-    type: 'number',
-    example: 10,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Passenger ride history retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        rides: {
-          type: 'array',
-          items: { $ref: '#/components/schemas/RideResponseDto' },
-        },
-        total: { type: 'number' },
-        page: { type: 'number' },
-        limit: { type: 'number' },
-      },
-    },
-  })
-  @SetRolesMetaData(Role.PASSENGER)
-  async getPassengerRideHistory(
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
-    @CurrentUser() user: User,
-  ): Promise<{
-    rides: RideResponseDto[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    if (page < 1) page = 1;
-    if (limit < 1 || limit > 100) limit = 10;
-
-    const passengerId = new Types.ObjectId(user._id);
-    return await this.ridesService.getPassengerRideHistory(passengerId, page, limit);
   }
 
   // @Get('passenger/active')

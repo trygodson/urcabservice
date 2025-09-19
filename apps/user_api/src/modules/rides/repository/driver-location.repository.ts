@@ -7,6 +7,7 @@ import {
   DriverLocationDocument,
   DriverOnlineStatus,
   User,
+  VehicleType,
 } from '@urcab-workspace/shared';
 
 @Injectable()
@@ -102,6 +103,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
     latitude: number,
     radiusInKm: number = 10,
     limit: number = 20,
+    passengerCount: number = 4,
   ): Promise<DriverLocationDocument[]> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
@@ -188,6 +190,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   $match: {
                     isPrimary: true,
                     isActive: true,
+                    seatingCapacity: { $gte: passengerCount },
                     // status: 'verified',
                   },
                 },
@@ -201,6 +204,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                     seatingCapacity: 1,
                     vehicleType: 1,
                     photos: 1,
+                    status: 1,
                   },
                 },
               ],
@@ -219,7 +223,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           {
             $match: {
               'driver.0': { $exists: true }, // Ensure driver exists and is verified
-              // 'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
+              'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
             },
           },
           {
@@ -227,6 +231,26 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           },
           {
             $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: false },
+          },
+
+          {
+            $addFields: {
+              // Calculate fare multiplier based on vehicle type and capacity
+              fareMultiplier: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.LUXURY_SEDAN] }, then: 1.5 },
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.LUXURY_SUV] }, then: 1.8 },
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.EXECUTIVE] }, then: 1.4 },
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.MPV] }, then: 1.3 },
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.VAN] }, then: 1.6 },
+                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.MINIVAN] }, then: 1.4 },
+                    { case: { $gt: ['$vehicle.seatingCapacity', 6] }, then: 1.5 },
+                  ],
+                  default: 1.0,
+                },
+              },
+            },
           },
           {
             $project: {
@@ -244,6 +268,10 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
               distanceInKm: 1,
               driver: 1,
               vehicle: 1,
+              fareMultiplier: 1,
+              canAccommodatePassengers: {
+                $gte: ['$vehicle.seatingCapacity', passengerCount],
+              },
               estimatedArrivalTime: {
                 $add: [
                   new Date(),

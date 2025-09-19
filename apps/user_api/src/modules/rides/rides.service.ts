@@ -11,7 +11,7 @@ import { CreateRideDto, UpdateRideDto, RideResponseDto } from './dtos';
 import { RideStatus, RideType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
-import { FirebaseRideService } from './firebase-ride.service';
+import { RideWebSocketService } from './ride-websocket.service';
 
 @Injectable()
 export class RidesService {
@@ -21,7 +21,7 @@ export class RidesService {
     private readonly rideRepository: RideRepository,
     private readonly driverLocationRepository: DriverLocationRepository,
     private readonly userRepository: UserRepository,
-    private readonly firebaseRideService: FirebaseRideService,
+    private readonly rideWebSocketService: RideWebSocketService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
   ) {}
 
@@ -105,7 +105,7 @@ export class RidesService {
       const activeRide = await this.rideRepository.findPassengerCurrentRide(passengerId);
 
       if (activeRide) {
-        const activeStatuses = [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ASSIGNED, RideStatus.STARTED];
+        const activeStatuses = [RideStatus.SEARCHING_DRIVER, RideStatus.DRIVER_ACCEPTED, RideStatus.RIDE_STARTED];
 
         if (activeStatuses.includes(activeRide.status as RideStatus)) {
           this.logger.warn(
@@ -209,8 +209,10 @@ export class RidesService {
         driverId: driver._id.toString(),
         passengerName: `${passenger.firstName} ${passenger.lastName}`,
         passengerPhone: passenger.phone,
+        passengerPhoto: passenger.photo,
+        passengerCount: ride?.passengerCount.toString(),
         pickupLocation: {
-          address: ride.pickupLocation.address,
+          address: ride.pickupLocation.address ?? '',
           coordinates: ride.pickupLocation.coordinates as [number, number],
           landmark: ride.pickupLocation.landmark || '',
         },
@@ -228,7 +230,7 @@ export class RidesService {
 
       // Use Firebase service for real-time ride requests
 
-      await this.firebaseRideService.sendRideRequestToDriver(rideRequest, driver.fcmToken);
+      await this.rideWebSocketService.sendRideRequestToDriver(rideRequest, driver.fcmToken);
 
       this.logger.log(`Real-time ride request sent to selected driver ${driver._id} for ride ${ride._id}`);
     } catch (error) {
@@ -373,16 +375,16 @@ export class RidesService {
     const updateData: any = { ...updateRideDto };
 
     // Set timestamps based on status
-    if (updateRideDto.status === RideStatus.DRIVER_ASSIGNED) {
+    if (updateRideDto.status === RideStatus.DRIVER_ACCEPTED) {
       updateData.driverAssignedAt = new Date();
       updateData.driverId = userId; // Assuming the user updating is the driver
     }
 
-    if (updateRideDto.status === RideStatus.STARTED) {
+    if (updateRideDto.status === RideStatus.RIDE_STARTED) {
       updateData.startedAt = new Date();
     }
 
-    if (updateRideDto.status === RideStatus.COMPLETED) {
+    if (updateRideDto.status === RideStatus.RIDE_COMPLETED) {
       updateData.completedAt = new Date();
     }
 
@@ -394,20 +396,22 @@ export class RidesService {
     const validTransitions: Record<RideStatus, RideStatus[]> = {
       [RideStatus.SEARCHING_DRIVER]: [
         RideStatus.PENDING_DRIVER_ACCEPTANCE,
-        RideStatus.DRIVER_ASSIGNED,
-        RideStatus.CANCELLED,
+        RideStatus.DRIVER_ACCEPTED,
+        RideStatus.RIDE_CANCELLED,
       ],
       [RideStatus.PENDING_DRIVER_ACCEPTANCE]: [
-        RideStatus.DRIVER_ASSIGNED,
+        RideStatus.DRIVER_ACCEPTED,
         RideStatus.REJECTED_BY_DRIVER,
-        RideStatus.CANCELLED,
+        RideStatus.RIDE_CANCELLED,
       ],
-      [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.CANCELLED],
-      [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.CANCELLED],
-      [RideStatus.DRIVER_ASSIGNED]: [RideStatus.STARTED, RideStatus.CANCELLED],
-      [RideStatus.STARTED]: [RideStatus.COMPLETED, RideStatus.CANCELLED],
-      [RideStatus.COMPLETED]: [],
-      [RideStatus.CANCELLED]: [],
+      [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
+      [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_ACCEPTED]: [RideStatus.RIDE_STARTED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_AT_PICKUPLOCATION]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_HAS_PICKUP_PASSENGER]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_COMPLETED]: [],
+      [RideStatus.RIDE_CANCELLED]: [],
     };
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
@@ -418,6 +422,8 @@ export class RidesService {
   async getPassengerCurrentRide(passengerId: Types.ObjectId): Promise<RideResponseDto | null> {
     try {
       const currentRide = await this.rideRepository.findPassengerCurrentRide(passengerId);
+
+      console.log(currentRide, '=====curemt ride====');
       return currentRide ? this.mapToResponseDto(currentRide) : null;
     } catch (error) {
       this.logger.error(`Failed to get current ride for passenger ${passengerId}`, error.stack);
@@ -492,12 +498,12 @@ export class RidesService {
     }
 
     // Check if ride can be cancelled
-    if ([RideStatus.COMPLETED, RideStatus.CANCELLED].includes(ride.status as RideStatus)) {
+    if ([RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED].includes(ride.status as RideStatus)) {
       throw new BadRequestException('Cannot cancel a completed or already cancelled ride');
     }
 
     const updateData = {
-      status: RideStatus.CANCELLED,
+      status: RideStatus.RIDE_CANCELLED,
       cancelledAt: new Date(),
       cancelledBy: userId,
       cancellationReason: reason,
@@ -535,7 +541,7 @@ export class RidesService {
         this.logger.warn(`No drivers found near pickup location for ride ${ride._id}`);
         // Update ride status to indicate no drivers available
         await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
-          status: RideStatus.CANCELLED,
+          status: RideStatus.RIDE_CANCELLED,
           cancelledAt: new Date(),
           cancellationReason: 'No drivers available in the area',
         });
@@ -559,6 +565,7 @@ export class RidesService {
             passengerId: passenger._id.toString(),
             passengerName: `${passenger.firstName} ${passenger.lastName}`,
             passengerPhone: passenger.phone,
+            passengerPhoto: passenger.photo,
             pickupLocation: {
               address: ride.pickupLocation.address,
               coordinates: ride.pickupLocation.coordinates,
@@ -626,6 +633,7 @@ export class RidesService {
     latitude: number,
     radiusInKm: number = 10,
     limit: number = 20,
+    passenger: number,
   ): Promise<any> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
@@ -635,6 +643,7 @@ export class RidesService {
         latitude,
         radiusInKm,
         limit,
+        passenger,
       );
 
       this.logger.log(`Found ${nearbyDrivers.length} nearby drivers`);

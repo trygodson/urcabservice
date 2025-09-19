@@ -8,6 +8,8 @@ export interface RideNotificationData {
   passengerId: string;
   passengerName: string;
   passengerPhone: string;
+  passengerPhoto: string;
+  passengerCount?: any;
   pickupLocation: {
     address: string;
     coordinates: [number, number];
@@ -38,35 +40,17 @@ export class FirebaseNotificationService {
     driverId: Types.ObjectId,
     notificationData: RideNotificationData,
   ): Promise<boolean> {
+    console.log(notificationData, 'notificationData');
     try {
       const message: admin.messaging.Message = {
         token: driverFCMToken,
         notification: {
           title: '🚗 New Ride Request',
-          body: `Pickup: ${notificationData.pickupLocation.address}\nFare: RM${notificationData.estimatedFare.toFixed(
-            2,
-          )} • ${notificationData.distanceToPickup.toFixed(1)}km away`,
+          body: `Pickup: ${notificationData.pickupLocation.address ?? ''} `,
         },
         data: {
-          type: 'RIDE_REQUEST',
-          rideId: notificationData.rideId,
-          passengerId: notificationData.passengerId,
-          passengerName: notificationData.passengerName,
-          passengerPhone: notificationData.passengerPhone,
-          pickupAddress: notificationData.pickupLocation.address,
-          pickupLatitude: notificationData.pickupLocation.coordinates[1].toString(),
-          pickupLongitude: notificationData.pickupLocation.coordinates[0].toString(),
-          pickupLandmark: notificationData.pickupLocation.landmark || '',
-          dropoffAddress: notificationData.dropoffLocation.address,
-          dropoffLatitude: notificationData.dropoffLocation.coordinates[1].toString(),
-          dropoffLongitude: notificationData.dropoffLocation.coordinates[0].toString(),
-          dropoffLandmark: notificationData.dropoffLocation.landmark || '',
-          estimatedFare: notificationData.estimatedFare.toString(),
-          estimatedDistance: notificationData.estimatedDistance.toString(),
-          estimatedDuration: notificationData.estimatedDuration.toString(),
-          distanceToPickup: notificationData.distanceToPickup.toString(),
-          estimatedArrivalTime: notificationData.estimatedArrivalTime.toString(),
-          timestamp: new Date().toISOString(),
+          type: 'ride_request',
+          data: JSON.stringify(notificationData),
         },
         android: {
           priority: 'high',
@@ -83,11 +67,7 @@ export class FirebaseNotificationService {
             aps: {
               alert: {
                 title: '🚗 New Ride Request',
-                body: `Pickup: ${
-                  notificationData.pickupLocation.address
-                }\nFare: RM${notificationData.estimatedFare.toFixed(2)} • ${notificationData.distanceToPickup.toFixed(
-                  1,
-                )}km away`,
+                body: `Pickup: ${notificationData.pickupLocation.address ?? ''}`,
               },
               sound: 'default',
               badge: 1,
@@ -101,7 +81,7 @@ export class FirebaseNotificationService {
         },
       };
 
-      const response = await this.firebase.messaging.send(message);
+      await this.firebase.messaging.send(message);
       // this.logger.log(`Ride request notification sent to driver ${driverId}: ${response ?? ''}`);
       return true;
     } catch (error) {
@@ -115,6 +95,7 @@ export class FirebaseNotificationService {
     status: string,
     rideId: string,
     driverInfo?: any,
+    updatedRide?: any,
   ): Promise<boolean> {
     try {
       let title = '';
@@ -146,15 +127,17 @@ export class FirebaseNotificationService {
         token: passengerFCMToken,
         notification: { title, body },
         data: {
-          type: 'RIDE_STATUS_UPDATE',
-          rideId,
-          status,
-          timestamp: new Date().toISOString(),
-          ...(driverInfo && {
-            driverName: `${driverInfo.firstName} ${driverInfo.lastName}`,
-            driverPhone: driverInfo.phone,
-            driverPhoto: driverInfo.photo || '',
+          type: 'ride_status_update',
+          data: JSON.stringify({
+            ...updatedRide,
+            rideId,
+            driverInfo: {
+              driverName: `${driverInfo.firstName} ${driverInfo.lastName}`,
+              driverPhone: driverInfo.phone,
+              driverPhoto: driverInfo.photo || '',
+            },
           }),
+          // timestamp: new Date().toISOString(),
         },
       };
 
