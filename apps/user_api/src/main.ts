@@ -30,6 +30,3 @@ async function bootstrap() {
   await app.listen(process.env.PORT || configService.get('HTTP_PORT'));
 }
 bootstrap();
-
-//  "migration:run:dbA": "typeorm migration:run --connection DatabaseAConnection",
-//     "migration:run:dbB": "typeorm migration:run --connection DatabaseBConnection"
