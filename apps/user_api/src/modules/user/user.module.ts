@@ -3,7 +3,7 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseModule, User, UserRepository, UserSchema } from '@urcab-workspace/shared';
+import { DatabaseModule, UploadFileService, User, UserRepository, UserSchema } from '@urcab-workspace/shared';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
@@ -24,7 +24,7 @@ import { HttpModule } from '@nestjs/axios';
     }),
   ],
   controllers: [UserController],
-  providers: [UserService, UserRepository],
+  providers: [UserService, UserRepository, UploadFileService],
   exports: [UserService],
 })
 export class UserModule {}

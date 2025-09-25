@@ -14,7 +14,7 @@ export * from './utils';
 export * from './config';
 export * from './interfaces';
 export * from './modules';
-// export * from './services';
+export * from './services';
 export * from './templates';
 // export * from './mongoDatabase';
 // export * from './mongoModels';

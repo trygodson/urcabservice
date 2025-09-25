@@ -1,7 +1,9 @@
 # compiled output
 /dist
 /node_modules
-.github
+# .github
+./urcabpassenger-demo.json
+./urcabpassenger-demo-old.json
 
 # Logs
 logs
