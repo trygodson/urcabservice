@@ -27,7 +27,7 @@ jobs:
         run: npm test
 
       - name: Build application
-        run: npm run build:all
+        run: npm run build
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
@@ -37,8 +37,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            cd /path/to/your/app
+            cd /var/www/apps/urcabservice
             git pull origin main
             npm ci
-            npm run build:all
+            npm run build
             pm2 restart all
