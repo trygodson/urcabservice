@@ -63,15 +63,13 @@ export class UserController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadSingle(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { folder?: string; makePublic?: boolean },
+    // @Body() body: { folder?: string; makePublic?: boolean },
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
     const options: FileUploadOptions = {
-      folder: body.folder,
-      makePublic: body.makePublic !== false,
       allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'],
       maxSize: 5 * 1024 * 1024, // 5MB
     };

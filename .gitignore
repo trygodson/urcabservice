@@ -2,8 +2,8 @@
 /dist
 /node_modules
 # .github
-./urcabpassenger-demo.json
-./urcabpassenger-demo-old.json
+/urcabpassenger-demo.json
+/urcabpassenger-demo-old.json
 
 # Logs
 logs

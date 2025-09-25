@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule, AppConfig, LoggerModule } from '@urcab-workspace/shared';
 import { HttpModule } from '@nestjs/axios';
-import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';

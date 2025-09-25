@@ -13,10 +13,8 @@ export interface UploadResult {
 }
 
 export interface FileUploadOptions {
-  folder?: string;
   allowedMimeTypes?: string[];
   maxSize?: number; // in bytes
-  makePublic?: boolean;
 }
 
 @Injectable()
@@ -46,7 +44,7 @@ export class UploadFileService {
       this.validateFile(fileBuffer, mimeType, options);
 
       // Generate unique filename
-      const filename = this.generateUniqueFilename(originalName, options.folder);
+      const filename = this.generateUniqueFilename(originalName, null);
 
       // Get bucket reference
       const bucket = this.storage.bucket(this.bucketName);
@@ -79,9 +77,9 @@ export class UploadFileService {
       });
 
       // Make file public if requested
-      if (options.makePublic !== false) {
-        await file.makePublic();
-      }
+      // if (options.makePublic !== false) {
+      //   await file.makePublic();
+      // }
 
       // Generate public URL
       const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
