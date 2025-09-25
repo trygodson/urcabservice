@@ -49,14 +49,14 @@ export class UserController {
           type: 'string',
           format: 'binary',
         },
-        folder: {
-          type: 'string',
-          description: 'Optional folder name',
-        },
-        makePublic: {
-          type: 'boolean',
-          description: 'Make file public (default: true)',
-        },
+        // folder: {
+        //   type: 'string',
+        //   description: 'Optional folder name',
+        // },
+        // makePublic: {
+        //   type: 'boolean',
+        //   description: 'Make file public (default: true)',
+        // },
       },
     },
   })
