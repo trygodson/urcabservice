@@ -4,6 +4,8 @@ import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { AdminAuthModule } from './auth';
+import { AdminDriversModule } from './drivers/adminDrivers.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { JwtModule } from '@nestjs/jwt';
     //     name: CONFIG_NAMES.STAGED_ELECTION_QUEUE_JOB_NOTIFICATION,
     //   },
     // ),
+    AdminAuthModule,
+    AdminDriversModule,
   ],
 
   // providers: [AdminService],

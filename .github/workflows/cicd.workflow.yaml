@@ -64,5 +64,6 @@ jobs:
             tar -xzf /tmp/deploy.tar.gz
             rm /tmp/deploy.tar.gz
             pm2 restart main || pm2 start dist/apps/user_api/main.js --name main
+            pm2 restart admin || pm2 start dist/apps/admin_api/main.js --name admin
             pm2 save
             pm2 startup systemd -u root --hp /root || true

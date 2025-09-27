@@ -3,6 +3,7 @@ import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { DocumentStatus, DocumentType, LicenseClass, LicenseType } from '../enums';
+import { User } from './user.schema';
 
 export interface NRICDetails {
   nricName: string;
@@ -54,7 +55,7 @@ export class DriverDocument extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: 'User',
+    ref: User.name,
     required: true,
   })
   driverId: Types.ObjectId;
@@ -159,7 +160,7 @@ export class DriverDocument extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: 'User',
+    ref: User.name,
     required: false,
   })
   verifiedByAdminId?: Types.ObjectId;
