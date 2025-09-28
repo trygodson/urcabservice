@@ -38,7 +38,7 @@ export class UserController {
     return this.userService.getUser({ _id: user._id });
   }
 
-  @Post('single')
+  @Post('upload')
   @ApiOperation({ summary: 'Upload a single file' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
