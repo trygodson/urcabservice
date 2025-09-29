@@ -94,17 +94,49 @@ export class Vehicle extends AbstractDocument {
   @Prop({
     type: String,
     required: true,
-    enum: VehicleStatus,
+    enum: VehicleType,
     default: VehicleType.TAXI,
   })
   vehicleType?: string; // e.g., 'sedan', 'suv', 'hatchback'
 
   @ApiProperty()
   @Prop({
-    type: [String],
-    default: [],
+    type: String,
+    required: true,
   })
-  photos?: string[]; // URLs to vehicle photos
+  backPhoto?: string; // URLs to vehicle photos
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  frontPhoto?: string; // URLs to vehicle photos
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  leftPhoto?: string; // URLs to vehicle photos
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  rightPhoto?: string; // URLs to vehicle photos
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  frontRearPhoto?: string; // URLs to vehicle photos
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  backRearPhoto?: string; // URLs to vehicle photos
 
   @ApiProperty()
   @Prop({
@@ -193,6 +225,8 @@ export class Vehicle extends AbstractDocument {
     required: false,
   })
   lastDocumentVerificationCheck?: Date; // Last time document status was verified
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const VehicleSchema = SchemaFactory.createForClass(Vehicle);

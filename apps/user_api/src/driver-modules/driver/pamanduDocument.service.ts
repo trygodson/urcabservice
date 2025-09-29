@@ -82,10 +82,10 @@ export class PamanduDocumentService {
     }
   }
 
-  async getPamanduDocument(driverId: Types.ObjectId): Promise<DriverDocumentResponseDto | null> {
+  async getPamanduDocument(driverId: Types.ObjectId): Promise<any> {
     try {
       const document = await this.driverDocumentRepository.getDriverDocumentByType(driverId, DocumentType.PAMANDU);
-      return document ? this.mapToResponseDto(document) : null;
+      return document ? { data: this.mapToResponseDto(document), success: true } : { data: null, success: true };
     } catch (error) {
       this.logger.error(`Failed to get Pamandu document for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get Pamandu document');

@@ -69,11 +69,10 @@ export class NRICDocumentService {
     }
   }
 
-  async getNRICDocument(driverId: Types.ObjectId): Promise<DriverDocumentResponseDto | null> {
+  async getNRICDocument(driverId: Types.ObjectId): Promise<any> {
     try {
       const document = await this.driverDocumentRepository.getDriverDocumentByType(driverId, DocumentType.NRIC);
-      console.log(document, '======docyen e emem=====', driverId);
-      return document ? this.mapToResponseDto(document) : null;
+      return document ? { success: true, data: this.mapToResponseDto(document) } : { success: true, data: null };
     } catch (error) {
       this.logger.error(`Failed to get NRIC document for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get NRIC document');

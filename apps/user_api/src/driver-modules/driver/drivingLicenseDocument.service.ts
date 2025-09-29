@@ -82,13 +82,13 @@ export class DrivingLicenseDocumentService {
     }
   }
 
-  async getDrivingLicenseDocument(driverId: Types.ObjectId): Promise<DriverDocumentResponseDto | null> {
+  async getDrivingLicenseDocument(driverId: Types.ObjectId): Promise<any> {
     try {
       const document = await this.driverDocumentRepository.getDriverDocumentByType(
         driverId,
         DocumentType.DRIVING_LICENSE,
       );
-      return document ? this.mapToResponseDto(document) : null;
+      return document ? { data: this.mapToResponseDto(document), success: true } : { data: null, success: true };
     } catch (error) {
       this.logger.error(`Failed to get driving license document for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get driving license document');
@@ -128,12 +128,7 @@ export class DrivingLicenseDocumentService {
       driverId: document.driverId.toString(),
       documentType: document.documentType,
       status: document.status,
-      drivingLicenseDetails: document.drivingLicenseDetails
-        ? {
-            ...document.drivingLicenseDetails,
-            expiryDate: document.drivingLicenseDetails.expiryDate?.toISOString(),
-          }
-        : undefined,
+      drivingLicenseDetails: document.drivingLicenseDetails,
       expiryDate: document.expiryDate,
       verifiedByAdminId: document.verifiedByAdminId?.toString(),
       verifiedAt: document.verifiedAt,

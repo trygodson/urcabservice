@@ -60,6 +60,7 @@ export class UserController {
       },
     },
   })
+  // @SetRolesMetaData(Role.DRIVER, Role.PASSENGER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadSingle(
     @UploadedFile() file: Express.Multer.File,

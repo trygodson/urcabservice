@@ -821,7 +821,7 @@ export class VehicleDocumentService {
     vehicleId: string,
     documentType: VehicleDocumentType,
     driverId: Types.ObjectId,
-  ): Promise<VehicleDocumentResponseDto | null> {
+  ): Promise<any> {
     try {
       const vehicleObjectId = new Types.ObjectId(vehicleId);
 
@@ -830,7 +830,7 @@ export class VehicleDocumentService {
 
       const document = await this.vehicleDocumentRepository.getVehicleDocumentByType(vehicleObjectId, documentType);
 
-      return document ? this.mapToResponseDto(document) : null;
+      return document ? { data: this.mapToResponseDto(document), success: true } : { data: null, success: true };
     } catch (error) {
       this.logger.error(`Failed to get vehicle document by type for vehicle ${vehicleId}`, error.stack);
 
@@ -941,8 +941,8 @@ export class VehicleDocumentService {
         rejectedCount,
         requiredCount: requiredTypes.length,
         expiringSoonCount,
-        lastUpdated:
-          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
+        // lastUpdated:
+        //   documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
       };
     } catch (error) {
       this.logger.error(`Failed to get vehicle documents summary for vehicle ${vehicleId}`, error.stack);

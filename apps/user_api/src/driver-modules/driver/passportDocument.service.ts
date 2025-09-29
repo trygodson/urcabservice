@@ -88,12 +88,12 @@ export class PassportDocumentService {
     }
   }
 
-  async getPassportDocument(driverId: Types.ObjectId): Promise<DriverDocumentResponseDto | null> {
+  async getPassportDocument(driverId: Types.ObjectId): Promise<any> {
     try {
       const document = await this.driverDocumentRepository.getDriverDocumentByType(driverId, DocumentType.PASSPORT);
 
       // console.log(document, '=====document====');
-      return document ? this.mapToResponseDto(document) : null;
+      return document ? { success: true, data: this.mapToResponseDto(document) } : { success: true, data: null };
     } catch (error) {
       this.logger.error(`Failed to get passport document for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get passport document');

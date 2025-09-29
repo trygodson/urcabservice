@@ -374,5 +374,5 @@ export class VehicleDocumentsSummaryDto {
   expiringSoonCount: number;
 
   @ApiProperty()
-  lastUpdated: Date;
+  lastUpdated?: Date;
 }

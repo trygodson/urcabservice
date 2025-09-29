@@ -62,7 +62,7 @@ export class DocumentVerificationStatusService {
     },
     {
       documentType: DocumentType.PASSPORT,
-      isRequired: false,
+      isRequired: true,
       displayName: 'Passport',
       description: 'Valid passport for foreign nationals',
       hasExpiry: true,
@@ -83,14 +83,14 @@ export class DocumentVerificationStatusService {
     },
     {
       documentType: DocumentType.PAMANDU,
-      isRequired: false,
+      isRequired: true,
       displayName: 'Pamandu Certificate',
       description: 'Professional driving certification',
       hasExpiry: true,
     },
     {
       documentType: DocumentType.TAXI_PERMIT_DRIVER,
-      isRequired: false,
+      isRequired: true,
       displayName: 'Taxi Permit (Driver)',
       description: 'Taxi driver permit for specific areas',
       hasExpiry: true,
@@ -108,6 +108,7 @@ export class DocumentVerificationStatusService {
         documentMap.set(doc.documentType, doc);
       });
 
+      // console.log(documents);
       const documentStatuses: DocumentVerificationStatusDto[] = [];
       let verifiedCount = 0;
       let rejectedCount = 0;
@@ -173,11 +174,11 @@ export class DocumentVerificationStatusService {
         rejectedCount,
         requiredCount: requiredDocuments.length,
         expiringSoonCount,
-        lastUpdated:
-          documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
+        // lastUpdated:
+        //   documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
       };
     } catch (error) {
-      this.logger.error(`Failed to get document verification status for driver ${driverId}`, error.stack);
+      this.logger.error(error, `Failed to get document verification status for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get document verification status');
     }
   }

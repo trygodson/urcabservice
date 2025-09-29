@@ -108,15 +108,48 @@ export class CreateVehicleDto {
   vehicleType?: string;
 
   @ApiPropertyOptional({
-    description: 'Vehicle photos URLs',
-    type: [String],
+    description: 'Vehicle photos URL',
+    type: String,
     maxItems: 10,
   })
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @IsUrl({}, { each: true })
-  photos?: string[];
+  @IsUrl({})
+  backPhoto?: string;
+  @ApiPropertyOptional({
+    description: 'Vehicle photos URL',
+    type: String,
+    maxItems: 10,
+  })
+  @IsUrl({})
+  frontPhoto?: string;
+
+  @ApiPropertyOptional({
+    description: 'Vehicle photos URL',
+    type: String,
+    maxItems: 10,
+  })
+  @IsUrl({})
+  leftPhoto?: string;
+  @ApiPropertyOptional({
+    description: 'Vehicle photos URL',
+    type: String,
+    maxItems: 10,
+  })
+  @IsUrl({})
+  rightPhoto?: string;
+  @ApiPropertyOptional({
+    description: 'Vehicle photos URL',
+    type: String,
+    maxItems: 10,
+  })
+  @IsUrl({})
+  frontRearPhoto?: string;
+  @ApiPropertyOptional({
+    description: 'Vehicle photos URL',
+    type: String,
+    maxItems: 10,
+  })
+  @IsUrl({})
+  backRearPhoto?: string;
 
   @ApiPropertyOptional({
     description: 'Current odometer reading',
@@ -307,8 +340,18 @@ export class VehicleResponseDto {
   @ApiPropertyOptional()
   vehicleType?: string;
 
-  @ApiPropertyOptional({ type: [String] })
-  photos?: string[];
+  @ApiPropertyOptional()
+  backPhoto?: string;
+  @ApiPropertyOptional()
+  frontPhoto?: string;
+  @ApiPropertyOptional()
+  leftPhoto?: string;
+  @ApiPropertyOptional()
+  rightPhoto?: string;
+  @ApiPropertyOptional()
+  frontRearPhoto?: string;
+  @ApiPropertyOptional()
+  backRearPhoto?: string;
 
   @ApiPropertyOptional()
   lastInspectionDate?: Date;

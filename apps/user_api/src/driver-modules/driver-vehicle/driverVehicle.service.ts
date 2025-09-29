@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { VehicleRepository } from './repository/vehicle.repository';
-import { User, UserRepository } from '@urcab-workspace/shared';
+import { User, UserRepository, Vehicle } from '@urcab-workspace/shared';
 import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto } from './dto';
 import { InjectModel } from '@nestjs/mongoose';
 
@@ -132,7 +132,7 @@ export class VehicleService {
     }
   }
 
-  async getVehicleById(vehicleId: string, driverId: Types.ObjectId): Promise<VehicleResponseDto> {
+  async getVehicleById(vehicleId: string, driverId: Types.ObjectId): Promise<any> {
     try {
       const vehicleObjectId = new Types.ObjectId(vehicleId);
       const vehicle = await this.vehicleRepository.getVehicleById(vehicleObjectId);
@@ -145,7 +145,7 @@ export class VehicleService {
         throw new BadRequestException('Vehicle does not belong to this driver');
       }
 
-      return this.mapToResponseDto(vehicle);
+      return { success: true, data: this.mapToResponseDto(vehicle) };
     } catch (error) {
       this.logger.error(`Failed to get vehicle ${vehicleId}`, error.stack);
 
@@ -258,7 +258,7 @@ export class VehicleService {
     }
   }
 
-  private mapToResponseDto(vehicle: any): VehicleResponseDto {
+  private mapToResponseDto(vehicle: Vehicle): VehicleResponseDto {
     return {
       _id: vehicle._id.toString(),
       driverId: vehicle.driverId.toString(),
@@ -272,7 +272,12 @@ export class VehicleService {
       status: vehicle.status,
       seatingCapacity: vehicle.seatingCapacity,
       vehicleType: vehicle.vehicleType,
-      photos: vehicle.photos,
+      backPhoto: vehicle.backPhoto,
+      frontPhoto: vehicle.frontPhoto,
+      leftPhoto: vehicle.leftPhoto,
+      rightPhoto: vehicle.rightPhoto,
+      frontRearPhoto: vehicle.frontRearPhoto,
+      backRearPhoto: vehicle.backRearPhoto,
       lastInspectionDate: vehicle.lastInspectionDate,
       nextInspectionDue: vehicle.nextInspectionDue,
       verifiedByAdminId: vehicle.verifiedByAdminId?.toString(),
@@ -285,8 +290,8 @@ export class VehicleService {
       features: vehicle.features,
       hasCompleteDocumentation: vehicle.hasCompleteDocumentation,
       lastDocumentVerificationCheck: vehicle.lastDocumentVerificationCheck,
-      createdAt: vehicle.createdAt,
-      updatedAt: vehicle.updatedAt,
+      createdAt: vehicle?.createdAt,
+      updatedAt: vehicle?.updatedAt,
     };
   }
 }

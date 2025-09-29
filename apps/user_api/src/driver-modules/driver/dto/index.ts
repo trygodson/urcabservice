@@ -378,6 +378,6 @@ export class DriverDocumentsSummaryDto {
   @ApiProperty({ description: 'Documents that are expiring soon' })
   expiringSoonCount: number;
 
-  @ApiProperty({ description: 'Last update timestamp' })
-  lastUpdated: Date;
+  // @ApiProperty({ description: 'Last update timestamp' })
+  // lastUpdated: Date;
 }

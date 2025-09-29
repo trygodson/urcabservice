@@ -54,7 +54,28 @@ export class VehicleController {
     const driverId = new Types.ObjectId(user._id);
     return await this.vehicleService.createVehicle(driverId, createVehicleDto);
   }
-
+  @Get()
+  @ApiOperation({ summary: 'Get all driver vehicles' })
+  @ApiQuery({
+    name: 'includeInactive',
+    description: 'Include inactive vehicles',
+    required: false,
+    type: 'boolean',
+    example: false,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Driver vehicles retrieved successfully',
+    type: [VehicleResponseDto],
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async getDriverVehicles(
+    @Query('includeInactive', new ParseBoolPipe({ optional: true })) includeInactive: boolean = false,
+    @CurrentUser() user: User,
+  ): Promise<VehicleResponseDto[]> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.vehicleService.getDriverVehicles(driverId, includeInactive);
+  }
   @Put(':vehicleId')
   @ApiOperation({ summary: 'Update a vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID', type: 'string' })
@@ -84,29 +105,6 @@ export class VehicleController {
   ): Promise<VehicleResponseDto> {
     const driverId = new Types.ObjectId(user._id);
     return await this.vehicleService.updateVehicle(vehicleId, driverId, updateVehicleDto);
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all driver vehicles' })
-  @ApiQuery({
-    name: 'includeInactive',
-    description: 'Include inactive vehicles',
-    required: false,
-    type: 'boolean',
-    example: false,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Driver vehicles retrieved successfully',
-    type: [VehicleResponseDto],
-  })
-  @SetRolesMetaData(Role.DRIVER)
-  async getDriverVehicles(
-    @Query('includeInactive', new ParseBoolPipe({ optional: true })) includeInactive: boolean = false,
-    @CurrentUser() user: User,
-  ): Promise<VehicleResponseDto[]> {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.vehicleService.getDriverVehicles(driverId, includeInactive);
   }
 
   @Get('primary')
