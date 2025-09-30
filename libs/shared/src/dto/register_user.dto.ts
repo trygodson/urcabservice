@@ -4,18 +4,17 @@ import { Type } from 'class-transformer';
 import { IsEmail, IsStrongPassword, IsString, IsDateString } from 'class-validator';
 
 export class RegisterUserDto {
-  // @AutoMap()
-  // @ApiProperty({
-  //   example: 'John',
-  // })
-  // @IsString()
-  // firstName: string;
+  @ApiProperty({
+    example: 'John Doe',
+  })
+  @IsString()
+  fullName: string;
 
-  // @ApiProperty({
-  //   example: 'doe',
-  // })
-  // @IsString()
-  // lastName: string;
+  @ApiProperty({
+    example: '+28383999933',
+  })
+  @IsString()
+  phone: string;
 
   @ApiProperty({
     example: 'email@email.com',

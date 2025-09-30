@@ -219,7 +219,7 @@ export class RideWebSocketService {
           message: 'Driver has accepted your ride request!',
           driverInfo: driver
             ? {
-                name: `${driver.firstName} ${driver.lastName}`,
+                name: `${driver.fullName}`,
                 phone: driver.phone,
                 photo: driver.photo,
                 // rating: driver.rating || 0,

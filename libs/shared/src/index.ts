@@ -5,7 +5,7 @@ export * from './database';
 export * from './repository';
 export * from './database';
 export * from './enums';
-// export * from './dto';
+export * from './dto';
 export * from './decorators';
 export * from './exceptions';
 export * from './guards';

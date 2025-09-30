@@ -17,7 +17,6 @@ import * as bcrypt from 'bcryptjs';
 
 import { OAuth2Client } from 'google-auth-library';
 import { Types } from 'mongoose'; // <-- ADD THIS LINE HERE
-import { LoginDto, RegisterUserDto, ResetPasswordDto, VerifyOtpDto } from './dto';
 import {
   GenerateOtp,
   generateRandomString,
@@ -30,8 +29,12 @@ import {
   RefreshTokenRepository,
   Role,
   timeZoneMoment,
-  User,
   UserRepository,
+  LoginDto,
+  RegisterUserDto,
+  ResetPasswordDto,
+  User,
+  VerifyOtpDto,
 } from '@urcab-workspace/shared';
 // import { WalletsService } from '../wallets/wallets.service';
 
@@ -103,7 +106,7 @@ export class AuthService {
           return {
             success: true,
             messsage: 'Account Unverified OTP Sent',
-            data: { verification_token, account_verified: false },
+            data: { verificationToken: verification_token, accountVerified: false },
           };
         }
       } else {
@@ -119,6 +122,7 @@ export class AuthService {
 
           return {
             success: true,
+            accountVerified: true,
             data: {
               accessToken: access_token,
               refreshToken: refresh_token,
@@ -307,8 +311,8 @@ export class AuthService {
 
       const user = await this.userRepository.create({
         email: payload.email,
-        firstName: payload.given_name,
-        lastName: payload.family_name,
+        fullName: payload.given_name + ' ' + payload.family_name,
+
         passwordHash: randomPassword,
         passwordSalt: passSalt,
         isEmailConfirmed: true,
@@ -338,11 +342,11 @@ export class AuthService {
       const res = await this.userRepository.findOne(
         {
           email: decodedToken.data?.email,
-          isEmailConfirmed: false,
+          // isEmailConfirmed: false,
         },
         [],
       );
-
+      console.log(res, '=====the res===');
       if (res && !res.isEmailConfirmed) {
         if (res.emailConfirmationCode === verifyToken.otpCode) {
           if (decodedToken.data?.type === Role.DRIVER) {

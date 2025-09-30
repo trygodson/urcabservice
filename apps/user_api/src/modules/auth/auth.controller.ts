@@ -10,8 +10,18 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
-import { ForgotPasswordDto, GoogleSignDto, LoginDto, RegisterUserDto, ResetPasswordDto, VerifyOtpDto } from './dto';
-import { CurrentUser, JwtAuthGuard, LocalAuthGuard, User } from '@urcab-workspace/shared';
+import {
+  CurrentUser,
+  JwtAuthGuard,
+  LocalAuthGuard,
+  User,
+  LoginDto,
+  RegisterUserDto,
+  ResetPasswordDto,
+  VerifyOtpDto,
+  GoogleSignDto,
+  ForgotPasswordDto,
+} from '@urcab-workspace/shared';
 
 @ApiTags('Passenger Auth')
 @Controller('passenger/auth')

@@ -10,8 +10,18 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
-import { ForgotPasswordDto, GoogleSignDto, LoginDto, RegisterUserDto, ResetPasswordDto, VerifyOtpDto } from './dto';
-import { CurrentUser, JwtAuthGuard, LocalAuthGuard, User } from '@urcab-workspace/shared';
+import {
+  CurrentUser,
+  ForgotPasswordDto,
+  GoogleSignDto,
+  JwtAuthGuard,
+  LocalAuthGuard,
+  LoginDto,
+  RegisterUserDto,
+  ResetPasswordDto,
+  User,
+  VerifyOtpDto,
+} from '@urcab-workspace/shared';
 
 @ApiTags('Driver Auth')
 @Controller('driver/auth')

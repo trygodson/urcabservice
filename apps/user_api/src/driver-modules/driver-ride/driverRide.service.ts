@@ -173,7 +173,7 @@ export class DriverRideService {
           const enrichedRide: NearbyRideRequestDto = {
             _id: ride._id.toString(),
             passengerId: passenger._id.toString(),
-            passengerName: `${passenger.firstName} ${passenger.lastName}`,
+            passengerName: `${passenger.fullName}`,
             passengerPhone: passenger.phone,
             passengerPhoto: passenger.photo,
             // passengerRating: passenger?.rating || 0,

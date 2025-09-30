@@ -41,7 +41,7 @@ export class User extends AbstractDocument {
     maxlength: 64,
     required: false,
   })
-  firstName?: string;
+  fullName?: string;
 
   @ApiProperty()
   @Prop({
@@ -53,13 +53,6 @@ export class User extends AbstractDocument {
   })
   userName?: string;
 
-  @ApiProperty()
-  @Prop({
-    type: String,
-    maxlength: 64,
-    required: false,
-  })
-  lastName?: string;
 
   @ApiProperty()
   @Prop({
