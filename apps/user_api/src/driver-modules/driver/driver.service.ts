@@ -55,7 +55,7 @@ export class DriverService {
         success: true,
         data: {
           ...user,
-          status: driverlocation.status,
+          status: driverlocation?.status ?? null,
           driverVerification: {
             isStarted: verificationStatus.uploadedCount > 0,
             isComplete: isProfileComplete,
