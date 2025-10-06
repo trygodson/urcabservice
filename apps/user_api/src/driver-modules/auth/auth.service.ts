@@ -312,7 +312,6 @@ export class AuthService {
       const user = await this.userRepository.create({
         email: payload.email,
         fullName: payload.given_name + ' ' + payload.family_name,
-
         passwordHash: randomPassword,
         passwordSalt: passSalt,
         isEmailConfirmed: true,

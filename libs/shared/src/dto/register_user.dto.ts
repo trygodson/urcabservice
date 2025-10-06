@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 // import { AutoMap } from '@automapper/classes';
 import { Type } from 'class-transformer';
-import { IsEmail, IsStrongPassword, IsString, IsDateString } from 'class-validator';
+import { IsEmail, IsStrongPassword, IsString, IsDateString, IsOptional, MaxLength } from 'class-validator';
 
 export class RegisterUserDto {
   @ApiProperty({
@@ -35,34 +35,24 @@ export class RegisterUserDto {
   // @IsEnum(Role)
   // type: Role;
 }
-export class UpdateUserInfoDto {
-  @ApiProperty({
-    example: 'John',
-  })
+export class UpdateDriverProfileDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  firstName: string;
+  @MaxLength(100)
+  fullName?: string;
 
-  @ApiProperty({
-    example: 'doe',
-  })
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  lastName: string;
-
-  @ApiProperty({
-    example: 'doe',
-  })
-  @IsString()
-  phone: string;
-
-  @ApiProperty({
-    example: '1999-02-22',
-  })
-  @IsDateString()
-  dob: string;
-
-  // @ApiProperty({
-  //   enum: Gender,
+  // @Matches(/^\+?[1-9]\d{1,14}$/, {
+  //   message: 'Phone number must be in international format',
   // })
-  // @IsEnum(Gender)
-  // gender: Gender;
+  phone?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  photo?: string;
 }

@@ -10,7 +10,10 @@ import {
   Ride,
   RideSchema,
   User,
+  UserRepository,
   UserSchema,
+  Vehicle,
+  VehicleSchema,
 } from '@urcab-workspace/shared';
 import { DriverDocumentRepository } from './repository/driveDocument.repository';
 import { DriverDocumentController } from './driverDocument.controller';
@@ -21,6 +24,8 @@ import { PassportDocumentService } from './passportDocument.service';
 import { PSVLicenseDocumentService } from './psvLicenseDocument.service';
 import { TaxiPermitDocumentService } from './taxiDocument.service';
 import { DocumentVerificationStatusService } from './documentVerification.service';
+import { DriverController } from './driver.controller';
+import { DriverService } from './driver.service';
 
 @Module({
   imports: [
@@ -39,6 +44,7 @@ import { DocumentVerificationStatusService } from './documentVerification.servic
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Ride.name, schema: RideSchema },
+      { name: Vehicle.name, schema: VehicleSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
       { name: DriverDocument.name, schema: DriverDocumentSchema },
     ]),
@@ -52,7 +58,9 @@ import { DocumentVerificationStatusService } from './documentVerification.servic
     TaxiPermitDocumentService,
     DocumentVerificationStatusService,
     DriverDocumentRepository,
+    UserRepository,
+    DriverService,
   ],
-  controllers: [DriverDocumentController],
+  controllers: [DriverDocumentController, DriverController],
 })
 export class DriverModule {}

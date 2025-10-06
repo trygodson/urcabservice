@@ -8,16 +8,18 @@ import {
   ClassSerializerInterceptor,
   UploadedFile,
   BadRequestException,
+  Put,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   JwtAuthGuard,
   Public,
   Role,
   SetRolesMetaData,
+  UpdateDriverProfileDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
@@ -30,12 +32,22 @@ import { FileUploadOptions } from '@urcab-workspace/shared';
 export class UserController {
   constructor(private readonly userService: UserService, private readonly uploadFileService: UploadFileService) {}
 
-  @UseInterceptors(ClassSerializerInterceptor)
+  // @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
-  @SetRolesMetaData(Role.DRIVER, Role.PASSENGER)
+  @SetRolesMetaData(Role.PASSENGER)
   getProfile(@CurrentUser() user: User) {
     // console.log(user, '---user=----');
     return this.userService.getUser({ _id: user._id });
+  }
+
+  @Put('me')
+  @ApiOperation({ summary: 'Update driver profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @SetRolesMetaData(Role.DRIVER)
+  async updateProfile(@CurrentUser() user: User, @Body() updateProfileDto: UpdateDriverProfileDto) {
+    return await this.userService.updateProfile(user._id.toString(), updateProfileDto);
   }
 
   @Post('upload')

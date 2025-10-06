@@ -95,7 +95,7 @@ export class DriverDocumentRepository extends AbstractRepository<DriverDocumentD
           documentType,
           isActive: true,
         })
-        .exec();
+        .lean();
     } catch (error) {
       this.logger.error(`Failed to get driver document by type for driver ${driverId}`, error.stack);
       throw error;

@@ -18,11 +18,11 @@ import { CurrentUser, JwtAuthGuard, LocalAuthGuard, User } from '@urcab-workspac
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @ApiBody({ type: RegisterUserDto })
-  @Post('register')
-  async register(@Body() body: RegisterUserDto) {
-    return await this.authService.register(body);
-  }
+  // @ApiBody({ type: RegisterUserDto })
+  // @Post('register')
+  // async register(@Body() body: RegisterUserDto) {
+  //   return await this.authService.register(body);
+  // }
 
   @ApiBody({ type: LoginDto })
   @UseGuards(LocalAuthGuard)

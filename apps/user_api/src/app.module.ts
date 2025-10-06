@@ -13,6 +13,7 @@ import { DriverModule } from './driver-modules/driver/driver.module';
 import { DriverRideModule } from './driver-modules/driver-ride/driverRide.module';
 import { DriverVehicleModule } from './driver-modules/driver-vehicle/driverVehicle.module';
 import { RedisModule } from '@nestjs-modules/ioredis';
+import { UserVerificationModule } from './modules/user-verification/userVerification.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
 @Module({
   imports: [
@@ -32,22 +33,6 @@ import { RedisModule } from '@nestjs-modules/ioredis';
           databaseURL: configService.getOrThrow('FIREBASE_DATABASE_URL'),
           projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
         };
-        // return {
-        //   googleApplicationCredential: {
-        //     type: 'service_account',
-        //     project_id: configService.getOrThrow('FIREBASE_PROJECT_ID'),
-        //     private_key_id: configService.getOrThrow('FIREBASE_PRIVATE_KEY_ID'),
-        //     private_key: configService.getOrThrow('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
-        //     client_email: configService.getOrThrow('FIREBASE_CLIENT_EMAIL'),
-        //     client_id: configService.getOrThrow('FIREBASE_CLIENT_ID'),
-        //     auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-        //     token_uri: 'https://oauth2.googleapis.com/token',
-        //     auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-        //     client_x509_cert_url: configService.getOrThrow('FIREBASE_CLIENT_CERT_URL'),
-        //   },
-        //   databaseURL: configService.getOrThrow('FIREBASE_DATABASE_URL'),
-        //   projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
-        // };
       },
       inject: [ConfigService],
     }),
@@ -77,6 +62,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     DriverRideModule,
     DriverVehicleModule,
     DriverLocationModule,
+    UserVerificationModule,
   ],
   // providers: [TransactionService],
 })

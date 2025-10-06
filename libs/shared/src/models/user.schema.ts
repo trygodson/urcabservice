@@ -7,14 +7,6 @@ import { Gender, Role } from '../enums';
 @Schema({
   collection: 'user',
   timestamps: true,
-  // toJSON: {
-  //   transform: (doc, ret) => {
-  //     if (ret._id && ret._id.buffer) {
-  //       ret._id = ret._id.buffer.toString('hex');
-  //     }
-  //     return ret;
-  //   },
-  // },
 })
 export class User extends AbstractDocument {
   @ApiProperty()
@@ -52,7 +44,6 @@ export class User extends AbstractDocument {
     sparse: true,
   })
   userName?: string;
-
 
   @ApiProperty()
   @Prop({
@@ -232,13 +223,13 @@ export class User extends AbstractDocument {
   })
   isProfileUpdated?: boolean;
 
-  @ApiProperty()
-  @Prop({
-    type: String,
-    required: false,
-    select: false,
-  })
-  deviceToken?: string;
+  // @ApiProperty()
+  // @Prop({
+  //   type: String,
+  //   required: false,
+  //   select: false,
+  // })
+  // deviceToken?: string;
 
   @ApiProperty()
   @Prop({

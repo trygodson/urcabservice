@@ -87,6 +87,8 @@ export class RidesController {
     if (limit < 1 || limit > 100) limit = 10;
 
     const passengerId = new Types.ObjectId(user._id);
+
+    console.log(user);
     return await this.ridesService.getPassengerRideHistory(passengerId, page, limit);
   }
 

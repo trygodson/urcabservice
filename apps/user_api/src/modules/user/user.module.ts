@@ -5,12 +5,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseModule, UploadFileService, User, UserRepository, UserSchema } from '@urcab-workspace/shared';
 import { HttpModule } from '@nestjs/axios';
+import { UserVerificationModule } from '../user-verification/userVerification.module';
 
 @Module({
   imports: [
     DatabaseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     HttpModule,
-
+    UserVerificationModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
         return {
