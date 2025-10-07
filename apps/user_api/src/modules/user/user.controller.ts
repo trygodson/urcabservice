@@ -20,6 +20,7 @@ import {
   Role,
   SetRolesMetaData,
   UpdateDriverProfileDto,
+  updateFCMDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
@@ -45,9 +46,19 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
-  @SetRolesMetaData(Role.DRIVER)
+  @SetRolesMetaData(Role.PASSENGER)
   async updateProfile(@CurrentUser() user: User, @Body() updateProfileDto: UpdateDriverProfileDto) {
     return await this.userService.updateProfile(user._id.toString(), updateProfileDto);
+  }
+
+  @Put('fcmToken')
+  @ApiOperation({ summary: 'Update fcm token' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async fcmToken(@CurrentUser() user: User, @Body() updateProfileDto: updateFCMDto) {
+    return await this.userService.updateFCMToken(user._id.toString(), updateProfileDto);
   }
 
   @Post('upload')

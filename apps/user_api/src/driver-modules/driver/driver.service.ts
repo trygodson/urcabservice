@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { DriverLocation, UpdateDriverProfileDto, User, UserRepository } from '@urcab-workspace/shared';
+import { DriverLocation, UpdateDriverProfileDto, updateFCMDto, User, UserRepository } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -15,6 +15,32 @@ export class DriverService {
     @InjectModel(User.name) private readonly userRepository2: Model<User>,
     @InjectModel(DriverLocation.name) private readonly driverLocation: Model<DriverLocation>,
   ) {}
+
+  async updateFCMToken(userId: string, updateDto: updateFCMDto) {
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User Does Not Exist');
+      }
+
+      // Only update the allowed fields
+      const updateData: Partial<typeof user> = {};
+
+      updateData.fcmToken = updateDto.fcmToken;
+
+      // Update the user profile
+      await this.userRepository2
+        .findOneAndUpdate({ _id: userId }, { $set: updateData }, { new: true, upsert: true })
+        .select('-fcmToken');
+
+      return {
+        success: true,
+        message: 'FCM updated successfully',
+      };
+    } catch (error) {
+      throw new UnauthorizedException(error.message || 'Failed to update profile');
+    }
+  }
 
   async getUser({ _id }) {
     try {

@@ -1,6 +1,6 @@
 import { Length } from 'class-validator';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { UpdateDriverProfileDto, User, UserRepository } from '@urcab-workspace/shared';
+import { UpdateDriverProfileDto, updateFCMDto, User, UserRepository } from '@urcab-workspace/shared';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DocumentVerificationStatusService } from '../user-verification/documentVerificationStatus.service';
@@ -104,6 +104,31 @@ export class UserService {
         success: true,
         message: 'Profile updated successfully',
         data: updatedUser,
+      };
+    } catch (error) {
+      throw new UnauthorizedException(error.message || 'Failed to update profile');
+    }
+  }
+  async updateFCMToken(userId: string, updateDto: updateFCMDto) {
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User Does Not Exist');
+      }
+
+      // Only update the allowed fields
+      const updateData: Partial<typeof user> = {};
+
+      updateData.fcmToken = updateDto.fcmToken;
+
+      // Update the user profile
+      await this.userRepository2
+        .findOneAndUpdate({ _id: userId }, { $set: updateData }, { new: true, upsert: true })
+        .select('-fcmToken');
+
+      return {
+        success: true,
+        message: 'FCM updated successfully',
       };
     } catch (error) {
       throw new UnauthorizedException(error.message || 'Failed to update profile');

@@ -56,3 +56,9 @@ export class UpdateDriverProfileDto {
   @MaxLength(500)
   photo?: string;
 }
+
+export class updateFCMDto {
+  @ApiProperty({ required: false })
+  @IsString()
+  fcmToken?: string;
+}
