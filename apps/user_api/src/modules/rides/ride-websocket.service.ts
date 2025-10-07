@@ -114,7 +114,7 @@ export class RideWebSocketService {
       // Set up auto-expiry (60 seconds for real-time response)
       setTimeout(async () => {
         await this.handleRideRequestExpiry(rideRequest.rideId);
-      }, 60000);
+      }, 58000);
     } catch (error) {
       this.logger.error(`Failed to send ride request: ${error.message}`);
       throw new BadRequestException(`Failed to send ride request: ${error.message}`);
@@ -307,43 +307,36 @@ export class RideWebSocketService {
    */
   private async handleRideRequestExpiry(rideId: string): Promise<void> {
     try {
-      const rideRequest = await this.redisService.getRideRequest(rideId);
+      const rideRequest = await this.rideRepository.findById(rideId);
 
       if (rideRequest) {
-        // Check if driver has already responded
-        const driverResponse = await this.redisService.getDriverResponse(rideId);
+        const driver = await this.userRepository.findById(rideRequest?.selectedDriverId.toString());
+        const passenger = await this.userRepository.findById(rideRequest.passengerId.toString());
 
-        if (!driverResponse) {
-          // No response from driver, mark as expired
-          await this.rideRepository.findOneAndUpdate(
-            { _id: new Types.ObjectId(rideId) },
-            {
-              status: RideStatus.REJECTED_BY_DRIVER,
-              cancelledAt: new Date(),
-              cancelReason: 'Driver did not respond in time',
-            },
+        const updatedRide = await this.rideRepository.findOneAndUpdate(
+          { _id: new Types.ObjectId(rideId) },
+          {
+            status: RideStatus.REJECTED_BY_DRIVER,
+            cancelledAt: new Date(),
+            cancelReason: 'Driver did not respond in time',
+          },
+        );
+
+        if (passenger?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            passenger.fcmToken,
+            'DRIVER_REJECTED',
+            rideId,
+            driver,
+            updatedRide,
           );
-
-          // Notify passenger via WebSocket
-          if (this.rideGateway) {
-            await this.rideGateway.sendStatusUpdateToPassenger(rideRequest.passengerId, {
-              type: 'ride_expired',
-              rideId,
-              status: RideStatus.REJECTED_BY_DRIVER,
-              message: 'Driver did not respond in time. Please select another driver.',
-              timestamp: Date.now(),
-            });
-          }
-
-          // Clean up Redis data
-          await this.redisService.deleteRideRequest(rideId);
-          await this.redisService.removeDriverPendingRequest(rideRequest.driverId, rideId);
-
-          this.logger.log(`Ride request ${rideId} expired`);
         }
+
+        await this.rideRepository.findByIdAndDelete(rideId);
       }
     } catch (error) {
-      this.logger.error(`Failed to handle ride request expiry: ${error.message}`);
+      console.log(error, '====error====');
+      this.logger.error(`Failed to handle ride request expiry: ${error?.message}`);
     }
   }
 

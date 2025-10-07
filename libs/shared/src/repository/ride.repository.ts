@@ -24,6 +24,14 @@ export class RideRepository extends AbstractRepository<Ride> {
       throw error;
     }
   }
+  async findByIdAndDelete(rideId: string | Types.ObjectId): Promise<any | null> {
+    try {
+      return await this.model.deleteOne({ _id: rideId }).exec();
+    } catch (error) {
+      this.logger.error(`Failed to find ride by ID: ${rideId}`, error.stack);
+      throw error;
+    }
+  }
 
   async findByIdAndUpdate(
     rideId: string | Types.ObjectId,

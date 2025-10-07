@@ -208,7 +208,7 @@ export class VehicleService {
 
       // Verify vehicle exists and belongs to driver
       const vehicle = await this.vehicleRepository.getVehicleById(vehicleObjectId);
-
+      // console.log(vehicle, '=====vehicle===');
       if (!vehicle) {
         throw new NotFoundException('Vehicle not found');
       }
@@ -221,6 +221,7 @@ export class VehicleService {
         isActive: false,
       });
     } catch (error) {
+      console.log(error, '======error===');
       this.logger.error(`Failed to delete vehicle ${vehicleId}`, error.stack);
 
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
