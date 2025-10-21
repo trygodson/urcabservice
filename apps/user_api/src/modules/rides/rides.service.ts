@@ -84,7 +84,8 @@ export class RidesService {
         estimatedDistance: rideDetails.distance,
         estimatedDuration: rideDetails.duration,
         status: RideStatus.PENDING_DRIVER_ACCEPTANCE, // New status
-        paymentMethod: PaymentMethod.CASH,
+        // paymentMethod: PaymentMethod.CASH,
+        paymentMethod: createRideDto.paymentMethod,
         paymentStatus: PaymentStatus.PENDING,
       });
 
@@ -423,7 +424,7 @@ export class RidesService {
     try {
       const currentRide = await this.rideRepository.findPassengerCurrentRide(passengerId);
 
-      console.log(currentRide, '=====curemt ride====');
+      // console.log(currentRide, '=====curemt ride====');
       return currentRide ? this.mapToResponseDto(currentRide) : null;
     } catch (error) {
       this.logger.error(`Failed to get current ride for passenger ${passengerId}`, error.stack);
@@ -491,7 +492,7 @@ export class RidesService {
     }
 
     // Check if user can cancel this ride
-    const canCancel = ride.passengerId.equals(userId) || (ride.driverId && ride.driverId.equals(userId));
+    const canCancel = ride.passengerId._id.equals(userId) || (ride.driverId && ride.driverId._id.equals(userId));
 
     if (!canCancel) {
       throw new BadRequestException('Unauthorized to cancel this ride');
@@ -502,14 +503,27 @@ export class RidesService {
       throw new BadRequestException('Cannot cancel a completed or already cancelled ride');
     }
 
+    const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+    const driver = await this.userRepository.findById(ride.driverId._id.toString());
+
     const updateData = {
       status: RideStatus.RIDE_CANCELLED,
       cancelledAt: new Date(),
       cancelledBy: userId,
-      cancellationReason: reason,
+      cancellationReason: reason || 'Cancelled by passenger',
     };
 
     const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+    if (passenger?.fcmToken) {
+      await this.firebaseNotificationService.sendRideStatusUpdate(
+        passenger.fcmToken,
+        RideStatus.RIDE_CANCELLED,
+        rideId,
+        driver,
+        updatedRide,
+      );
+    }
+
     return this.mapToResponseDto(updatedRide);
   }
 

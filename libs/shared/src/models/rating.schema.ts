@@ -42,63 +42,11 @@ export class Rating extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
-    type: Number,
-    required: false,
-    min: 1,
-    max: 5,
-  })
-  punctualityRating?: number;
-
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: false,
-    min: 1,
-    max: 5,
-  })
-  communicationRating?: number;
-
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: false,
-    min: 1,
-    max: 5,
-  })
-  vehicleConditionRating?: number;
-
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: false,
-    min: 1,
-    max: 5,
-  })
-  drivingSkillRating?: number;
-
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: false,
-    min: 1,
-    max: 5,
-  })
-  professionalismRating?: number;
-
-  @ApiProperty()
-  @Prop({
     type: String,
     required: false,
     maxlength: 500,
   })
   comment?: string;
-
-  @ApiProperty()
-  @Prop({
-    type: [String],
-    default: [],
-  })
-  tags?: string[]; // e.g., ['friendly', 'helpful', 'clean_car', 'safe_driving']
 
   @ApiProperty()
   @Prop({
@@ -113,14 +61,6 @@ export class Rating extends AbstractDocument {
     default: false,
   })
   isFlagged: boolean; // If the rating was flagged for review
-
-  @ApiProperty()
-  @Prop({
-    type: String,
-    required: false,
-    maxlength: 200,
-  })
-  flagReason?: string;
 
   @ApiProperty()
   @Prop({
@@ -169,5 +109,4 @@ RatingSchema.index({ ratedUserId: 1 });
 RatingSchema.index({ rideId: 1 });
 RatingSchema.index({ ratedUserId: 1, overallRating: -1 });
 RatingSchema.index({ ratedUserId: 1, createdAt: -1 });
-RatingSchema.index({ isPublic: 1, isFlagged: 1 });
-RatingSchema.index({ isVerified: 1 });
+// RatingSchema.index({ isVerified: 1 });

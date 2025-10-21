@@ -143,7 +143,7 @@ export class DriverRideService {
 
       // Find rides searching for drivers within radius
       const nearbyRides = await this.driverRideRepository.findNearbyRideRequests(longitude, latitude, radius, driverId);
-      console.log(nearbyRides, '=====nearbyrides=====');
+      // console.log(nearbyRides, '=====nearbyrides=====');
       this.logger.debug(`Found ${nearbyRides.length} nearby ride requests`);
 
       // Process and enrich ride data
@@ -247,7 +247,7 @@ export class DriverRideService {
         status: RideStatus.DRIVER_AT_PICKUPLOCATION,
         startedAt: new Date(),
       });
-
+      // console.log(updatedRide, '=====updatedRide====', ride);
       // Get passenger and driver details for notifications
       const passenger = await this.userRepository.findById(ride.passengerId?._id._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
@@ -295,9 +295,9 @@ export class DriverRideService {
       if (ride.status) {
         this.validateStatusChange(ride.status as RideStatus, RideStatus.RIDE_STARTED as RideStatus);
       }
-
+      // console.log(updatedRide, '=====updatedRide====', ride);
       // Get passenger and driver details for notifications
-      const passenger = await this.userRepository.findById(ride.passengerId?._id._id.toString());
+      const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
 
       // Send notification to passenger
@@ -369,7 +369,7 @@ export class DriverRideService {
       await this.driverLocationRepository.updateDriverStatus(driverId, DriverOnlineStatus.ONLINE, true);
 
       // Get passenger and driver details for notifications
-      const passenger = await this.userRepository.findById(ride.passengerId?._id?._id.toString());
+      const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
 
       // Send completion notification to passenger
@@ -397,9 +397,9 @@ export class DriverRideService {
       if (!ride) {
         throw new NotFoundException('Ride not found');
       }
-
+      // console.log(ride, '=====ride====', driverId);
       // Validate driver is assigned to this ride
-      if (!ride.driverId || !ride.driverId.equals(driverId)) {
+      if (!ride.selectedDriverId || !ride.selectedDriverId._id.equals(driverId)) {
         throw new BadRequestException('You are not assigned to this ride');
       }
 

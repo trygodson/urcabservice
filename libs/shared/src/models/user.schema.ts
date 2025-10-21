@@ -293,6 +293,16 @@ export class User extends AbstractDocument {
   })
   driverVerifiedByAdminId?: Types.ObjectId;
 
+  @ApiProperty()
+  @Prop({
+    type: Number,
+    required: false,
+    default: 0,
+    min: 0,
+    max: 5,
+  })
+  averageRating?: number;
+
   // Ranking fields (computed later from league performance)
   // @ApiProperty()
   // @Prop({

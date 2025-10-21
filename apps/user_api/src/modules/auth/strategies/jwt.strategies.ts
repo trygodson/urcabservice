@@ -39,7 +39,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         _id: new Types.ObjectId(dd.user_id),
       });
 
-      // console.log('User found in JWT strategy:', user);
 
       return user;
     } catch (error) {

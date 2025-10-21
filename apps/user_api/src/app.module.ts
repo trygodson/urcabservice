@@ -1,17 +1,18 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppConfig, DatabaseModule, getRedisConfig, LoggerModule } from '@urcab-workspace/shared';
 import { FirebaseModule } from 'nestjs-firebase';
 import { UserModule } from './modules/user';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { CacheModule } from '@nestjs/cache-manager';
 import { RidesModule } from './modules/rides/rides.modules';
+import { RatingsModule } from './modules/ratings/ratings.module';
 import { DriverAuthModule } from './driver-modules/auth';
 import { DriverLocationModule } from './driver-modules/driver-location/driverLocation.module';
 import { DriverModule } from './driver-modules/driver/driver.module';
 import { DriverRideModule } from './driver-modules/driver-ride/driverRide.module';
 import { DriverVehicleModule } from './driver-modules/driver-vehicle/driverVehicle.module';
+import { DriverRatingsModule } from './driver-modules/driver-ratings/driverRatings.module';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { UserVerificationModule } from './modules/user-verification/userVerification.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
@@ -62,7 +63,9 @@ import { UserVerificationModule } from './modules/user-verification/userVerifica
     DriverRideModule,
     DriverVehicleModule,
     DriverLocationModule,
+    DriverRatingsModule,
     UserVerificationModule,
+    RatingsModule,
   ],
   // providers: [TransactionService],
 })

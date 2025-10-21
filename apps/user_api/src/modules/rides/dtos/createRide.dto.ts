@@ -13,7 +13,7 @@ import {
   IsMongoId,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { RideType } from '@urcab-workspace/shared';
+import { PaymentMethod, RideType } from '@urcab-workspace/shared';
 import { LocationDto } from './location.dto';
 
 export class CreateRideDto {
@@ -42,6 +42,15 @@ export class CreateRideDto {
   })
   @IsEnum(RideType, { message: 'Invalid ride type' })
   rideType: RideType;
+
+  @ApiProperty({
+    enum: PaymentMethod,
+    description: 'Payment Method (cash or card or qr_code)',
+    example: PaymentMethod.CASH,
+  })
+  @IsEnum(PaymentMethod, { message: 'Invalid Payment Method' })
+  @IsNotEmpty({ message: 'Payment method is required' })
+  paymentMethod: PaymentMethod;
 
   @ApiPropertyOptional({
     description: 'Selected driver ID (optional - if not provided, system will find available drivers)',

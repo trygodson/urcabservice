@@ -22,6 +22,20 @@ export interface PriceBreakdown {
 
 @Schema({ collection: 'rides', timestamps: true })
 export class Ride extends AbstractDocument {
+  // Rating status flags
+  @ApiProperty()
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isDriverRated?: boolean;
+
+  @ApiProperty()
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isPassengerRated?: boolean;
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,

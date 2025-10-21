@@ -36,7 +36,7 @@ export class RidesController {
   })
   @SetRolesMetaData(Role.PASSENGER)
   async getCurrentRide(@CurrentUser() user: User) {
-    console.log(user, '====current user===');
+    // console.log(user, '====current user===');
     return await this.ridesService.getPassengerCurrentRide(user._id);
   }
 
@@ -88,7 +88,6 @@ export class RidesController {
 
     const passengerId = new Types.ObjectId(user._id);
 
-    console.log(user);
     return await this.ridesService.getPassengerRideHistory(passengerId, page, limit);
   }
 
@@ -273,90 +272,4 @@ export class RidesController {
     const userId = new Types.ObjectId(user._id);
     return await this.ridesService.cancelRide(rideId, userId, reason);
   }
-
-  // @Get('passenger/active')
-  // @ApiOperation({ summary: 'Get active ride for passenger' })
-  // @ApiResponse({
-  //   status: HttpStatus.OK,
-  //   description: 'Active ride retrieved successfully',
-  //   type: RideResponseDto,
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.NOT_FOUND,
-  //   description: 'No active ride found',
-  // })
-  // async getActivePassengerRide(
-  //   @CurrentUser() user: User,
-  // ): Promise<RideResponseDto | null> {
-  //   const passengerId = new Types.ObjectId(user._id);
-  //   return await this.ridesService.getActivePassengerRide(passengerId);
-  // }
-
-  // @Get('driver/active')
-  // @ApiOperation({ summary: 'Get active ride for driver' })
-  // @ApiResponse({
-  //   status: HttpStatus.OK,
-  //   description: 'Active ride retrieved successfully',
-  //   type: RideResponseDto,
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.NOT_FOUND,
-  //   description: 'No active ride found',
-  // })
-  // @SetRolesMetaData(Role.DRIVER)
-  // @UseGuards(RolesGuard)
-  // async getActiveDriverRide(
-  //   @CurrentUser() user: User,
-  // ): Promise<RideResponseDto | null> {
-  //   const driverId = new Types.ObjectId(user._id);
-  //   return await this.ridesService.getActiveDriverRide(driverId);
-  // }
-
-  // @Get('admin/statistics')
-  // @ApiOperation({ summary: 'Get ride statistics (Admin only)' })
-  // @ApiQuery({
-  //   name: 'startDate',
-  //   description: 'Start date for statistics',
-  //   required: false,
-  //   type: 'string',
-  //   example: '2024-01-01',
-  // })
-  // @ApiQuery({
-  //   name: 'endDate',
-  //   description: 'End date for statistics',
-  //   required: false,
-  //   type: 'string',
-  //   example: '2024-12-31',
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.OK,
-  //   description: 'Ride statistics retrieved successfully',
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       totalRides: { type: 'number' },
-  //       completedRides: { type: 'number' },
-  //       cancelledRides: { type: 'number' },
-  //       totalRevenue: { type: 'number' },
-  //       averageFare: { type: 'number' },
-  //     },
-  //   },
-  // })
-  // @SetRolesMetaData(Role.ADMIN)
-  // @UseGuards(RolesGuard)
-  // async getRideStatistics(
-  //   @Query('startDate') startDate?: string,
-  //   @Query('endDate') endDate?: string,
-  // ): Promise<{
-  //   totalRides: number;
-  //   completedRides: number;
-  //   cancelledRides: number;
-  //   totalRevenue: number;
-  //   averageFare: number;
-  // }> {
-  //   const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  //   const end = endDate ? new Date(endDate) : new Date();
-
-  //   return await this.ridesService.getRideStatistics(start, end);
-  // }
 }
