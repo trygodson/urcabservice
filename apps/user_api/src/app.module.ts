@@ -7,6 +7,7 @@ import { UserModule } from './modules/user';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RidesModule } from './modules/rides/rides.modules';
 import { RatingsModule } from './modules/ratings/ratings.module';
+import { IssueReportsModule } from './modules/issue-reports/issue-reports.module';
 import { DriverAuthModule } from './driver-modules/auth';
 import { DriverLocationModule } from './driver-modules/driver-location/driverLocation.module';
 import { DriverModule } from './driver-modules/driver/driver.module';
@@ -66,6 +67,7 @@ import { UserVerificationModule } from './modules/user-verification/userVerifica
     DriverRatingsModule,
     UserVerificationModule,
     RatingsModule,
+    IssueReportsModule,
   ],
   // providers: [TransactionService],
 })

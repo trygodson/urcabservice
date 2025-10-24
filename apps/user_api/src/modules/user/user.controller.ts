@@ -27,14 +27,14 @@ import {
 import { FileUploadOptions } from '@urcab-workspace/shared';
 
 @ApiTags('User')
-@UseGuards(JwtAuthGuard)
 @Controller('user')
-@ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService, private readonly uploadFileService: UploadFileService) {}
 
   // @UseInterceptors(ClassSerializerInterceptor)
   @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @SetRolesMetaData(Role.PASSENGER)
   getProfile(@CurrentUser() user: User) {
     // console.log(user, '---user=----');
@@ -42,6 +42,8 @@ export class UserController {
   }
 
   @Put('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update driver profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -52,6 +54,8 @@ export class UserController {
   }
 
   @Put('fcmToken')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update fcm token' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -62,6 +66,7 @@ export class UserController {
   }
 
   @Post('upload')
+  @Public()
   @ApiOperation({ summary: 'Upload a single file' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({

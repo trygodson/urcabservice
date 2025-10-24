@@ -13,11 +13,12 @@ import {
   ParseIntPipe,
   BadRequestException,
   NotFoundException,
+  ParseFloatPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Types } from 'mongoose';
 import { RidesService } from './rides.service';
-import { CreateRideDto, UpdateRideDto, RideResponseDto } from './dtos';
+import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceListResponseDto } from './dtos';
 import { JwtAuthGuard, RolesGuard, Role, CurrentUser, User, SetRolesMetaData } from '@urcab-workspace/shared';
 
 @ApiTags('Rides')
@@ -38,6 +39,47 @@ export class RidesController {
   async getCurrentRide(@CurrentUser() user: User) {
     // console.log(user, '====current user===');
     return await this.ridesService.getPassengerCurrentRide(user._id);
+  }
+
+  // Add this endpoint to apps/user_api/src/modules/rides/rides.controller.ts
+
+  @Get('vehicles/prices')
+  @ApiOperation({ summary: 'Get vehicle types with prices based on capacity and distance' })
+  @ApiQuery({
+    name: 'seatingCapacity',
+    description: 'Required passenger seating capacity',
+    required: true,
+    type: 'number',
+    example: 4,
+  })
+  @ApiQuery({
+    name: 'distance',
+    description: 'Ride distance in kilometers',
+    required: true,
+    type: 'number',
+    example: 10.5,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vehicle prices retrieved successfully',
+    type: VehiclePriceListResponseDto,
+  })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getVehiclePrices(
+    @Query('seatingCapacity', new ParseIntPipe()) seatingCapacity: number,
+    @Query('distance', new ParseFloatPipe()) distance: number,
+  ) {
+    if (seatingCapacity < 1) {
+      throw new BadRequestException('Seating capacity must be at least 1');
+    }
+
+    if (distance <= 0) {
+      throw new BadRequestException('Distance must be greater than 0');
+    }
+
+    const vehicles = await this.ridesService.getVehiclesByCapacityAndPrice(seatingCapacity, distance);
+
+    return vehicles;
   }
 
   @Get('passenger/history')

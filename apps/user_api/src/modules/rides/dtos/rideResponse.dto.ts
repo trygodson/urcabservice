@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Types } from 'mongoose';
-import { RideStatus, RideType } from '@urcab-workspace/shared';
+import { RideStatus, RideType, VehicleType } from '@urcab-workspace/shared';
+import { IsNumber, IsPositive, Min } from 'class-validator';
 
 export class RideResponseDto {
   @ApiProperty({
@@ -133,4 +134,60 @@ export class RideResponseDto {
     required: false,
   })
   completedAt?: Date;
+}
+
+export class VehiclePriceRequestDto {
+  @ApiProperty({
+    description: 'Required passenger capacity',
+    example: 4,
+    minimum: 1,
+  })
+  @IsNumber()
+  @Min(1)
+  @IsPositive()
+  seatingCapacity: number;
+
+  @ApiProperty({
+    description: 'Distance in kilometers',
+    example: 10.5,
+    minimum: 0.1,
+  })
+  @IsNumber()
+  @IsPositive()
+  distance: number;
+}
+
+export class VehiclePriceDto {
+  @ApiProperty({
+    description: 'Type of vehicle',
+    enum: VehicleType,
+    example: VehicleType.SEDAN,
+  })
+  type: string;
+
+  @ApiProperty({
+    description: 'Seating capacity of the vehicle',
+    example: 4,
+  })
+  capacity: number;
+
+  @ApiProperty({
+    description: 'Estimated price for the ride in the local currency',
+    example: 25.5,
+  })
+  estimatedPrice: number;
+
+  @ApiProperty({
+    description: 'Estimated duration of the ride in minutes',
+    example: 20,
+  })
+  estimatedDuration: number;
+}
+
+export class VehiclePriceListResponseDto {
+  @ApiProperty({
+    description: 'List of available vehicles with pricing',
+    type: [VehiclePriceDto],
+  })
+  vehicles: VehiclePriceDto[];
 }

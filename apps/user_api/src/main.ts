@@ -8,7 +8,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from '@urcab-workspace/shared';
 import * as compression from 'compression';
 
-// MockDate.set('2025-07-28T10:59:59');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
@@ -17,6 +16,7 @@ async function bootstrap() {
     .setDescription('The API description')
     .setVersion('1.0')
     .addBearerAuth()
+
     .build();
   const document = SwaggerModule.createDocument(app, config);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -25,6 +25,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(compression());
   const configService = app.get(ConfigService);
+
   SwaggerModule.setup('swagger', app, document);
   console.log('====== Listening on PORT ' + process.env.HTTP_PORT || configService.get('HTTP_PORT') + ' =======');
   await app.listen(process.env.PORT || configService.get('HTTP_PORT'));

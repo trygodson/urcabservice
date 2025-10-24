@@ -3,11 +3,15 @@ import {
   FirebaseNotificationService,
   PaymentMethod,
   PaymentStatus,
+  RatingRepository,
   RideNotificationData,
   RideRepository,
   UserRepository,
+  VEHICLE_CAPACITY,
+  VehicleRepository,
+  VehicleType,
 } from '@urcab-workspace/shared';
-import { CreateRideDto, UpdateRideDto, RideResponseDto } from './dtos';
+import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceDto } from './dtos';
 import { RideStatus, RideType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
@@ -21,6 +25,8 @@ export class RidesService {
     private readonly rideRepository: RideRepository,
     private readonly driverLocationRepository: DriverLocationRepository,
     private readonly userRepository: UserRepository,
+    private readonly vehicleRepository: VehicleRepository,
+    private readonly ratingRepository: RatingRepository,
     private readonly rideWebSocketService: RideWebSocketService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
   ) {}
@@ -45,19 +51,14 @@ export class RidesService {
       }
 
       // 4. Validate selected driver if provided
-      if (!createRideDto.selectedDriverId) {
-        throw new BadRequestException('Please select a driver from the available drivers list');
-      }
-
-      const selectedDriver = await this.validateSelectedDriver(
-        createRideDto.selectedDriverId,
-        createRideDto.pickupLocation.coordinates,
-      );
+      // if (!createRideDto.selectedDriverId) {
+      //   throw new BadRequestException('Please select a driver from the available drivers list');
+      // }
 
       // 5. Create ride request (not confirmed yet)
       const rideRequest = await this.rideRepository.create({
         passengerId,
-        selectedDriverId: new Types.ObjectId(createRideDto.selectedDriverId),
+        // selectedDriverId: new Types.ObjectId(createRideDto.selectedDriverId),
         pickupLocation: {
           type: 'Point',
           coordinates: [
@@ -76,6 +77,7 @@ export class RidesService {
           address: createRideDto.dropoffLocation.address,
           placeId: createRideDto.dropoffLocation.placeId,
         },
+        vehicleType: createRideDto.vehicleType,
         rideType: createRideDto.rideType,
         scheduledTime: createRideDto.rideType === RideType.IMMEDIATE ? new Date() : createRideDto.scheduledTime,
         passengerCount: createRideDto.passengerCount || 1,
@@ -90,9 +92,15 @@ export class RidesService {
       });
 
       // 6. Send ride request notification to selected driver and wait for response
-      await this.sendRideRequestToSelectedDriver(rideRequest, selectedDriver, passenger);
-
-      return this.mapToResponseDto(rideRequest);
+      // await this.sendRideRequestToSelectedDriver(rideRequest, selectedDriver, passenger);
+      let dd = await this.findAndNotifyDrivers(rideRequest, passenger, createRideDto.vehicleType);
+      if (dd == false) {
+        throw new NotFoundException(`Unable to find drivers in the area`);
+      } else {
+        return this.mapToResponseDto(rideRequest);
+      }
+      // if (dd) {
+      // }
     } catch (error) {
       throw new BadRequestException(`Failed to book ride: ${error.message}`);
     }
@@ -194,7 +202,67 @@ export class RidesService {
     }
   }
 
-  private async sendRideRequestToSelectedDriver(ride: any, selectedDriver: any, passenger: any): Promise<void> {
+  // Add this method to apps/user_api/src/modules/rides/rides.service.ts
+
+  /**
+   * Get vehicle types and prices based on required capacity and distance
+   */
+  async getVehiclesByCapacityAndPrice(
+    seatingCapacity: number,
+    distance: number,
+  ): Promise<{ success: boolean; data: VehiclePriceDto[] }> {
+    // Get all vehicle types with capacity greater than or equal to the required capacity
+    const eligibleVehicleTypes = Object.entries(VEHICLE_CAPACITY)
+      .filter(([_, capacity]) => capacity >= seatingCapacity)
+      .map(([type, capacity]) => ({ type, capacity }));
+
+    // Calculate estimated duration based on distance
+    const estimatedDuration = this.estimateDuration(distance);
+
+    // Calculate price for each eligible vehicle type
+    const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map(({ type, capacity }) => {
+      // Apply different pricing multipliers based on vehicle type
+      let priceMultiplier = 1.0;
+
+      // Group vehicles by category and apply appropriate price multiplier
+      if (['sedan', 'hatchback', 'compact', 'taxi'].includes(type)) {
+        priceMultiplier = 1.0; // Economy
+      } else if (['suv_small', 'crossover', 'estate', 'electric_car', 'hybrid'].includes(type)) {
+        priceMultiplier = 1.2; // Comfort
+      } else if (['luxury_sedan', 'executive', 'suv_large', 'luxury_suv'].includes(type)) {
+        priceMultiplier = 1.5; // Premium
+      } else if (['mpv', 'minivan', 'pickup_truck'].includes(type)) {
+        priceMultiplier = 1.3; // Large
+      } else if (['van', 'microbus'].includes(type)) {
+        priceMultiplier = 1.8; // XL
+      } else if (['limousine'].includes(type)) {
+        priceMultiplier = 2.5; // Luxury
+      } else if (['wheelchair_accessible'].includes(type)) {
+        priceMultiplier = 1.4; // Accessible
+      } else {
+        priceMultiplier = 1.2; // Default
+      }
+
+      const basePrice = this.calculateFare(distance, estimatedDuration);
+      const finalPrice = basePrice * priceMultiplier;
+
+      return {
+        type,
+        capacity,
+        estimatedPrice: parseFloat(finalPrice.toFixed(2)),
+        estimatedDuration: Math.round(estimatedDuration),
+      };
+    });
+
+    // Sort by price (ascending)
+    return { success: true, data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice) };
+  }
+
+  private async sendRideRequestToSelectedDriver(
+    ride: any,
+    selectedDriver: any,
+    passenger: any,
+  ): Promise<boolean | void> {
     try {
       const { driver, driverLocation, distanceToPickup } = selectedDriver;
 
@@ -234,10 +302,11 @@ export class RidesService {
       await this.rideWebSocketService.sendRideRequestToDriver(rideRequest, driver.fcmToken);
 
       this.logger.log(`Real-time ride request sent to selected driver ${driver._id} for ride ${ride._id}`);
+      return true;
     } catch (error) {
       this.logger.error(`Failed to send ride request to selected driver`, error.stack);
       // Fall back to finding nearby drivers
-      await this.findAndNotifyDrivers(ride, passenger);
+      // await this.findAndNotifyDrivers(ride, passenger);
     }
   }
 
@@ -260,12 +329,6 @@ export class RidesService {
   }
 
   private async validateLocations(pickup: any, dropoff: any): Promise<void> {
-    // 1. Validate coordinates are within service area
-    // if (!this.isWithinServiceArea(pickup.coordinates) || !this.isWithinServiceArea(dropoff.coordinates)) {
-    //   throw new BadRequestException('Location is outside service area');
-    // }
-
-    // 2. Validate minimum distance between pickup and dropoff
     const distance = this.calculateDistance(pickup.coordinates, dropoff.coordinates);
     if (distance < 0.5) {
       // Minimum 500 meters
@@ -399,20 +462,31 @@ export class RidesService {
         RideStatus.PENDING_DRIVER_ACCEPTANCE,
         RideStatus.DRIVER_ACCEPTED,
         RideStatus.RIDE_CANCELLED,
+        RideStatus.RIDE_TIMEOUT,
       ],
       [RideStatus.PENDING_DRIVER_ACCEPTANCE]: [
         RideStatus.DRIVER_ACCEPTED,
         RideStatus.REJECTED_BY_DRIVER,
         RideStatus.RIDE_CANCELLED,
+        RideStatus.RIDE_TIMEOUT,
       ],
       [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
       [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
-      [RideStatus.DRIVER_ACCEPTED]: [RideStatus.RIDE_STARTED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_ACCEPTED]: [RideStatus.RIDE_STARTED, RideStatus.RIDE_CANCELLED, RideStatus.RIDE_TIMEOUT],
       [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
-      [RideStatus.DRIVER_AT_PICKUPLOCATION]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
-      [RideStatus.DRIVER_HAS_PICKUP_PASSENGER]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
-      [RideStatus.RIDE_COMPLETED]: [],
-      [RideStatus.RIDE_CANCELLED]: [],
+      [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_CANCELLED,
+        RideStatus.RIDE_TIMEOUT,
+      ],
+      [RideStatus.DRIVER_HAS_PICKUP_PASSENGER]: [
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_CANCELLED,
+        RideStatus.RIDE_TIMEOUT,
+      ],
+      [RideStatus.RIDE_COMPLETED]: [RideStatus.RIDE_CANCELLED, RideStatus.RIDE_TIMEOUT],
+      [RideStatus.RIDE_CANCELLED]: [RideStatus.RIDE_TIMEOUT],
+      [RideStatus.RIDE_TIMEOUT]: [],
     };
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
@@ -420,12 +494,25 @@ export class RidesService {
     }
   }
 
-  async getPassengerCurrentRide(passengerId: Types.ObjectId): Promise<RideResponseDto | null> {
+  async getPassengerCurrentRide(passengerId: Types.ObjectId): Promise<any | null> {
     try {
       const currentRide = await this.rideRepository.findPassengerCurrentRide(passengerId);
+      const passenger = await this.userRepository.findById(passengerId.toString());
+      const driver = await this.userRepository.findById(currentRide?.selectedDriverId?.toString());
+      const vehicle = await this.vehicleRepository.findOne({
+        // _id: ride.vehicleId,
+        driverId: currentRide?.selectedDriverId?.toString(),
+        isPrimary: true,
+      });
+      const rating = await this.ratingRepository.getAverageRating(currentRide?.selectedDriverId?.toString());
 
       // console.log(currentRide, '=====curemt ride====');
-      return currentRide ? this.mapToResponseDto(currentRide) : null;
+      return currentRide
+        ? {
+            ...this.mapToResponseDto(currentRide),
+            driverInfo: { passenger, driver, driverRating: rating, driverVehicle: vehicle },
+          }
+        : null;
     } catch (error) {
       this.logger.error(`Failed to get current ride for passenger ${passengerId}`, error.stack);
       throw new BadRequestException('Failed to get current ride');
@@ -527,7 +614,8 @@ export class RidesService {
     return this.mapToResponseDto(updatedRide);
   }
 
-  private async findAndNotifyDrivers(ride: any, passenger: any): Promise<void> {
+  private async findAndNotifyDrivers(ride: any, passenger: any, vehicleType: VehicleType): Promise<boolean | void> {
+    // console.log(ride, '=====ride====', passenger, '=====passenger====', vehicleType, '=====vehicleType====');
     try {
       // Get pickup location coordinates
       const pickupCoords = ride.pickupLocation.coordinates;
@@ -535,14 +623,16 @@ export class RidesService {
 
       // Find nearby available drivers within expanding radius
       let nearbyDrivers = [];
-      const searchRadiuses = [2, 3, 4, 5, 6]; // km
+      const searchRadiuses = [2, 3, 4, 5, 6, 7, 8, 9, 10, 20]; // km
 
       for (const radius of searchRadiuses) {
         nearbyDrivers = await this.driverLocationRepository.findNearbyDriversWithVehicles(
           longitude,
           latitude,
           radius,
-          10, // max 10 drivers per search
+          10,
+          ride.passengerCount,
+          vehicleType,
         );
 
         if (nearbyDrivers.length > 0) {
@@ -554,12 +644,23 @@ export class RidesService {
       if (nearbyDrivers.length === 0) {
         this.logger.warn(`No drivers found near pickup location for ride ${ride._id}`);
         // Update ride status to indicate no drivers available
-        await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
+        const updatedRide = await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
           status: RideStatus.RIDE_CANCELLED,
           cancelledAt: new Date(),
           cancellationReason: 'No drivers available in the area',
         });
-        return;
+
+        // if (passenger?.fcmToken) {
+        //   await this.firebaseNotificationService.sendRideStatusUpdate(
+        //     passenger.fcmToken,
+        //     RideStatus.RIDE_CANCELLED,
+        //     ride._id.toString(),
+        //     null,
+        //     updatedRide,
+        //     'No drivers available in the area',
+        //   );
+        // }
+        return false;
       }
 
       // Send notifications to nearby drivers (max 5 at a time)
@@ -573,35 +674,18 @@ export class RidesService {
           if (!driver || !driver.fcmToken) {
             continue;
           }
-
-          const notificationData: RideNotificationData = {
-            rideId: ride._id.toString(),
-            passengerId: passenger._id.toString(),
-            passengerName: `${passenger.firstName} ${passenger.lastName}`,
-            passengerPhone: passenger.phone,
-            passengerPhoto: passenger.photo,
-            pickupLocation: {
-              address: ride.pickupLocation.address,
-              coordinates: ride.pickupLocation.coordinates,
-              landmark: ride.pickupLocation.landmark,
-            },
-            dropoffLocation: {
-              address: ride.dropoffLocation.address,
-              coordinates: ride.dropoffLocation.coordinates,
-              landmark: ride.dropoffLocation.landmark,
-            },
-            estimatedFare: ride.estimatedFare,
-            estimatedDistance: ride.estimatedDistance,
-            estimatedDuration: ride.estimatedDuration,
-            distanceToPickup: driverLocation.distanceInKm || 0,
-            estimatedArrivalTime: Math.ceil(((driverLocation.distanceInKm || 0) / 30) * 60),
-          };
-
-          const sent = await this.firebaseNotificationService.sendRideRequestToDriver(
-            driver.fcmToken,
-            driver._id,
-            notificationData,
+          const selectedDriver = await this.validateSelectedDriver(
+            driverLocation.driverId.toString(),
+            ride.pickupLocation.coordinates,
           );
+
+          let sent = await this.sendRideRequestToSelectedDriver(ride, selectedDriver, passenger);
+
+          // const sent = await this.firebaseNotificationService.sendRideRequestToDriver(
+          //   driver.fcmToken,
+          //   driver._id,
+          //   notificationData,
+          // );
 
           if (sent) {
             notificationsSent++;
@@ -631,16 +715,16 @@ export class RidesService {
     }
   }
 
-  async getNearbyDrivers(longitude: number, latitude: number, radius: number = 10): Promise<any[]> {
-    // console.log(longitude, latitude, radius, '=====radius===');
-    return await this.driverLocationRepository.findNearbyDriversWithVehicles(longitude, latitude, radius, 20);
-    // return await this.driverLocationRepository.findNearbyDriversWithVehiclesUsingGeoWithin(
-    //   longitude,
-    //   latitude,
-    //   radius,
-    //   20,
-    // );
-  }
+  // async getNearbyDrivers(longitude: number, latitude: number, radius: number = 10): Promise<any[]> {
+  //   // console.log(longitude, latitude, radius, '=====radius===');
+  //   return await this.driverLocationRepository.findNearbyDriversWithVehicles(longitude, latitude, radius, 20);
+  //   // return await this.driverLocationRepository.findNearbyDriversWithVehiclesUsingGeoWithin(
+  //   //   longitude,
+  //   //   latitude,
+  //   //   radius,
+  //   //   20,
+  //   // );
+  // }
 
   async findNearbyDrivers(
     longitude: number,
@@ -648,6 +732,7 @@ export class RidesService {
     radiusInKm: number = 10,
     limit: number = 20,
     passenger: number,
+    vehicleType: VehicleType = VehicleType.COMPACT,
   ): Promise<any> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
@@ -658,6 +743,7 @@ export class RidesService {
         radiusInKm,
         limit,
         passenger,
+        vehicleType,
       );
 
       this.logger.log(`Found ${nearbyDrivers.length} nearby drivers`);

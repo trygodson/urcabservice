@@ -7,6 +7,7 @@ import {
   DriverLocationDocument,
   DriverOnlineStatus,
   User,
+  VEHICLE_CAPACITY,
   VehicleType,
 } from '@urcab-workspace/shared';
 
@@ -104,10 +105,15 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
     radiusInKm: number = 10,
     limit: number = 20,
     passengerCount: number = 4,
+    vehicleType: VehicleType,
   ): Promise<DriverLocationDocument[]> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      if (!vehicleType || !Object.values(VehicleType).includes(vehicleType)) {
+        this.logger.warn(`Invalid vehicle type requested: ${vehicleType}`);
+        throw new Error('Invalid vehicle type');
+      }
       const res = await this.model
         .aggregate([
           // Use $geoNear as the first stage instead of $near in $match
@@ -190,7 +196,8 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   $match: {
                     isPrimary: true,
                     isActive: true,
-                    seatingCapacity: { $gte: passengerCount },
+                    // seatingCapacity: { $gte: passengerCount },
+                    vehicleType: vehicleType,
                     // status: 'verified',
                   },
                 },
@@ -217,6 +224,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                 hasVehicle: { $gt: [{ $size: '$vehicle' }, 0] },
                 driverCount: { $size: '$driver' },
                 vehicleCount: { $size: '$vehicle' },
+                requestedVehicleType: vehicleType,
               },
             },
           },

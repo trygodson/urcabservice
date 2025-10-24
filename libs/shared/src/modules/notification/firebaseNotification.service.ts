@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { RideStatus } from '@urcab-workspace/shared/enums';
 import * as admin from 'firebase-admin';
 import { Types } from 'mongoose';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
@@ -40,7 +41,7 @@ export class FirebaseNotificationService {
     driverId: Types.ObjectId,
     notificationData: RideNotificationData,
   ): Promise<boolean> {
-    console.log(notificationData, 'notificationData');
+    // console.log(notificationData, 'notificationData');
     try {
       const message: admin.messaging.Message = {
         token: driverFCMToken,
@@ -96,31 +97,36 @@ export class FirebaseNotificationService {
     rideId: string,
     driverInfo?: any,
     updatedRide?: any,
+    reason?: string,
   ): Promise<boolean> {
     try {
       let title = '';
       let body = '';
 
       switch (status) {
-        case 'DRIVER_ASSIGNED':
-          title = '✅ Driver Assigned';
+        case RideStatus.DRIVER_ACCEPTED:
+          title = '✅ Driver Accepted';
           body = `${driverInfo?.firstName} is on the way to pick you up`;
           break;
-        case 'DRIVER_ARRIVED':
+        case RideStatus.DRIVER_AT_PICKUPLOCATION:
           title = '📍 Driver Arrived';
           body = `${driverInfo?.firstName} has arrived at pickup location`;
           break;
-        case 'STARTED':
+        case RideStatus.RIDE_STARTED:
           title = '🚗 Ride Started';
           body = 'Your ride has started. Enjoy your trip!';
           break;
-        case 'COMPLETED':
+        case RideStatus.RIDE_COMPLETED:
           title = '🎉 Ride Completed';
           body = 'You have reached your destination. Thank you for using UrCab!';
           break;
-        case 'DRIVER_REJECTED':
+        case RideStatus.REJECTED_BY_DRIVER:
           title = '🎉 Ride Rejected';
           body = 'Driver cancelled or rejected ride request, Thank you for using UrCab!';
+          break;
+        case RideStatus.RIDE_CANCELLED:
+          title = '🎉 Ride Rejected';
+          body = reason ?? 'Driver cancelled or rejected ride request, Thank you for using UrCab!';
           break;
         default:
           title = 'Ride Update';
@@ -135,11 +141,18 @@ export class FirebaseNotificationService {
           data: JSON.stringify({
             ...updatedRide,
             rideId,
-            driverInfo: {
-              driverName: `${driverInfo.firstName} ${driverInfo.lastName}`,
-              driverPhone: driverInfo.phone,
-              driverPhoto: driverInfo.photo || '',
-            },
+            driverInfo: driverInfo
+              ? {
+                  driverId: driverInfo.id,
+                  driverName: driverInfo?.fullName
+                    ? driverInfo?.fullName
+                    : `${driverInfo.firstName} ${driverInfo.lastName}`,
+                  driverPhone: driverInfo.phone,
+                  driverPhoto: driverInfo.photo || '',
+                  driverRating: driverInfo.rating || 0,
+                  driverVehicle: driverInfo.vehicle || null,
+                }
+              : null,
           }),
           // timestamp: new Date().toISOString(),
         },

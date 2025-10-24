@@ -13,7 +13,7 @@ import {
   IsMongoId,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { PaymentMethod, RideType } from '@urcab-workspace/shared';
+import { PaymentMethod, RideType, VehicleType } from '@urcab-workspace/shared';
 import { LocationDto } from './location.dto';
 
 export class CreateRideDto {
@@ -42,6 +42,13 @@ export class CreateRideDto {
   })
   @IsEnum(RideType, { message: 'Invalid ride type' })
   rideType: RideType;
+  @ApiProperty({
+    enum: VehicleType,
+    description: 'Type of vehicle',
+    example: VehicleType.COMPACT,
+  })
+  @IsEnum(VehicleType, { message: 'Invalid vehicle type' })
+  vehicleType: VehicleType;
 
   @ApiProperty({
     enum: PaymentMethod,
@@ -52,14 +59,23 @@ export class CreateRideDto {
   @IsNotEmpty({ message: 'Payment method is required' })
   paymentMethod: PaymentMethod;
 
-  @ApiPropertyOptional({
-    description: 'Selected driver ID (optional - if not provided, system will find available drivers)',
-    type: String,
-    example: '6895aa24e3cfb4357b561b46',
-  })
-  @IsOptional()
-  @IsMongoId()
-  selectedDriverId?: string;
+  // @ApiPropertyOptional({
+  //   description: 'Selected driver ID (optional - if not provided, system will find available drivers)',
+  //   type: String,
+  //   example: '6895aa24e3cfb4357b561b46',
+  // })
+  // @IsOptional()
+  // @IsMongoId()
+  // selectedDriverId?: string;
+
+  // @ApiProperty({
+  //   description: 'Selected Vehicle ID',
+  //   type: String,
+  //   example: '6895aa24e3cfb4357b561b46',
+  // })
+  // @IsNotEmpty()
+  // @IsMongoId()
+  // vehicleId?: string;
 
   @ApiPropertyOptional({
     example: '2024-12-31T10:30:00.000Z',

@@ -1,5 +1,5 @@
 // services/ride-websocket.service.ts
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { RideGateway } from './gateway/ride.gateway';
 import {
@@ -309,34 +309,85 @@ export class RideWebSocketService {
     try {
       const rideRequest = await this.rideRepository.findById(rideId);
 
-      if (rideRequest) {
-        const driver = await this.userRepository.findById(rideRequest?.selectedDriverId.toString());
-        const passenger = await this.userRepository.findById(rideRequest.passengerId.toString());
+      if (!rideRequest) {
+        throw new NotFoundException('Ride not found');
+      }
 
-        const updatedRide = await this.rideRepository.findOneAndUpdate(
-          { _id: new Types.ObjectId(rideId) },
-          {
-            status: RideStatus.REJECTED_BY_DRIVER,
-            cancelledAt: new Date(),
-            cancelReason: 'Driver did not respond in time',
-          },
-        );
-
-        if (passenger?.fcmToken) {
-          await this.firebaseNotificationService.sendRideStatusUpdate(
-            passenger.fcmToken,
-            'DRIVER_REJECTED',
-            rideId,
-            driver,
-            updatedRide,
+      if (
+        [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.REJECTED_BY_DRIVER].includes(rideRequest.status as RideStatus)
+      ) {
+        if (rideRequest) {
+          let driver: any = null;
+          if (rideRequest?.selectedDriverId) {
+            driver = await this.userRepository.findById(rideRequest?.selectedDriverId.toString());
+          }
+          const passenger = await this.userRepository.findById(rideRequest.passengerId._id.toString());
+          const updatedRide = await this.rideRepository.findOneAndUpdate(
+            { _id: new Types.ObjectId(rideId) },
+            {
+              status: RideStatus.RIDE_TIMEOUT,
+              cancelledAt: new Date(),
+              cancelReason: 'Drivers did not respond in time',
+            },
           );
-        }
 
-        await this.rideRepository.findByIdAndDelete(rideId);
+          if (passenger?.fcmToken) {
+            await this.firebaseNotificationService.sendRideStatusUpdate(
+              passenger.fcmToken,
+              RideStatus.RIDE_TIMEOUT,
+              rideId,
+              driver,
+              updatedRide,
+            );
+          }
+
+          await this.rideRepository.findByIdAndDelete(rideId);
+        }
+        // return;
       }
     } catch (error) {
       console.log(error, '====error====');
       this.logger.error(`Failed to handle ride request expiry: ${error?.message}`);
+    }
+  }
+
+  private validateStatusChange(currentStatus: RideStatus, newStatus: RideStatus): void {
+    const validTransitions: Record<RideStatus, RideStatus[]> = {
+      [RideStatus.SEARCHING_DRIVER]: [
+        RideStatus.PENDING_DRIVER_ACCEPTANCE,
+        RideStatus.DRIVER_ACCEPTED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.PENDING_DRIVER_ACCEPTANCE]: [
+        RideStatus.DRIVER_ACCEPTED,
+        RideStatus.REJECTED_BY_DRIVER,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
+      [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
+      [RideStatus.DRIVER_ACCEPTED]: [
+        RideStatus.DRIVER_AT_PICKUPLOCATION,
+        RideStatus.RIDE_CANCELLED,
+        RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+      ],
+      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_TIMEOUT]: [],
+      [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
+        RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+        RideStatus.RIDE_STARTED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.DRIVER_HAS_PICKUP_PASSENGER]: [
+        RideStatus.RIDE_STARTED,
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.RIDE_COMPLETED]: [RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_CANCELLED]: [],
+    };
+
+    if (!validTransitions[currentStatus]?.includes(newStatus)) {
+      throw new BadRequestException(`Invalid status transition from ${currentStatus} to ${newStatus}`);
     }
   }
 

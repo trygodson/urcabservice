@@ -25,6 +25,7 @@ export enum RideStatus {
   RIDE_STARTED = 'ride_started',
   RIDE_COMPLETED = 'ride_completed',
   RIDE_CANCELLED = 'ride_cancelled',
+  RIDE_TIMEOUT = 'ride_timeout',
   REJECTED_BY_DRIVER = 'rejected_by_driver',
 }
 
