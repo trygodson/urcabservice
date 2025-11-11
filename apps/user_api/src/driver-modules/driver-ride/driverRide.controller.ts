@@ -58,8 +58,12 @@ export class DriverRideController {
     description: 'Ride cannot be accepted',
   })
   @SetRolesMetaData(Role.DRIVER)
-  async acceptRide(@Param('id') rideId: string, @CurrentUser() user: any) {
-    return await this.driverRidesService.acceptRide(rideId, user?._id);
+  async acceptRide(
+    @Param('id') rideId: string,
+    @Body() currentLocation: { latitude: number; longitude: number },
+    @CurrentUser() user: any,
+  ) {
+    return await this.driverRidesService.acceptRide(rideId, user?._id, currentLocation);
   }
 
   @Get('nearby/requests')

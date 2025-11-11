@@ -151,6 +151,7 @@ export class FirebaseNotificationService {
                   driverPhoto: driverInfo.photo || '',
                   driverRating: driverInfo.rating || 0,
                   driverVehicle: driverInfo.vehicle || null,
+                  currentLocation: driverInfo?.currentLocation || null,
                 }
               : null,
           }),

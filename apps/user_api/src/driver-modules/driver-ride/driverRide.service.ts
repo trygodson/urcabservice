@@ -64,7 +64,12 @@ export class DriverRideService {
     private readonly firebaseRideService: FirebaseRideService,
   ) {}
 
-  async acceptRide(rideId: string, driverId: Types.ObjectId): Promise<RideResponseDto> {
+  async acceptRide(
+    rideId: string,
+    driverId: Types.ObjectId,
+    currentLocation: { latitude: number; longitude: number },
+  ): Promise<RideResponseDto> {
+    // console.log(currentLocation, '=====currentLocation====');
     try {
       const ride = await this.rideRepository.findById(rideId);
 
@@ -111,7 +116,7 @@ export class DriverRideService {
           passenger.fcmToken,
           'DRIVER_ACCEPTED',
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, currentLocation },
           updatedRide,
         );
       }
