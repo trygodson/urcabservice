@@ -25,18 +25,18 @@ export class UploadFileService {
   private cloudinary: any;
 
   constructor(private configService: ConfigService) {
-    this.bucketName = this.configService.getOrThrow('GCS_BUCKET_NAME');
     this.cloudinary = CloudinaryConfig.initialize(
       this.configService.get('CLOUDINARY_NAME'),
       this.configService.get('CLOUDINARY_KEY'),
       this.configService.get('CLOUDINARY_SECRET'),
     );
     // Initialize Google Cloud Storage
-    const serviceAccountPath = path.join(process.cwd(), 'urcabpassenger-demo.json');
-    this.storage = new Storage({
-      keyFilename: serviceAccountPath,
-      projectId: this.configService.getOrThrow('FIREBASE_PROJECT_ID'),
-    });
+    // this.bucketName = this.configService.getOrThrow('GCS_BUCKET_NAME');
+    // const serviceAccountPath = path.join(process.cwd(), 'urcabpassenger-demo.json');
+    // this.storage = new Storage({
+    //   keyFilename: serviceAccountPath,
+    //   projectId: this.configService.getOrThrow('FIREBASE_PROJECT_ID'),
+    // });
   }
 
   async uploadFileCloudinary(
@@ -74,72 +74,72 @@ export class UploadFileService {
     }
   }
 
-  async uploadFile(
-    fileBuffer: Buffer,
-    originalName: string,
-    mimeType: string,
-    options: FileUploadOptions = {},
-  ): Promise<UploadResult> {
-    try {
-      // Validate file
-      this.validateFile(fileBuffer, mimeType, options);
+  // async uploadFile(
+  //   fileBuffer: Buffer,
+  //   originalName: string,
+  //   mimeType: string,
+  //   options: FileUploadOptions = {},
+  // ): Promise<UploadResult> {
+  //   try {
+  //     // Validate file
+  //     this.validateFile(fileBuffer, mimeType, options);
 
-      // Generate unique filename
-      const filename = this.generateUniqueFilename(originalName, null);
+  //     // Generate unique filename
+  //     const filename = this.generateUniqueFilename(originalName, null);
 
-      // Get bucket reference
-      const bucket = this.storage.bucket(this.bucketName);
-      const file = bucket.file(filename);
+  //     // Get bucket reference
+  //     const bucket = this.storage.bucket(this.bucketName);
+  //     const file = bucket.file(filename);
 
-      // Create write stream
-      const stream = file.createWriteStream({
-        metadata: {
-          contentType: mimeType,
-          metadata: {
-            originalName,
-            uploadedAt: new Date().toISOString(),
-          },
-        },
-        resumable: false, // Use simple upload for smaller files
-      });
+  //     // Create write stream
+  //     const stream = file.createWriteStream({
+  //       metadata: {
+  //         contentType: mimeType,
+  //         metadata: {
+  //           originalName,
+  //           uploadedAt: new Date().toISOString(),
+  //         },
+  //       },
+  //       resumable: false, // Use simple upload for smaller files
+  //     });
 
-      // Upload the file
-      await new Promise<void>((resolve, reject) => {
-        stream.on('error', (error) => {
-          console.error('Upload error:', error);
-          reject(new InternalServerErrorException('File upload failed'));
-        });
+  //     // Upload the file
+  //     await new Promise<void>((resolve, reject) => {
+  //       stream.on('error', (error) => {
+  //         console.error('Upload error:', error);
+  //         reject(new InternalServerErrorException('File upload failed'));
+  //       });
 
-        stream.on('finish', () => {
-          resolve();
-        });
+  //       stream.on('finish', () => {
+  //         resolve();
+  //       });
 
-        stream.end(fileBuffer);
-      });
+  //       stream.end(fileBuffer);
+  //     });
 
-      // Make file public if requested
-      // if (options.makePublic !== false) {
-      //   await file.makePublic();
-      // }
+  //     // Make file public if requested
+  //     // if (options.makePublic !== false) {
+  //     //   await file.makePublic();
+  //     // }
 
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
+  //     // Generate public URL
+  //     const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
 
-      return {
-        publicUrl,
-        filename,
-        originalName,
-        size: fileBuffer.length,
-        contentType: mimeType,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
-        throw error;
-      }
-      console.error('Upload service error:', error);
-      throw new InternalServerErrorException('File upload failed');
-    }
-  }
+  //     return {
+  //       publicUrl,
+  //       filename,
+  //       originalName,
+  //       size: fileBuffer.length,
+  //       contentType: mimeType,
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+  //       throw error;
+  //     }
+  //     console.error('Upload service error:', error);
+  //     throw new InternalServerErrorException('File upload failed');
+  //   }
+  // }
 
   // async uploadMultipleFiles(
   //   files: Array<{ buffer: Buffer; originalName: string; mimeType: string }>,
