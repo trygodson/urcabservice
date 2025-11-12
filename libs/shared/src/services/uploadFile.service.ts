@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import * as crypto from 'crypto';
 import * as path from 'path';
+import { CloudinaryConfig } from '../config/cloudinaryConfig';
 
 export interface UploadResult {
   publicUrl: string;
@@ -21,16 +22,56 @@ export interface FileUploadOptions {
 export class UploadFileService {
   private storage: Storage;
   private bucketName: string;
+  private cloudinary: any;
 
   constructor(private configService: ConfigService) {
     this.bucketName = this.configService.getOrThrow('GCS_BUCKET_NAME');
-
+    this.cloudinary = CloudinaryConfig.initialize(
+      this.configService.get('CLOUDINARY_NAME'),
+      this.configService.get('CLOUDINARY_KEY'),
+      this.configService.get('CLOUDINARY_SECRET'),
+    );
     // Initialize Google Cloud Storage
     const serviceAccountPath = path.join(process.cwd(), 'urcabpassenger-demo.json');
     this.storage = new Storage({
       keyFilename: serviceAccountPath,
       projectId: this.configService.getOrThrow('FIREBASE_PROJECT_ID'),
     });
+  }
+
+  async uploadFileCloudinary(
+    fileBuffer: Buffer,
+    originalName: string,
+    mimeType: string,
+    options: FileUploadOptions = {},
+  ): Promise<UploadResult> {
+    try {
+      // Validate file
+      this.validateFile(fileBuffer, mimeType, options);
+
+      const base64File = fileBuffer.toString('base64');
+      const base64String = `data:${mimeType};base64,${base64File}`;
+
+      // Upload to Cloudinary
+      const uploadResponse = await this.cloudinary.uploader.upload(base64String, {
+        resource_type: 'auto',
+        filename_override: originalName,
+      });
+
+      return {
+        publicUrl: uploadResponse.secure_url,
+        filename: uploadResponse.public_id,
+        originalName,
+        size: fileBuffer.length,
+        contentType: mimeType,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      console.error('Cloudinary Upload error:', error);
+      throw new InternalServerErrorException('File upload failed');
+    }
   }
 
   async uploadFile(
@@ -100,40 +141,40 @@ export class UploadFileService {
     }
   }
 
-  async uploadMultipleFiles(
-    files: Array<{ buffer: Buffer; originalName: string; mimeType: string }>,
-    options: FileUploadOptions = {},
-  ): Promise<UploadResult[]> {
-    const uploadPromises = files.map((file) => this.uploadFile(file.buffer, file.originalName, file.mimeType, options));
+  // async uploadMultipleFiles(
+  //   files: Array<{ buffer: Buffer; originalName: string; mimeType: string }>,
+  //   options: FileUploadOptions = {},
+  // ): Promise<UploadResult[]> {
+  //   const uploadPromises = files.map((file) => this.uploadFile(file.buffer, file.originalName, file.mimeType, options));
 
-    return Promise.all(uploadPromises);
-  }
+  //   return Promise.all(uploadPromises);
+  // }
 
-  async deleteFile(filename: string): Promise<void> {
-    try {
-      const bucket = this.storage.bucket(this.bucketName);
-      const file = bucket.file(filename);
+  // async deleteFile(filename: string): Promise<void> {
+  //   try {
+  //     const bucket = this.storage.bucket(this.bucketName);
+  //     const file = bucket.file(filename);
 
-      await file.delete();
-      console.log(`File ${filename} deleted successfully`);
-    } catch (error) {
-      console.error('Delete error:', error);
-      throw new InternalServerErrorException('File deletion failed');
-    }
-  }
+  //     await file.delete();
+  //     console.log(`File ${filename} deleted successfully`);
+  //   } catch (error) {
+  //     console.error('Delete error:', error);
+  //     throw new InternalServerErrorException('File deletion failed');
+  //   }
+  // }
 
-  async getFileMetadata(filename: string) {
-    try {
-      const bucket = this.storage.bucket(this.bucketName);
-      const file = bucket.file(filename);
+  // async getFileMetadata(filename: string) {
+  //   try {
+  //     const bucket = this.storage.bucket(this.bucketName);
+  //     const file = bucket.file(filename);
 
-      const [metadata] = await file.getMetadata();
-      return metadata;
-    } catch (error) {
-      console.error('Get metadata error:', error);
-      throw new InternalServerErrorException('Failed to get file metadata');
-    }
-  }
+  //     const [metadata] = await file.getMetadata();
+  //     return metadata;
+  //   } catch (error) {
+  //     console.error('Get metadata error:', error);
+  //     throw new InternalServerErrorException('Failed to get file metadata');
+  //   }
+  // }
 
   private validateFile(buffer: Buffer, mimeType: string, options: FileUploadOptions): void {
     // Check file size

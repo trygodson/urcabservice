@@ -103,6 +103,6 @@ export class UserController {
       maxSize: 5 * 1024 * 1024, // 5MB
     };
 
-    return this.uploadFileService.uploadFile(file.buffer, file.originalname, file.mimetype, options);
+    return this.uploadFileService.uploadFileCloudinary(file.buffer, file.originalname, file.mimetype, options);
   }
 }
