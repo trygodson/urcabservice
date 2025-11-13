@@ -67,7 +67,7 @@ export class Ride extends AbstractDocument {
     ref: Vehicle.name,
     required: false,
   })
-  vehicleId?: Types.ObjectId;
+  selectedVehicleId?: Types.ObjectId;
 
   @ApiProperty()
   @Prop({

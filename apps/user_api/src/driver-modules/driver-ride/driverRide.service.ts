@@ -101,6 +101,7 @@ export class DriverRideService {
         driverId,
         status: RideStatus.DRIVER_ACCEPTED,
         selectedDriverId: driverId,
+        selectedVehicleId: vehicle._id,
         driverAssignedAt: new Date(),
       });
 

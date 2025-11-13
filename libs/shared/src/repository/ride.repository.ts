@@ -60,7 +60,20 @@ export class RideRepository extends AbstractRepository<Ride> {
 
     const [rides, total] = await Promise.all([
       this.model
-        .find({ passengerId })
+        .find({
+          passengerId,
+          status: {
+            $in: [
+              RideStatus.DRIVER_AT_PICKUPLOCATION,
+              RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
+              RideStatus.RIDE_STARTED,
+              RideStatus.RIDE_COMPLETED,
+              RideStatus.RIDE_CANCELLED,
+              RideStatus.RIDE_TIMEOUT,
+              RideStatus.REJECTED_BY_DRIVER,
+            ],
+          },
+        })
         .populate('driverId', 'firstName lastName phone photo')
         .sort({ createdAt: -1 })
         .skip(skip)
