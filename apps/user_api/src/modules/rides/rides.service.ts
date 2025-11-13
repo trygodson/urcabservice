@@ -425,6 +425,28 @@ export class RidesService {
     return this.mapToResponseDto(ride);
   }
 
+  async getRideByIdDriverLocation(rideId: string, userId: Types.ObjectId): Promise<any> {
+    const ride = await this.rideRepository.findById(rideId);
+    if (!ride) {
+      throw new NotFoundException('Ride not found');
+    }
+
+    // Ensure user can access this ride (either passenger or assigned driver)
+    if (!ride.passengerId.equals(userId) && (!ride.driverId || !ride.driverId.equals(userId))) {
+      throw new BadRequestException('Unauthorized to access this ride');
+    }
+
+    const driverLocation = await this.driverLocationRepository.getDriverLocation(ride.driverId);
+
+    if (!driverLocation) {
+      throw new NotFoundException('Driver location not found');
+    }
+
+    return {
+      driverLocation: driverLocation?.location,
+    };
+  }
+
   async updateRide(rideId: string, updateRideDto: UpdateRideDto, userId: Types.ObjectId): Promise<RideResponseDto> {
     const ride = await this.rideRepository.findById(rideId);
     if (!ride) {

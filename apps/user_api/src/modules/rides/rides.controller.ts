@@ -241,6 +241,18 @@ export class RidesController {
     return await this.ridesService.getRideById(rideId, userId);
   }
 
+  @Get(':id/driver-location')
+  @ApiOperation({ summary: 'Get ride driver location by ID' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getRideByIdDriverLocation(@Param('id') rideId: string, @CurrentUser() user: User): Promise<RideResponseDto> {
+    if (!Types.ObjectId.isValid(rideId)) {
+      throw new BadRequestException('Invalid ride ID format');
+    }
+
+    const userId = new Types.ObjectId(user._id);
+    return await this.ridesService.getRideByIdDriverLocation(rideId, userId);
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Update ride details' })
   @ApiParam({

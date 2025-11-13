@@ -14,4 +14,8 @@ export class UserRepository extends AbstractRepository<User> {
   ) {
     super(reservationModel);
   }
+
+  async findDriverByIdWithDriverLocation(userId: string): Promise<User> {
+    return this.model.findOne({ _id: userId }).populate('driverLocation').exec();
+  }
 }
