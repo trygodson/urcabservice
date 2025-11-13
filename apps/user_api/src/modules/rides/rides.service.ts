@@ -443,7 +443,8 @@ export class RidesService {
     }
 
     return {
-      driverLocation: driverLocation?.location,
+      success: true,
+      data: driverLocation?.location,
     };
   }
 
