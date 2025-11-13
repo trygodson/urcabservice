@@ -35,13 +35,16 @@ import {
   ResetPasswordDto,
   User,
   VerifyOtpDto,
+  DriverOnlineStatus,
 } from '@urcab-workspace/shared';
+import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 // import { WalletsService } from '../wallets/wallets.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly driverLocationRepository: DriverLocationRepository,
     private readonly refreshTokenReposiotry: RefreshTokenRepository,
     // private readonly countryRepository: CountryRepository,
     // @Inject(forwardRef(() => WalletsService))
@@ -78,6 +81,24 @@ export class AuthService {
         success: true,
         messsage: 'User Created successfully Otp Sent',
         data: { verificationToken },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async logout(user: User) {
+    try {
+      let dd = await this.driverLocationRepository.findOneAndUpdate(
+        { driverId: new Types.ObjectId(user._id) },
+        { status: DriverOnlineStatus.OFFLINE, isAvailableForRides: false },
+      );
+      if (!dd) {
+        throw new NotFoundException('Driver not found');
+      }
+      return {
+        success: true,
+        message: 'Driver logged out successfully',
       };
     } catch (error) {
       throw error;

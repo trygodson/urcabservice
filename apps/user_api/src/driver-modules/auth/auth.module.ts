@@ -9,6 +9,8 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { JwtDStrategy, LocalStrategy } from './strategies';
 import {
   DatabaseModule,
+  DriverLocation,
+  DriverLocationSchema,
   LoggerModule,
   RefreshToken,
   RefreshTokenRepository,
@@ -17,6 +19,7 @@ import {
   UserRepository,
   UserSchema,
 } from '@urcab-workspace/shared';
+import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 
 @Module({
   imports: [
@@ -36,6 +39,7 @@ import {
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: DriverLocation.name, schema: DriverLocationSchema },
       // { name: RefreshToken.name, schema: RefreshTokenSchema },
       // { name: Country.name, schema: CountrySchema },
       // { name: Wallet.name, schema: WalletSchema },
@@ -43,7 +47,7 @@ import {
     // forwardRef(() => WalletsModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserRepository, RefreshTokenRepository],
+  providers: [AuthService, UserRepository, DriverLocationRepository, RefreshTokenRepository],
   exports: [AuthService],
 })
 export class DriverAuthModule {}

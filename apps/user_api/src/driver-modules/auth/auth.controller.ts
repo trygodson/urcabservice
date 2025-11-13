@@ -19,6 +19,8 @@ import {
   LoginDto,
   RegisterUserDto,
   ResetPasswordDto,
+  Role,
+  SetRolesMetaData,
   User,
   VerifyOtpDto,
 } from '@urcab-workspace/shared';
@@ -39,6 +41,15 @@ export class AuthController {
   @Post('login')
   async login(@CurrentUser() user: User, @Body() body: LoginDto) {
     return await this.authService.login(user, body);
+  }
+
+  @ApiBody({ type: LoginDto })
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @ApiBearerAuth()
+  @SetRolesMetaData(Role.DRIVER)
+  async logout(@CurrentUser() user: User) {
+    return await this.authService.logout(user);
   }
 
   @UseInterceptors(ClassSerializerInterceptor)
