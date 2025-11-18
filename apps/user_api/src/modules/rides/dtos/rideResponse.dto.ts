@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Types } from 'mongoose';
-import { RideStatus, RideType, VehicleType } from '@urcab-workspace/shared';
+import { RideStatus, RideType, VehicleType, VehicleTypeEnum } from '@urcab-workspace/shared';
 import { IsNumber, IsPositive, Min } from 'class-validator';
 
 export class RideResponseDto {
@@ -160,8 +160,8 @@ export class VehiclePriceRequestDto {
 export class VehiclePriceDto {
   @ApiProperty({
     description: 'Type of vehicle',
-    enum: VehicleType,
-    example: VehicleType.SEDAN,
+
+    example: '',
   })
   type: string;
 
@@ -182,6 +182,26 @@ export class VehiclePriceDto {
     example: 20,
   })
   estimatedDuration: number;
+
+  @ApiProperty({
+    description: 'Vehicle type ID reference',
+    example: '60d21b4667d0d8992e610c85',
+  })
+  vehicleTypeId?: string;
+
+  @ApiProperty({
+    description: 'Description of the vehicle type',
+    example: 'Comfortable sedan for city travel',
+    required: false,
+  })
+  description?: string;
+
+  @ApiProperty({
+    description: 'URL to the vehicle type icon',
+    example: 'https://example.com/icons/sedan.png',
+    required: false,
+  })
+  iconUrl?: string;
 }
 
 export class VehiclePriceListResponseDto {

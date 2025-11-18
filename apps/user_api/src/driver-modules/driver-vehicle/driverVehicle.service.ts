@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { VehicleRepository } from './repository/vehicle.repository';
-import { User, UserRepository, Vehicle } from '@urcab-workspace/shared';
+import { User, UserRepository, Vehicle, VehicleTypeRepository } from '@urcab-workspace/shared';
 import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto } from './dto';
 import { InjectModel } from '@nestjs/mongoose';
 
@@ -18,6 +18,7 @@ export class VehicleService {
 
   constructor(
     private readonly vehicleRepository: VehicleRepository,
+    private readonly vehicleTypeRepository: VehicleTypeRepository,
     @InjectModel(User.name) private readonly userRepository: Model<User>,
   ) {}
 
@@ -44,7 +45,10 @@ export class VehicleService {
         createVehicleDto.isPrimary = true;
       }
 
-      const savedVehicle = await this.vehicleRepository.createVehicle(driverId, createVehicleDto);
+      const savedVehicle = await this.vehicleRepository.createVehicle(driverId, {
+        ...createVehicleDto,
+        vehicleTypeId: createVehicleDto.vehicleTypeId ? new Types.ObjectId(createVehicleDto.vehicleTypeId) : undefined,
+      });
 
       return this.mapToResponseDto(savedVehicle);
     } catch (error) {
@@ -100,7 +104,19 @@ export class VehicleService {
         }
       }
 
-      const updatedVehicle = await this.vehicleRepository.updateVehicle(vehicleObjectId, updateVehicleDto);
+      if (updateVehicleDto.vehicleTypeId) {
+        const vehicleType = await this.vehicleTypeRepository.getVehicleTypeById(
+          new Types.ObjectId(updateVehicleDto.vehicleTypeId),
+        );
+        if (!vehicleType) {
+          throw new NotFoundException('Vehicle type not found');
+        }
+      }
+
+      const updatedVehicle = await this.vehicleRepository.updateVehicle(vehicleObjectId, {
+        ...updateVehicleDto,
+        vehicleTypeId: updateVehicleDto.vehicleTypeId ? new Types.ObjectId(updateVehicleDto.vehicleTypeId) : undefined,
+      });
 
       if (!updatedVehicle) {
         throw new NotFoundException('Vehicle not found');
@@ -125,6 +141,9 @@ export class VehicleService {
   async getDriverVehicles(driverId: Types.ObjectId, includeInactive: boolean = false): Promise<VehicleResponseDto[]> {
     try {
       const vehicles = await this.vehicleRepository.getDriverVehicles(driverId, includeInactive);
+
+      console.log(vehicles, '=====vehicles===');
+      // return [];
       return vehicles.map((vehicle) => this.mapToResponseDto(vehicle));
     } catch (error) {
       this.logger.error(`Failed to get vehicles for driver ${driverId}`, error.stack);
@@ -165,6 +184,24 @@ export class VehicleService {
       this.logger.error(`Failed to get primary vehicle for driver ${driverId}`, error.stack);
       throw new BadRequestException('Failed to get primary vehicle');
     }
+  }
+
+  async getVehicleTypes(query: any = {}) {
+    const filter = {};
+    if (query.search) {
+      filter['name'] = { $regex: query.search, $options: 'i' };
+    }
+
+    if (query.isActive !== undefined) {
+      filter['isActive'] = query.isActive === 'true';
+    }
+
+    const vehicleTypes = await this.vehicleTypeRepository.model.find(filter);
+
+    return {
+      success: true,
+      data: vehicleTypes,
+    };
   }
 
   async setPrimaryVehicle(vehicleId: string, driverId: Types.ObjectId): Promise<VehicleResponseDto> {
@@ -272,7 +309,7 @@ export class VehicleService {
       vin: vehicle.vin,
       status: vehicle.status,
       seatingCapacity: vehicle.seatingCapacity,
-      vehicleType: vehicle.vehicleType,
+      vehicleType: vehicle.vehicleTypeId,
       backPhoto: vehicle.backPhoto,
       frontPhoto: vehicle.frontPhoto,
       leftPhoto: vehicle.leftPhoto,

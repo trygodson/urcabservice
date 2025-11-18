@@ -30,7 +30,7 @@ export class PassengerDocument extends AbstractDocument {
     ref: User.name,
     required: true,
   })
-  driverId: Types.ObjectId;
+  passengerId: Types.ObjectId;
 
   @ApiProperty()
   @Prop({
@@ -179,11 +179,11 @@ export const PassengerDocumentSchema = SchemaFactory.createForClass(PassengerDoc
 export type PassengerDocumentDocument = PassengerDocument & Document;
 
 // Indexes for performance
-PassengerDocumentSchema.index({ driverId: 1 });
-PassengerDocumentSchema.index({ driverId: 1, documentType: 1 });
+PassengerDocumentSchema.index({ passengerId: 1 });
+PassengerDocumentSchema.index({ passengerId: 1, documentType: 1 });
 PassengerDocumentSchema.index({ status: 1 });
 PassengerDocumentSchema.index({ expiryDate: 1 });
-PassengerDocumentSchema.index({ driverId: 1, status: 1 });
+PassengerDocumentSchema.index({ passengerId: 1, status: 1 });
 PassengerDocumentSchema.index({ documentType: 1, status: 1 });
 PassengerDocumentSchema.index({ isExpiringSoon: 1 });
-PassengerDocumentSchema.index({ driverId: 1, isActive: 1 });
+PassengerDocumentSchema.index({ passengerId: 1, isActive: 1 });

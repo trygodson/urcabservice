@@ -18,6 +18,7 @@
     "start:debug": "nest start --debug --watch",
     "start:userprod": "node dist/apps/user_api/main.js",
     "start:adminprod": "node dist/apps/admin_api/main.js",
+    "seed:vehicleTypes": "ts-node scripts/seed-vehicle-types.ts",
     "gcp:build:user": "npm run build",
     "gcp:build:driver": "npm run driver",
     "gcp:build:admin": "npm run abuild",

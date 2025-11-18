@@ -2,8 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { VehicleStatus, VehicleType } from '../enums';
+import { VehicleStatus } from '../enums';
 import { User } from './user.schema';
+import { VehicleType } from './vehicleType.schema';
 
 @Schema({ collection: 'vehicle', timestamps: true })
 export class Vehicle extends AbstractDocument {
@@ -92,12 +93,11 @@ export class Vehicle extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
-    type: String,
+    type: SchemaTypes.ObjectId,
+    ref: VehicleType.name,
     required: true,
-    enum: VehicleType,
-    default: VehicleType.TAXI,
   })
-  vehicleType?: string; // e.g., 'sedan', 'suv', 'hatchback'
+  vehicleTypeId?: Types.ObjectId; // e.g., 'sedan', 'suv', 'hatchback'
 
   @ApiProperty()
   @Prop({

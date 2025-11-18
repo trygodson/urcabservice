@@ -215,7 +215,7 @@ export class NRICDetailsPassengerDto {
 
 export interface PassengerDocumentResponseDto {
   _id: string;
-  driverId: string;
+  passengerId: string;
   documentType: string;
   status: string;
   nricDetails?: {

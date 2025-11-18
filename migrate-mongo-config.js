@@ -6,7 +6,7 @@ console.log('MongoDB URI loaded:', process.env.MONGODB_URI ? 'Yes' : 'No');
 
 const config = {
   mongodb: {
-    url: process.env.MONGODB_URI || 'mongodb://localhost:27017/ondrcontest',
+    url: process.env.MONGODB_URI || 'mongodb://localhost:27017/urcab',
     databaseName: 'urcab',
     options: {
       useNewUrlParser: true, // removes a deprecation warning when connecting

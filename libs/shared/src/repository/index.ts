@@ -10,3 +10,4 @@ export * from './earnings.repository';
 export * from './notification.repository';
 export * from './driver-document.repository';
 export * from './vehicle-document.repository';
+export * from './vehicleType.repository';

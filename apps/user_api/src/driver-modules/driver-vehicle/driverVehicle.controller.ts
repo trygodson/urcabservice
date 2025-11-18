@@ -124,6 +124,22 @@ export class VehicleController {
     return await this.vehicleService.getPrimaryVehicle(driverId);
   }
 
+  @Get('types')
+  @ApiOperation({ summary: 'Get driver primary vehicle' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Primary vehicle retrieved successfully',
+    // type: VehicleResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'No primary vehicle found',
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async getVehicleTypes(@CurrentUser() user: User): Promise<any> {
+    return await this.vehicleService.getVehicleTypes();
+  }
+
   @Get(':vehicleId')
   @ApiOperation({ summary: 'Get vehicle by ID' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID', type: 'string' })

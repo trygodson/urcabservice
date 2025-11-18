@@ -2,9 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { RideStatus, RideType, PaymentMethod, PaymentStatus, VehicleType } from '../enums';
+import { RideStatus, RideType, PaymentMethod, PaymentStatus } from '../enums';
 import { User } from './user.schema';
 import { Vehicle } from './vehicle.schema';
+import { VehicleType } from './vehicleType.schema';
 
 interface GeoJSONPoint {
   type: 'Point';
@@ -55,11 +56,12 @@ export class Ride extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
-    type: String,
-    enum: VehicleType,
+    type: SchemaTypes.ObjectId,
+    ref: VehicleType.name,
+
     required: false,
   })
-  vehicleType?: string;
+  vehicleType?: Types.ObjectId;
 
   @ApiProperty()
   @Prop({

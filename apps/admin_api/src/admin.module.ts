@@ -6,6 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AdminAuthModule } from './auth';
 import { AdminDriversModule } from './drivers/adminDrivers.module';
+import { VehicleTypesModule } from './vehicleTypes/vehicleTypes.module';
+import { AdminPassengersModule } from './passengers/adminPassengers.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { AdminDriversModule } from './drivers/adminDrivers.module';
     // ),
     AdminAuthModule,
     AdminDriversModule,
+    VehicleTypesModule,
+    AdminPassengersModule,
   ],
 
   // providers: [AdminService],

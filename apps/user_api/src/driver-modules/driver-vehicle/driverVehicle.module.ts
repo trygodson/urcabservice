@@ -11,6 +11,9 @@ import {
   VehicleDocumentRecord,
   VehicleDocumentSchema,
   VehicleSchema,
+  VehicleType,
+  VehicleTypeRepository,
+  VehicleTypeSchema,
 } from '@urcab-workspace/shared';
 import { VehicleRepository } from './repository/vehicle.repository';
 import { VehicleDocumentRepository } from './repository/vehicleDocument.repository';
@@ -35,9 +38,16 @@ import { VehicleDocumentService } from './driverVehicleDocument.service';
       { name: User.name, schema: UserSchema },
       { name: Vehicle.name, schema: VehicleSchema },
       { name: VehicleDocumentRecord.name, schema: VehicleDocumentSchema },
+      { name: VehicleType.name, schema: VehicleTypeSchema },
     ]),
   ],
-  providers: [VehicleRepository, VehicleDocumentRepository, VehicleService, VehicleDocumentService],
+  providers: [
+    VehicleRepository,
+    VehicleDocumentRepository,
+    VehicleTypeRepository,
+    VehicleService,
+    VehicleDocumentService,
+  ],
   controllers: [VehicleController, VehicleDocumentController],
 })
 export class DriverVehicleModule {}

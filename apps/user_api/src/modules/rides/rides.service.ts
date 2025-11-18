@@ -10,6 +10,7 @@ import {
   VEHICLE_CAPACITY,
   VehicleRepository,
   VehicleType,
+  VehicleTypeRepository,
 } from '@urcab-workspace/shared';
 import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceDto } from './dtos';
 import { RideStatus, RideType } from '@urcab-workspace/shared';
@@ -26,6 +27,7 @@ export class RidesService {
     private readonly driverLocationRepository: DriverLocationRepository,
     private readonly userRepository: UserRepository,
     private readonly vehicleRepository: VehicleRepository,
+    private readonly vehicleTypeRepository: VehicleTypeRepository,
     private readonly ratingRepository: RatingRepository,
     private readonly rideWebSocketService: RideWebSocketService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
@@ -77,7 +79,7 @@ export class RidesService {
           address: createRideDto.dropoffLocation.address,
           placeId: createRideDto.dropoffLocation.placeId,
         },
-        vehicleType: createRideDto.vehicleType,
+        vehicleType: new Types.ObjectId(createRideDto.vehicleTypeId),
         rideType: createRideDto.rideType,
         scheduledTime: createRideDto.rideType === RideType.IMMEDIATE ? new Date() : createRideDto.scheduledTime,
         passengerCount: createRideDto.passengerCount || 1,
@@ -93,7 +95,7 @@ export class RidesService {
 
       // 6. Send ride request notification to selected driver and wait for response
       // await this.sendRideRequestToSelectedDriver(rideRequest, selectedDriver, passenger);
-      let dd = await this.findAndNotifyDrivers(rideRequest, passenger, createRideDto.vehicleType);
+      let dd = await this.findAndNotifyDrivers(rideRequest, passenger, createRideDto.vehicleTypeId);
       if (dd == false) {
         throw new NotFoundException(`Unable to find drivers in the area`);
       } else {
@@ -211,51 +213,55 @@ export class RidesService {
     seatingCapacity: number,
     distance: number,
   ): Promise<{ success: boolean; data: VehiclePriceDto[] }> {
-    // Get all vehicle types with capacity greater than or equal to the required capacity
-    const eligibleVehicleTypes = Object.entries(VEHICLE_CAPACITY)
-      .filter(([_, capacity]) => capacity >= seatingCapacity)
-      .map(([type, capacity]) => ({ type, capacity }));
+    try {
+      // Calculate estimated duration based on distance
+      const estimatedDuration = this.estimateDuration(distance);
 
-    // Calculate estimated duration based on distance
-    const estimatedDuration = this.estimateDuration(distance);
+      // Query the database for all active vehicle types
+      const vehicleTypes = await this.vehicleTypeRepository.findActiveVehicleTypes();
 
-    // Calculate price for each eligible vehicle type
-    const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map(({ type, capacity }) => {
-      // Apply different pricing multipliers based on vehicle type
-      let priceMultiplier = 1.0;
-
-      // Group vehicles by category and apply appropriate price multiplier
-      if (['sedan', 'hatchback', 'compact', 'taxi'].includes(type)) {
-        priceMultiplier = 1.0; // Economy
-      } else if (['suv_small', 'crossover', 'estate', 'electric_car', 'hybrid'].includes(type)) {
-        priceMultiplier = 1.2; // Comfort
-      } else if (['luxury_sedan', 'executive', 'suv_large', 'luxury_suv'].includes(type)) {
-        priceMultiplier = 1.5; // Premium
-      } else if (['mpv', 'minivan', 'pickup_truck'].includes(type)) {
-        priceMultiplier = 1.3; // Large
-      } else if (['van', 'microbus'].includes(type)) {
-        priceMultiplier = 1.8; // XL
-      } else if (['limousine'].includes(type)) {
-        priceMultiplier = 2.5; // Luxury
-      } else if (['wheelchair_accessible'].includes(type)) {
-        priceMultiplier = 1.4; // Accessible
-      } else {
-        priceMultiplier = 1.2; // Default
+      if (!vehicleTypes || vehicleTypes.length === 0) {
+        this.logger.warn('No active vehicle types found in database');
+        return { success: false, data: [] };
       }
 
-      const basePrice = this.calculateFare(distance, estimatedDuration);
-      const finalPrice = basePrice * priceMultiplier;
+      // Filter vehicle types by required capacity
+      const eligibleVehicleTypes = vehicleTypes.filter((vt) => vt.capacity >= seatingCapacity);
 
+      if (eligibleVehicleTypes.length === 0) {
+        this.logger.debug(`No vehicle types found with capacity >= ${seatingCapacity}`);
+        return { success: false, data: [] };
+      }
+
+      // Calculate price for each eligible vehicle type
+      const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map((vt) => {
+        // Use pricePerKM from vehicle type schema
+        const basePrice = this.calculateFare(distance, estimatedDuration);
+
+        // Apply pricing multiplier from database or default to 1.0
+        const priceMultiplier = vt.pricePerKM || 1.0;
+        const finalPrice = basePrice * priceMultiplier;
+
+        return {
+          type: vt.name,
+          capacity: vt.capacity,
+          estimatedPrice: parseFloat(finalPrice.toFixed(2)),
+          estimatedDuration: Math.round(estimatedDuration),
+          vehicleTypeId: vt._id.toString(),
+          description: vt.description,
+          iconUrl: vt.iconUrl,
+        };
+      });
+
+      // Sort by price (ascending)
       return {
-        type,
-        capacity,
-        estimatedPrice: parseFloat(finalPrice.toFixed(2)),
-        estimatedDuration: Math.round(estimatedDuration),
+        success: true,
+        data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice),
       };
-    });
-
-    // Sort by price (ascending)
-    return { success: true, data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice) };
+    } catch (error) {
+      this.logger.error(`Error fetching vehicle types by capacity and price: ${error.message}`, error.stack);
+      return { success: false, data: [] };
+    }
   }
 
   private async sendRideRequestToSelectedDriver(
@@ -637,7 +643,7 @@ export class RidesService {
     return this.mapToResponseDto(updatedRide);
   }
 
-  private async findAndNotifyDrivers(ride: any, passenger: any, vehicleType: VehicleType): Promise<boolean | void> {
+  private async findAndNotifyDrivers(ride: any, passenger: any, vehicleType: string): Promise<boolean | void> {
     // console.log(ride, '=====ride====', passenger, '=====passenger====', vehicleType, '=====vehicleType====');
     try {
       // Get pickup location coordinates
@@ -755,7 +761,7 @@ export class RidesService {
     radiusInKm: number = 10,
     limit: number = 20,
     passenger: number,
-    vehicleType: VehicleType = VehicleType.COMPACT,
+    vehicleTypeId?: Types.ObjectId | string,
   ): Promise<any> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
@@ -766,7 +772,7 @@ export class RidesService {
         radiusInKm,
         limit,
         passenger,
-        vehicleType,
+        vehicleTypeId,
       );
 
       this.logger.log(`Found ${nearbyDrivers.length} nearby drivers`);

@@ -42,13 +42,13 @@ export class CreateRideDto {
   })
   @IsEnum(RideType, { message: 'Invalid ride type' })
   rideType: RideType;
+
   @ApiProperty({
-    enum: VehicleType,
-    description: 'Type of vehicle',
-    example: VehicleType.COMPACT,
+    description: 'Vehicle type ID',
+    example: '6895aa24e3cfb4357b561b46',
   })
-  @IsEnum(VehicleType, { message: 'Invalid vehicle type' })
-  vehicleType: VehicleType;
+  @IsMongoId({ message: 'Invalid vehicle type' })
+  vehicleTypeId: string;
 
   @ApiProperty({
     enum: PaymentMethod,

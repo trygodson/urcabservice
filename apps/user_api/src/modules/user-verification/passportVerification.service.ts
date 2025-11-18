@@ -12,7 +12,7 @@ export class PassportVerificationService {
 
   async uploadPassportDocument(userId: Types.ObjectId, passportDetails: PassportDetailsDto) {
     const existingDocument = await this.passengerDocumentRepository.findOne({
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.PASSPORT,
       isActive: true,
     });
@@ -23,7 +23,7 @@ export class PassportVerificationService {
 
     const document = await this.passengerDocumentRepository.create({
       _id: new Types.ObjectId(),
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.PASSPORT,
       status: DocumentStatus.PENDING,
       passportDetails,
@@ -43,7 +43,7 @@ export class PassportVerificationService {
 
   async getPassportDocument(userId: Types.ObjectId) {
     const document = await this.passengerDocumentRepository.findOne({
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.PASSPORT,
       isActive: true,
     });
@@ -54,7 +54,7 @@ export class PassportVerificationService {
   async updatePassportDocument(documentId: string, userId: Types.ObjectId, passportDetails: PassportDetailsDto) {
     const document = await this.passengerDocumentRepository.findOne({
       _id: new Types.ObjectId(documentId),
-      driverId: userId,
+      passengerId: userId,
       isActive: true,
     });
 
@@ -91,7 +91,7 @@ export class PassportVerificationService {
   private mapToResponseDto(document: any): PassengerDocumentResponseDto {
     return {
       _id: document._id.toString(),
-      driverId: document.driverId.toString(),
+      passengerId: document.passengerId.toString(),
       documentType: document.documentType,
       status: document.status,
 

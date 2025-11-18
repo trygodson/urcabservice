@@ -23,6 +23,7 @@ export class VehicleRepository extends AbstractRepository<VehicleDocument> {
 
       const vehicle = new this.model({
         ...vehicleData,
+        vehicleTypeId: vehicleData.vehicleTypeId ? new Types.ObjectId(vehicleData.vehicleTypeId) : undefined,
         _id: new Types.ObjectId(),
         driverId,
         status: VehicleStatus.PENDING_VERIFICATION,
@@ -55,6 +56,7 @@ export class VehicleRepository extends AbstractRepository<VehicleDocument> {
           vehicleId,
           {
             ...updateData,
+            vehicleTypeId: updateData.vehicleTypeId ? new Types.ObjectId(updateData.vehicleTypeId) : undefined,
             updatedAt: new Date(),
           },
           { new: true, runValidators: true },
@@ -74,7 +76,7 @@ export class VehicleRepository extends AbstractRepository<VehicleDocument> {
         query.isActive = true;
       }
 
-      return await this.model.find(query).sort({ isPrimary: -1, createdAt: -1 }).exec();
+      return await this.model.find(query).populate('vehicleTypeId').sort({ isPrimary: -1, createdAt: -1 }).exec();
     } catch (error) {
       this.logger.error(`Failed to get vehicles for driver ${driverId}`, error.stack);
       throw error;
@@ -83,7 +85,7 @@ export class VehicleRepository extends AbstractRepository<VehicleDocument> {
 
   async getVehicleById(vehicleId: Types.ObjectId): Promise<VehicleDocument | null> {
     try {
-      return await this.model.findById(vehicleId).exec();
+      return await this.model.findById(vehicleId).populate('vehicleTypeId').exec();
     } catch (error) {
       this.logger.error(`Failed to get vehicle by id ${vehicleId}`, error.stack);
       throw error;

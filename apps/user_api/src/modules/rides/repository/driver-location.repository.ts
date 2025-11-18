@@ -105,15 +105,15 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
     radiusInKm: number = 10,
     limit: number = 20,
     passengerCount: number = 4,
-    vehicleType: VehicleType,
+    vehicleTypeId?: Types.ObjectId | string,
   ): Promise<DriverLocationDocument[]> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      if (!vehicleType || !Object.values(VehicleType).includes(vehicleType)) {
-        this.logger.warn(`Invalid vehicle type requested: ${vehicleType}`);
-        throw new Error('Invalid vehicle type');
-      }
+      // if (!vehicleType || !Object.values(VehicleType).includes(vehicleType)) {
+      //   this.logger.warn(`Invalid vehicle type requested: ${vehicleType}`);
+      //   throw new Error('Invalid vehicle type');
+      // }
       const res = await this.model
         .aggregate([
           // Use $geoNear as the first stage instead of $near in $match
@@ -197,7 +197,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                     isPrimary: true,
                     isActive: true,
                     // seatingCapacity: { $gte: passengerCount },
-                    vehicleType: vehicleType,
+                    vehicleType: vehicleTypeId,
                     // status: 'verified',
                   },
                 },
@@ -218,13 +218,37 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
             },
           },
           {
+            $lookup: {
+              from: 'vehicleType',
+              localField: 'vehicle.vehicleType',
+              foreignField: 'name',
+              as: 'vehicleTypeInfo',
+              pipeline: [
+                {
+                  $match: {
+                    isActive: true,
+                  },
+                },
+                {
+                  $project: {
+                    name: 1,
+                    pricePerKM: 1,
+                    capacity: 1,
+                    description: 1,
+                    iconUrl: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
             $addFields: {
               debugLookup: {
                 hasDriver: { $gt: [{ $size: '$driver' }, 0] },
                 hasVehicle: { $gt: [{ $size: '$vehicle' }, 0] },
                 driverCount: { $size: '$driver' },
                 vehicleCount: { $size: '$vehicle' },
-                requestedVehicleType: vehicleType,
+                requestedVehicleType: vehicleTypeId,
               },
             },
           },
@@ -232,6 +256,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
             $match: {
               'driver.0': { $exists: true }, // Ensure driver exists and is verified
               'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
+              'vehicleTypeInfo.0': { $exists: true }, // Ensure vehicle type info exists
             },
           },
           {
@@ -240,23 +265,29 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           {
             $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: false },
           },
+          {
+            $unwind: { path: '$vehicleTypeInfo', preserveNullAndEmptyArrays: false },
+          },
 
           {
             $addFields: {
-              // Calculate fare multiplier based on vehicle type and capacity
+              // Use pricePerKM from vehicleType schema as fare multiplier
               fareMultiplier: {
-                $switch: {
-                  branches: [
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.LUXURY_SEDAN] }, then: 1.5 },
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.LUXURY_SUV] }, then: 1.8 },
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.EXECUTIVE] }, then: 1.4 },
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.MPV] }, then: 1.3 },
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.VAN] }, then: 1.6 },
-                    { case: { $eq: ['$vehicle.vehicleType', VehicleType.MINIVAN] }, then: 1.4 },
-                    { case: { $gt: ['$vehicle.seatingCapacity', 6] }, then: 1.5 },
-                  ],
-                  default: 1.0,
+                $cond: {
+                  if: {
+                    $and: [{ $isNumber: '$vehicleTypeInfo.pricePerKM' }, { $gt: ['$vehicleTypeInfo.pricePerKM', 0] }],
+                  },
+                  then: { $divide: ['$vehicleTypeInfo.pricePerKM', 1.0] }, // Normalize against base price of 1.0
+                  else: 1.0, // Default value if pricePerKM is not set or valid
                 },
+              },
+              // Add vehicle type info for easy access
+              vehicleTypeDetails: {
+                name: '$vehicleTypeInfo.name',
+                pricePerKM: '$vehicleTypeInfo.pricePerKM',
+                capacity: '$vehicleTypeInfo.capacity',
+                description: '$vehicleTypeInfo.description',
+                iconUrl: '$vehicleTypeInfo.iconUrl',
               },
             },
           },
@@ -276,9 +307,10 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
               distanceInKm: 1,
               driver: 1,
               vehicle: 1,
+              vehicleTypeDetails: 1,
               fareMultiplier: 1,
               canAccommodatePassengers: {
-                $gte: ['$vehicle.seatingCapacity', passengerCount],
+                $gte: [{ $ifNull: ['$vehicleTypeInfo.capacity', '$vehicle.seatingCapacity'] }, passengerCount],
               },
               estimatedArrivalTime: {
                 $add: [

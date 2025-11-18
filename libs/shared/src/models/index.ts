@@ -12,3 +12,4 @@ export * from './driver-document.schema';
 export * from './vehicle-document.schema';
 export * from './driver-location.schema';
 export * from './passenger-document.schema';
+export * from './vehicleType.schema';

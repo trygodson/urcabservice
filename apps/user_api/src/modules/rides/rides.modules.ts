@@ -19,6 +19,9 @@ import {
   Vehicle,
   VehicleRepository,
   VehicleSchema,
+  VehicleType,
+  VehicleTypeRepository,
+  VehicleTypeSchema,
 } from '@urcab-workspace/shared';
 import { RidesController } from './rides.controller';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +52,7 @@ import { RideGateway } from './gateway/ride.gateway';
       { name: Vehicle.name, schema: VehicleSchema },
       { name: Rating.name, schema: RatingSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
+      { name: VehicleType.name, schema: VehicleTypeSchema },
     ]),
     NotificationsModule,
   ],
@@ -63,6 +67,7 @@ import { RideGateway } from './gateway/ride.gateway';
     RideRepository,
     DriverLocationRepository,
     RatingRepository,
+    VehicleTypeRepository,
   ],
   exports: [RidesService, RideWebSocketService, RideGateway],
 })

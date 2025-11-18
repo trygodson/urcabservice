@@ -12,6 +12,7 @@ import {
   IsNotEmpty,
   Matches,
   ArrayMaxSize,
+  IsMongoId,
 } from 'class-validator';
 
 export class CreateVehicleDto {
@@ -103,9 +104,9 @@ export class CreateVehicleDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString()
+  @IsMongoId()
   @Length(1, 50)
-  vehicleType?: string;
+  vehicleTypeId?: string;
 
   @ApiPropertyOptional({
     description: 'Vehicle photos URL',
@@ -262,9 +263,9 @@ export class UpdateVehicleDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString()
+  @IsMongoId()
   @Length(1, 50)
-  vehicleType?: string;
+  vehicleTypeId?: string;
 
   @ApiPropertyOptional({
     description: 'Vehicle photos URLs',
@@ -338,7 +339,7 @@ export class VehicleResponseDto {
   seatingCapacity: number;
 
   @ApiPropertyOptional()
-  vehicleType?: string;
+  vehicleType?: any;
 
   @ApiPropertyOptional()
   backPhoto?: string;

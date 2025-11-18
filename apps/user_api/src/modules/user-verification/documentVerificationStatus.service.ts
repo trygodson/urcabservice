@@ -13,7 +13,7 @@ export class DocumentVerificationStatusService {
 
   async getVerificationStatus(userId: Types.ObjectId): Promise<UserDocumentsSummaryDto> {
     const documents = await this.passengerDocumentRepository.find({
-      driverId: userId,
+      passengerId: userId,
       isActive: true,
     });
 

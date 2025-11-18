@@ -19,7 +19,7 @@ export class NRICVerificationService {
 
   async uploadNRICDocument(userId: Types.ObjectId, nricDetails: NRICDetailsPassengerDto) {
     const existingDocument = await this.passengerDocumentRepository.findOne({
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.NRIC,
       isActive: true,
     });
@@ -30,7 +30,7 @@ export class NRICVerificationService {
 
     const document = await this.passengerDocumentRepository.create({
       _id: new Types.ObjectId(),
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.NRIC,
       status: DocumentStatus.PENDING,
       nricDetails,
@@ -51,7 +51,7 @@ export class NRICVerificationService {
 
   async getNRICDocument(userId: Types.ObjectId) {
     const document = await this.passengerDocumentRepository.findOne({
-      driverId: userId,
+      passengerId: userId,
       documentType: DocumentType.NRIC,
       isActive: true,
     });
@@ -62,7 +62,7 @@ export class NRICVerificationService {
   async updateNRICDocument(documentId: string, userId: Types.ObjectId, nricDetails: NRICDetailsPassengerDto) {
     const document = await this.passengerDocumentRepository.findOne({
       _id: new Types.ObjectId(documentId),
-      driverId: userId,
+      passengerId: userId,
       isActive: true,
     });
 
@@ -93,7 +93,7 @@ export class NRICVerificationService {
   private mapToResponseDto(document: any): PassengerDocumentResponseDto {
     return {
       _id: document._id.toString(),
-      driverId: document.driverId.toString(),
+      passengerId: document.passengerId.toString(),
       documentType: document.documentType,
       status: document.status,
       nricDetails: document.nricDetails
