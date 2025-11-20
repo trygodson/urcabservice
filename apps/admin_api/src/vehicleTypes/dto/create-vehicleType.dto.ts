@@ -1,11 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsBoolean, IsOptional, IsEnum, IsUrl, Min } from 'class-validator';
-import { VehicleType } from '@urcab-workspace/shared';
+import {
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsOptional,
+  IsEnum,
+  IsUrl,
+  Min,
+  ValidateNested,
+  ArrayMinSize,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { VehicleTypeEnum } from '@urcab-workspace/shared';
+import { PricingPeriodDto } from './pricing-period.dto';
 
 export class CreateVehicleTypeDto {
   @ApiProperty({ description: 'Vehicle type name (from VehicleType enum)' })
   @IsString()
-  @IsEnum(VehicleType)
+  @IsEnum(VehicleTypeEnum)
   name: string;
 
   @ApiProperty({ description: 'Description of the vehicle type', required: false })
@@ -13,10 +25,15 @@ export class CreateVehicleTypeDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'Price per kilometer for this vehicle type' })
-  @IsNumber()
-  @Min(0)
-  pricePerKM: number;
+  @ApiProperty({
+    description: 'Array of pricing periods for different times of day',
+    type: () => PricingPeriodDto,
+    isArray: true,
+  })
+  @ValidateNested({ each: true })
+  @ArrayMinSize(1)
+  @Type(() => PricingPeriodDto)
+  pricingPeriods: PricingPeriodDto[];
 
   @ApiProperty({ description: 'Passenger capacity for this vehicle type' })
   @IsNumber()

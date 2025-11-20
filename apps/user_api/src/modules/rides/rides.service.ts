@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import {
+  DriverEvpRepository,
   FirebaseNotificationService,
   PaymentMethod,
   PaymentStatus,
@@ -31,6 +32,7 @@ export class RidesService {
     private readonly ratingRepository: RatingRepository,
     private readonly rideWebSocketService: RideWebSocketService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
+    private readonly driverEvpRepository: DriverEvpRepository,
   ) {}
 
   async bookRide(passengerId: Types.ObjectId, createRideDto: CreateRideDto): Promise<RideResponseDto> {
@@ -235,12 +237,8 @@ export class RidesService {
 
       // Calculate price for each eligible vehicle type
       const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map((vt) => {
-        // Use pricePerKM from vehicle type schema
-        const basePrice = this.calculateFare(distance, estimatedDuration);
-
-        // Apply pricing multiplier from database or default to 1.0
-        const priceMultiplier = vt.pricePerKM || 1.0;
-        const finalPrice = basePrice * priceMultiplier;
+        // Calculate price based on time periods
+        const finalPrice = this.calculateTimeBasedFare(vt, distance);
 
         return {
           type: vt.name,
@@ -261,6 +259,96 @@ export class RidesService {
     } catch (error) {
       this.logger.error(`Error fetching vehicle types by capacity and price: ${error.message}`, error.stack);
       return { success: false, data: [] };
+    }
+  }
+
+  /**
+   * Test endpoint to calculate prices with a specific time of day
+   * @param seatingCapacity Required seating capacity
+   * @param distance Distance in kilometers
+   * @param timeString Time in HH:MM format to simulate
+   * @returns Vehicle prices at the specified time
+   */
+  async testPricesWithTime(
+    seatingCapacity: number,
+    distance: number,
+    timeString: string,
+  ): Promise<{ success: boolean; data: VehiclePriceDto[]; currentTime: string }> {
+    try {
+      // Calculate estimated duration based on distance
+      const estimatedDuration = this.estimateDuration(distance);
+
+      // Query the database for all active vehicle types
+      const vehicleTypes = await this.vehicleTypeRepository.findActiveVehicleTypes();
+
+      if (!vehicleTypes || vehicleTypes.length === 0) {
+        this.logger.warn('No active vehicle types found in database');
+        return { success: false, data: [], currentTime: timeString };
+      }
+
+      // Filter vehicle types by required capacity
+      const eligibleVehicleTypes = vehicleTypes.filter((vt) => vt.capacity >= seatingCapacity);
+
+      if (eligibleVehicleTypes.length === 0) {
+        this.logger.debug(`No vehicle types found with capacity >= ${seatingCapacity}`);
+        return { success: false, data: [], currentTime: timeString };
+      }
+
+      // Calculate price for each eligible vehicle type with the provided time
+      const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map((vt) => {
+        // Find pricing period for the specific time
+        const pricingPeriod = this.findApplicablePricingPeriod(vt.pricingPeriods, timeString);
+
+        // Calculate price based on pricing period or fallback to default
+        let finalPrice = 0;
+
+        if (pricingPeriod) {
+          // Add base fare for initial distance
+          finalPrice = pricingPeriod.baseFare;
+
+          // If distance exceeds base distance, add incremental charges
+          if (distance > pricingPeriod.baseDistance) {
+            const extraDistance = distance - pricingPeriod.baseDistance;
+            const incrementsNeeded = Math.ceil(extraDistance / pricingPeriod.incrementalDistance);
+            finalPrice += incrementsNeeded * pricingPeriod.incrementalRate;
+          }
+        } else {
+          // Fallback if no period found
+          finalPrice = this.calculateFare(distance, estimatedDuration);
+        }
+
+        return {
+          type: vt.name,
+          capacity: vt.capacity,
+          estimatedPrice: parseFloat(finalPrice.toFixed(2)),
+          estimatedDuration: Math.round(estimatedDuration),
+          vehicleTypeId: vt._id.toString(),
+          description: vt.description,
+          iconUrl: vt.iconUrl,
+          // Include pricing period info for debugging
+          pricingPeriod: pricingPeriod
+            ? {
+                name: pricingPeriod.name,
+                startTime: pricingPeriod.startTime,
+                endTime: pricingPeriod.endTime,
+                baseFare: pricingPeriod.baseFare,
+                baseDistance: pricingPeriod.baseDistance,
+                incrementalRate: pricingPeriod.incrementalRate,
+                incrementalDistance: pricingPeriod.incrementalDistance,
+              }
+            : 'No applicable pricing period found',
+        };
+      });
+
+      // Sort by price (ascending)
+      return {
+        success: true,
+        data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice),
+        currentTime: timeString,
+      };
+    } catch (error) {
+      this.logger.error(`Error testing prices with time ${timeString}: ${error.message}`, error.stack);
+      return { success: false, data: [], currentTime: timeString };
     }
   }
 
@@ -389,6 +477,137 @@ export class RidesService {
     // Basic estimation: assume average speed of 30 km/h in city
     const avgSpeed = 30; // km/h
     return (distance / avgSpeed) * 60; // Convert to minutes
+  }
+
+  /**
+   * Calculate fare using time-based pricing model from vehicle type
+   * @param vehicleType The vehicle type with pricing periods
+   * @param distance Distance in kilometers
+   * @returns Calculated fare in RM
+   */
+  private calculateTimeBasedFare(vehicleType: any, distance: number): number {
+    // Get current time
+    const now = new Date();
+    const currentTimeString =
+      now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+    // Find applicable pricing period
+    let applicablePeriod = this.findApplicablePricingPeriod(vehicleType.pricingPeriods, currentTimeString);
+
+    // If no applicable period found, use a default pricing
+    if (!applicablePeriod) {
+      this.logger.warn(
+        `No applicable pricing period found for ${vehicleType.name} at ${currentTimeString}, using fallback pricing`,
+      );
+      return this.calculateFare(distance, this.estimateDuration(distance));
+    }
+
+    // Calculate fare based on pricing period rules
+    let fare = 0;
+
+    // Add base fare for initial distance
+    fare += applicablePeriod.baseFare;
+
+    // If distance exceeds base distance, add incremental charges
+    if (distance > applicablePeriod.baseDistance) {
+      const extraDistance = distance - applicablePeriod.baseDistance;
+      const incrementsNeeded = Math.ceil(extraDistance / applicablePeriod.incrementalDistance);
+      fare += incrementsNeeded * applicablePeriod.incrementalRate;
+    }
+
+    return fare;
+  }
+
+  /**
+   * Find the applicable pricing period for the given time
+   * @param pricingPeriods Array of pricing periods from vehicle type
+   * @param currentTime Current time in HH:MM format
+   * @returns The applicable pricing period or null if none found
+   */
+  private findApplicablePricingPeriod(pricingPeriods: any[], currentTime: string): any {
+    if (!pricingPeriods || pricingPeriods.length === 0) {
+      return null;
+    }
+
+    // First check for exact time range match
+    for (const period of pricingPeriods) {
+      if (this.isTimeInRange(currentTime, period.startTime, period.endTime)) {
+        return period;
+      }
+    }
+
+    // If no exact match, find the closest period
+    let closestPeriod = pricingPeriods[0];
+    let smallestDifference = Number.MAX_SAFE_INTEGER;
+
+    for (const period of pricingPeriods) {
+      // Calculate difference from current time to period start and end
+      const startDiff = this.calculateTimeDifference(currentTime, period.startTime);
+      const endDiff = this.calculateTimeDifference(currentTime, period.endTime);
+
+      // Take the smaller difference
+      const minDiff = Math.min(startDiff, endDiff);
+
+      if (minDiff < smallestDifference) {
+        smallestDifference = minDiff;
+        closestPeriod = period;
+      }
+    }
+
+    return closestPeriod;
+  }
+
+  /**
+   * Check if a time is within a given range
+   * @param time Time to check (HH:MM format)
+   * @param startTime Range start (HH:MM format)
+   * @param endTime Range end (HH:MM format)
+   * @returns Boolean indicating if time is in range
+   */
+  private isTimeInRange(time: string, startTime: string, endTime: string): boolean {
+    // Convert all times to minutes since midnight for easy comparison
+    const timeMinutes = this.timeToMinutes(time);
+    const startMinutes = this.timeToMinutes(startTime);
+    const endMinutes = this.timeToMinutes(endTime);
+
+    // Handle normal range (e.g., 09:00-17:00)
+    if (startMinutes < endMinutes) {
+      return timeMinutes >= startMinutes && timeMinutes < endMinutes;
+    }
+    // Handle overnight range (e.g., 22:00-06:00)
+    else {
+      return timeMinutes >= startMinutes || timeMinutes < endMinutes;
+    }
+  }
+
+  /**
+   * Convert time string to minutes since midnight
+   * @param time Time in HH:MM format
+   * @returns Minutes since midnight
+   */
+  private timeToMinutes(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  /**
+   * Calculate absolute difference between two times
+   * @param time1 First time in HH:MM format
+   * @param time2 Second time in HH:MM format
+   * @returns Difference in minutes
+   */
+  private calculateTimeDifference(time1: string, time2: string): number {
+    const minutes1 = this.timeToMinutes(time1);
+    const minutes2 = this.timeToMinutes(time2);
+
+    // Handle times across midnight
+    let diff = Math.abs(minutes1 - minutes2);
+    if (diff > 720) {
+      // More than 12 hours difference means it's closer the other way around
+      diff = 1440 - diff; // 1440 = 24 hours in minutes
+    }
+
+    return diff;
   }
 
   private calculateFare(distance: number, duration: number): number {
@@ -652,7 +871,7 @@ export class RidesService {
 
       // Find nearby available drivers within expanding radius
       let nearbyDrivers = [];
-      const searchRadiuses = [2, 3, 4, 5, 6, 7, 8, 9, 10, 20]; // km
+      const searchRadiuses = [2, 3, 4, 5, 6, 7, 8]; // km
 
       for (const radius of searchRadiuses) {
         nearbyDrivers = await this.driverLocationRepository.findNearbyDriversWithVehicles(
@@ -703,6 +922,22 @@ export class RidesService {
           if (!driver || !driver.fcmToken) {
             continue;
           }
+
+          // Check if driver has a valid EVP
+          const driverEvp = await this.driverEvpRepository.findDriverActiveEvp(driverLocation.driverId);
+          if (!driverEvp) {
+            this.logger.warn(`Driver ${driverLocation.driverId} has no active EVP - skipping notification`);
+            continue;
+          }
+
+          // Check if EVP is valid (not expired)
+          const now = new Date();
+          if (driverEvp.endDate < now) {
+            this.logger.warn(`Driver ${driverLocation.driverId} has an expired EVP - skipping notification`);
+            continue;
+          }
+
+          // Additional validation from original function
           const selectedDriver = await this.validateSelectedDriver(
             driverLocation.driverId.toString(),
             ride.pickupLocation.coordinates,
@@ -775,17 +1010,39 @@ export class RidesService {
         vehicleTypeId,
       );
 
-      this.logger.log(`Found ${nearbyDrivers.length} nearby drivers`);
+      this.logger.log(`Found ${nearbyDrivers.length} nearby drivers before EVP validation`);
 
-      if (nearbyDrivers.length === 0) {
+      // Filter drivers to only include those with valid EVPs
+      const driversWithValidEvp = [];
+      for (const driver of nearbyDrivers) {
+        // Check if driver has a valid EVP
+        const driverEvp = await this.driverEvpRepository.findDriverActiveEvp(driver.driverId);
+        if (!driverEvp) {
+          this.logger.warn(`Driver ${driver.driverId} has no active EVP - excluding from results`);
+          continue;
+        }
+
+        // Check if EVP is valid (not expired)
+        const now = new Date();
+        if (driverEvp.endDate < now) {
+          this.logger.warn(`Driver ${driver.driverId} has an expired EVP - excluding from results`);
+          continue;
+        }
+
+        driversWithValidEvp.push(driver);
+      }
+
+      this.logger.log(`Found ${driversWithValidEvp.length} nearby drivers with valid EVPs`);
+
+      if (driversWithValidEvp.length === 0) {
         // Run debug search to understand why no drivers were found
         const debugInfo = await this.driverLocationRepository.debugNearbyDriverSearch(longitude, latitude, radiusInKm);
-        this.logger.warn('No drivers found, debug info:', debugInfo);
+        this.logger.warn('No drivers found with valid EVPs, debug info:', debugInfo);
       }
 
       return {
         success: true,
-        data: nearbyDrivers.map((driver) => this.mapToNearbyDriverResponseDto(driver)),
+        data: driversWithValidEvp.map((driver) => this.mapToNearbyDriverResponseDto(driver)),
       };
     } catch (error) {
       this.logger.error(`Failed to find nearby drivers near [${longitude}, ${latitude}]`, error.stack);

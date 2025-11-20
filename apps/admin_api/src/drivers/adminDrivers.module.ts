@@ -5,6 +5,8 @@ import {
   DatabaseModule,
   DriverDocument,
   DriverDocumentSchema,
+  DriverEvp,
+  DriverEvpSchema,
   IssueReport,
   IssueReportSchema,
   LoggerModule,
@@ -26,6 +28,7 @@ import {
   AdminUserRepository,
   AdminVehicleDocumentRepository,
   AdminVehicleRepository,
+  AdminDriverEvpRepository,
 } from './repository';
 
 @Module({
@@ -37,6 +40,7 @@ import {
       { name: VehicleDocumentRecord.name, schema: VehicleDocumentSchema },
       { name: Ride.name, schema: RideSchema },
       { name: IssueReport.name, schema: IssueReportSchema },
+      { name: DriverEvp.name, schema: DriverEvpSchema },
     ]),
     LoggerModule,
 
@@ -60,6 +64,7 @@ import {
     AdminVehicleRepository,
     AdminVehicleDocumentRepository,
     AdminIssueReportRepository,
+    AdminDriverEvpRepository,
   ],
   controllers: [AdminDriversController],
 })

@@ -2,7 +2,7 @@ import { Model, Document, FilterQuery, UpdateQuery, QueryOptions } from 'mongoos
 import { NotFoundException } from '@nestjs/common';
 
 export abstract class AbstractRepository<TDocument extends Document> {
-  constructor(protected readonly model: Model<TDocument>) {}
+  constructor(readonly model: Model<TDocument>) {}
 
   async create(createDto: any): Promise<TDocument> {
     const createdDocument = new this.model(createDto);

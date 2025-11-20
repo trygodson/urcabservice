@@ -82,6 +82,58 @@ export class RidesController {
     return vehicles;
   }
 
+  // @Get('vehicles/prices/test-time')
+  // @ApiOperation({ summary: 'Test vehicle prices with specific time of day' })
+  // @ApiQuery({
+  //   name: 'seatingCapacity',
+  //   description: 'Required passenger seating capacity',
+  //   required: true,
+  //   type: 'number',
+  //   example: 4,
+  // })
+  // @ApiQuery({
+  //   name: 'distance',
+  //   description: 'Ride distance in kilometers',
+  //   required: true,
+  //   type: 'number',
+  //   example: 10.5,
+  // })
+  // @ApiQuery({
+  //   name: 'time',
+  //   description: 'Time of day in HH:MM format to simulate',
+  //   required: true,
+  //   type: 'string',
+  //   example: '22:30',
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.OK,
+  //   description: 'Vehicle prices retrieved successfully',
+  //   type: VehiclePriceListResponseDto,
+  // })
+  // @SetRolesMetaData(Role.PASSENGER)
+  // async testTimePrices(
+  //   @Query('seatingCapacity', new ParseIntPipe()) seatingCapacity: number,
+  //   @Query('distance', new ParseFloatPipe()) distance: number,
+  //   @Query('time') timeString: string,
+  // ) {
+  //   if (seatingCapacity < 1) {
+  //     throw new BadRequestException('Seating capacity must be at least 1');
+  //   }
+
+  //   if (distance <= 0) {
+  //     throw new BadRequestException('Distance must be greater than 0');
+  //   }
+
+  //   // Validate time format
+  //   if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeString)) {
+  //     throw new BadRequestException('Time must be in HH:MM format (24-hour)');
+  //   }
+
+  //   const vehicles = await this.ridesService.testPricesWithTime(seatingCapacity, distance, timeString);
+
+  //   return vehicles;
+  // }
+
   @Get('passenger/history')
   @ApiOperation({ summary: 'Get passenger ride history' })
   @ApiQuery({

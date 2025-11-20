@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsBoolean, IsOptional, IsUrl, Min } from 'class-validator';
+import { IsString, IsNumber, IsBoolean, IsOptional, IsUrl, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { PricingPeriodDto } from './pricing-period.dto';
 
 export class UpdateVehicleTypeDto {
   @ApiProperty({ description: 'Description of the vehicle type', required: false })
@@ -7,11 +9,16 @@ export class UpdateVehicleTypeDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'Price per kilometer for this vehicle type', required: false })
+  @ApiProperty({
+    description: 'Array of pricing periods for different times of day',
+    type: [PricingPeriodDto],
+    isArray: true,
+    required: false,
+  })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  pricePerKM?: number;
+  @ValidateNested({ each: true })
+  @Type(() => PricingPeriodDto)
+  pricingPeriods?: PricingPeriodDto[];
 
   @ApiProperty({ description: 'Passenger capacity for this vehicle type', required: false })
   @IsOptional()

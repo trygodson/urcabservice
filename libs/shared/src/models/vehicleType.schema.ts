@@ -4,6 +4,37 @@ import { SchemaTypes, Types, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.schema';
 
+// Define pricing period structure
+class PricingPeriod {
+  @ApiProperty()
+  @Prop({ required: true })
+  name: string; // e.g., "Day Rate", "Night Rate", "Evening Rate"
+
+  @ApiProperty()
+  @Prop({ required: true })
+  startTime: string; // Format: "HH:MM" e.g., "09:00"
+
+  @ApiProperty() 
+  @Prop({ required: true })
+  endTime: string; // Format: "HH:MM" e.g., "17:00"
+
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  baseFare: number; // Base fare for initial distance (e.g., 3RM for 0-2km)
+  
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  baseDistance: number; // Distance covered by base fare in km (e.g., 2km)
+  
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  incrementalRate: number; // Additional fare per increment (e.g., 0.25RM)
+  
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  incrementalDistance: number; // Increment distance in km (e.g., 1km or 0.2km)
+}
+
 @Schema({ collection: 'vehicleType', timestamps: true })
 export class VehicleType extends AbstractDocument {
   @ApiProperty()
@@ -12,14 +43,18 @@ export class VehicleType extends AbstractDocument {
     required: true,
     unique: true,
   })
-  name?: string; // The vehicle type name from the enum
+  name?: string; // The vehicle type name
 
   @ApiProperty()
   @Prop({
     type: String,
     maxlength: 255,
   })
-  description?: string; // Optional description of the vehicle type
+  description?: string;
+
+  @ApiProperty()
+  @Prop({ type: [PricingPeriod], required: true })
+  pricingPeriods?: PricingPeriod[]; // Array of pricing periods
 
   @ApiProperty()
   @Prop({
@@ -27,29 +62,21 @@ export class VehicleType extends AbstractDocument {
     required: true,
     min: 0,
   })
-  pricePerKM?: number; // Price per kilometer for this vehicle type
-
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: true,
-    min: 0,
-  })
-  capacity?: number; // Passenger capacity for this vehicle type
+  capacity?: number;
 
   @ApiProperty()
   @Prop({
     type: String,
     maxlength: 255,
   })
-  iconUrl?: string; // URL for vehicle type icon
+  iconUrl?: string;
 
   @ApiProperty()
   @Prop({
     type: Boolean,
     default: true,
   })
-  isActive?: boolean; // Whether this vehicle type is active in the system
+  isActive?: boolean;
 
   @ApiProperty()
   @Prop({
@@ -57,7 +84,7 @@ export class VehicleType extends AbstractDocument {
     ref: User.name,
     required: false,
   })
-  createdBy?: Types.ObjectId; // Stores ObjectId referencing User who created this entry
+  createdBy?: Types.ObjectId;
 
   @ApiProperty()
   @Prop({
@@ -65,7 +92,7 @@ export class VehicleType extends AbstractDocument {
     ref: User.name,
     required: false,
   })
-  updatedBy?: Types.ObjectId; // Stores ObjectId referencing User who last updated this entry
+  updatedBy?: Types.ObjectId;
 }
 
 export const VehicleTypeSchema = SchemaFactory.createForClass(VehicleType);

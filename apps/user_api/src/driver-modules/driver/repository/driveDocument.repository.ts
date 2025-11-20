@@ -113,7 +113,7 @@ export class DriverDocumentRepository extends AbstractRepository<DriverDocumentD
         query.isActive = true;
       }
 
-      return await this.model.find(query).sort({ documentType: 1, version: -1 }).exec();
+      return await this.model.find(query).sort({ createdAt: -1, version: 1 }).exec();
     } catch (error) {
       this.logger.error(`Failed to get all driver documents for driver ${driverId}`, error.stack);
       throw error;

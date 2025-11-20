@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { DocumentStatus, VehicleStatus, VehicleDocumentStatus, Role } from '@urcab-workspace/shared';
+import {
+  DocumentStatus,
+  VehicleStatus,
+  VehicleDocumentStatus,
+  Role,
+  DocumentType,
+  VehicleDocumentType,
+} from '@urcab-workspace/shared';
 import {
   GetDriversDto,
   DocumentApprovalDto,
@@ -10,9 +17,14 @@ import {
   GetReportsDto,
   AssignReportDto,
   ResolveReportDto,
+  CreateDriverEvpDto,
+  GetDriverEvpsDto,
+  RevokeDriverEvpDto,
+  DriverEvpResponseDto,
 } from './dto';
 import {
   AdminDriverDocumentRepository,
+  AdminDriverEvpRepository,
   AdminIssueReportRepository,
   AdminRideRepository,
   AdminUserRepository,
@@ -29,6 +41,7 @@ export class AdminDriversService {
     private readonly vehicleDocumentRepository: AdminVehicleDocumentRepository,
     private readonly rideRepository: AdminRideRepository,
     private readonly issueReportRepository: AdminIssueReportRepository,
+    private readonly driverEvpRepository: AdminDriverEvpRepository,
   ) {}
 
   // Driver Management Methods
@@ -81,14 +94,8 @@ export class AdminDriversService {
       throw new NotFoundException('Driver not found');
     }
 
-    // Get driver documents
-    const documents = await this.driverDocumentRepository.find(
-      { driverId: new Types.ObjectId(driverId) },
-      {
-        populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
-        sort: { createdAt: -1 },
-      },
-    );
+    // Get driver documents with detailed status
+    const documentDetails = await this.getDriverDocuments(driverId);
 
     // Get driver vehicles
     const vehicles = await this.vehicleRepository.find(
@@ -112,12 +119,33 @@ export class AdminDriversService {
     // Calculate statistics
     const statistics = await this.calculateDriverStatistics(driverId);
 
+    // Check if driver is EVP eligible based on document status
+    const isEvpEligible = documentDetails.hasCompleteDocumentation;
+
+    // Get active EVP if one exists
+    const activeEvp = await this.driverEvpRepository.findOne({
+      driverId: new Types.ObjectId(driverId),
+      isActive: true,
+      endDate: { $gt: new Date() }, // Not expired
+      revokedAt: { $exists: false }, // Not revoked
+    });
+
     return {
       driver,
-      documents,
+      // documents: documentDetails.documents,
+      documentStatus: {
+        stats: documentDetails.stats,
+        status: documentDetails.overallStatus,
+        documentStatuses: documentDetails.documentStatuses,
+        hasCompleteDocumentation: documentDetails.hasCompleteDocumentation,
+      },
       vehicles,
       recentRides,
       statistics,
+      evp: {
+        isEligible: isEvpEligible,
+        activeEvp: activeEvp ? this.mapToEvpResponseDto(activeEvp) : null,
+      },
     };
   }
 
@@ -155,13 +183,120 @@ export class AdminDriversService {
 
   // Driver Documents Methods
   async getDriverDocuments(driverId: string) {
-    return this.driverDocumentRepository.find(
-      { driverId: new Types.ObjectId(driverId) },
-      {
-        populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
-        sort: { createdAt: -1 },
+    // Get all documents for this driver
+    const documents = await this.driverDocumentRepository.model
+      .find({ driverId: new Types.ObjectId(driverId), isActive: true })
+      .populate({ path: 'verifiedByAdminId', select: 'firstName lastName email' })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Create a map of document types for easier lookup
+    const documentMap = new Map();
+    documents.forEach((doc) => {
+      documentMap.set(doc.documentType, doc);
+    });
+
+    // Get required documents from DOCUMENT_REQUIREMENTS
+    const requiredDocuments = this.DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired);
+
+    // For each required document, check if it exists and its status
+    const documentStatuses = this.DOCUMENT_REQUIREMENTS.map((requirement) => {
+      const { documentType, displayName, isRequired, hasExpiry } = requirement;
+      const document = documentMap.get(documentType);
+
+      let status = 'missing';
+      let expiryStatus = null;
+      let expiryDate = null;
+
+      if (document) {
+        status = document.status;
+        expiryDate = document.expiryDate;
+
+        // Check expiry status for documents with expiry dates
+        if (hasExpiry && expiryDate) {
+          const now = new Date();
+          const expiry = new Date(expiryDate);
+          const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (expiry < now) {
+            expiryStatus = 'expired';
+          } else if (daysUntilExpiry <= 30) {
+            expiryStatus = 'expiring_soon';
+          } else {
+            expiryStatus = 'valid';
+          }
+        }
+      }
+
+      return {
+        documentType,
+        displayName,
+        isRequired,
+        hasExpiry,
+        status,
+        expiryStatus,
+        expiryDate,
+        document: document || null,
+      };
+    });
+
+    // Calculate statistics
+    const verifiedCount = documents.filter((doc) => doc.status === DocumentStatus.VERIFIED).length;
+    const rejectedCount = documents.filter((doc) => doc.status === DocumentStatus.REJECTED).length;
+    const expiringSoonCount = documentStatuses.filter((doc) => doc.expiryStatus === 'expiring_soon').length;
+    const expiredCount = documentStatuses.filter((doc) => doc.expiryStatus === 'expired').length;
+
+    // Calculate overall status
+    let overallStatus = 'incomplete';
+    const missingRequiredDocs = requiredDocuments.filter((req) => !documentMap.has(req.documentType)).length;
+
+    const unverifiedRequiredDocs = requiredDocuments.filter((req) => {
+      const doc = documentMap.get(req.documentType);
+      return doc && doc.status !== DocumentStatus.VERIFIED;
+    }).length;
+
+    const expiredRequiredDocs = requiredDocuments.filter((req) => {
+      if (!req.hasExpiry) return false;
+
+      const doc = documentMap.get(req.documentType);
+      if (!doc || !doc.expiryDate) return false;
+
+      return new Date(doc.expiryDate) < new Date();
+    }).length;
+
+    // Determine if all required documents are complete
+    const hasCompleteDocumentation =
+      missingRequiredDocs === 0 && unverifiedRequiredDocs === 0 && expiredRequiredDocs === 0;
+
+    // Set overall status based on document state
+    if (hasCompleteDocumentation) {
+      overallStatus = 'complete';
+    } else if (expiredRequiredDocs > 0) {
+      overallStatus = 'expired';
+    } else if (rejectedCount > 0) {
+      overallStatus = 'rejected';
+    } else if (documents.length === 0) {
+      overallStatus = 'not_started';
+    }
+
+    // Return comprehensive document status information
+    return {
+      driverId: driverId.toString(),
+      // documents,
+      documentStatuses,
+      hasCompleteDocumentation,
+      overallStatus,
+      stats: {
+        uploadedCount: documents.length,
+        requiredCount: requiredDocuments.length,
+        verifiedCount,
+        rejectedCount,
+        expiringSoonCount,
+        expiredCount,
+        missingRequiredCount: missingRequiredDocs,
+        unverifiedRequiredCount: unverifiedRequiredDocs,
       },
-    );
+    };
   }
 
   async getDocumentDetails(documentId: string) {
@@ -281,18 +416,17 @@ export class AdminDriversService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    // Get vehicle documents
-    const documents = await this.vehicleDocumentRepository.find(
-      { vehicleId: new Types.ObjectId(vehicleId) },
-      {
-        populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
-        sort: { createdAt: -1 },
-      },
-    );
+    // Get vehicle documents with enhanced status
+    const documentDetails = await this.getVehicleDocuments(vehicleId);
 
     return {
       vehicle,
-      documents,
+      documentStatus: {
+        stats: documentDetails.stats,
+        status: documentDetails.overallStatus,
+        documentStatuses: documentDetails.documentStatuses,
+        hasCompleteDocumentation: documentDetails.hasCompleteDocumentation,
+      },
     };
   }
 
@@ -303,6 +437,11 @@ export class AdminDriversService {
 
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
+    }
+
+    const documentDetails = await this.getVehicleDocuments(vehicleId);
+    if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
+      throw new BadRequestException('Vehicle documents are complete');
     }
 
     const updateData = {
@@ -324,6 +463,11 @@ export class AdminDriversService {
       throw new NotFoundException('Vehicle not found');
     }
 
+    const documentDetails = await this.getVehicleDocuments(vehicleId);
+    if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
+      throw new BadRequestException('Vehicle documents are complete');
+    }
+
     const updateData = {
       status: VehicleStatus.REJECTED,
       rejectionReason: body.rejectionReason,
@@ -334,13 +478,119 @@ export class AdminDriversService {
 
   // Vehicle Documents Methods
   async getVehicleDocuments(vehicleId: string) {
-    return this.vehicleDocumentRepository.find(
-      { vehicleId: new Types.ObjectId(vehicleId) },
-      {
-        populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
-        sort: { createdAt: -1 },
+    // Get all documents for this vehicle
+    const documents = await this.vehicleDocumentRepository.model
+      .find({ vehicleId: new Types.ObjectId(vehicleId), isActive: true })
+      .populate({ path: 'verifiedByAdminId', select: 'firstName lastName email' })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Create a map of document types for easier lookup
+    const documentMap = new Map();
+    documents.forEach((doc) => {
+      documentMap.set(doc.documentType, doc);
+    });
+
+    // Get required documents from VEHICLE_DOCUMENT_REQUIREMENTS
+    const requiredDocuments = this.VEHICLE_DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired);
+
+    // For each required document, check if it exists and its status
+    const documentStatuses = this.VEHICLE_DOCUMENT_REQUIREMENTS.map((requirement) => {
+      const { documentType, displayName, isRequired, hasExpiry } = requirement;
+      const document = documentMap.get(documentType);
+
+      let status = 'missing';
+      let expiryStatus = null;
+      let expiryDate = null;
+
+      if (document) {
+        status = document.status;
+        expiryDate = document.expiryDate;
+
+        // Check expiry status for documents with expiry dates
+        if (hasExpiry && expiryDate) {
+          const now = new Date();
+          const expiry = new Date(expiryDate);
+          const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (expiry < now) {
+            expiryStatus = 'expired';
+          } else if (daysUntilExpiry <= 30) {
+            expiryStatus = 'expiring_soon';
+          } else {
+            expiryStatus = 'valid';
+          }
+        }
+      }
+
+      return {
+        documentType,
+        displayName,
+        isRequired,
+        hasExpiry,
+        status,
+        expiryStatus,
+        expiryDate,
+        document: document || null,
+      };
+    });
+
+    // Calculate statistics
+    const verifiedCount = documents.filter((doc) => doc.status === VehicleDocumentStatus.VERIFIED).length;
+    const rejectedCount = documents.filter((doc) => doc.status === VehicleDocumentStatus.REJECTED).length;
+    const expiringSoonCount = documentStatuses.filter((doc) => doc.expiryStatus === 'expiring_soon').length;
+    const expiredCount = documentStatuses.filter((doc) => doc.expiryStatus === 'expired').length;
+
+    // Calculate overall status
+    let overallStatus = 'incomplete';
+    const missingRequiredDocs = requiredDocuments.filter((req) => !documentMap.has(req.documentType)).length;
+
+    const unverifiedRequiredDocs = requiredDocuments.filter((req) => {
+      const doc = documentMap.get(req.documentType);
+      return doc && doc.status !== VehicleDocumentStatus.VERIFIED;
+    }).length;
+
+    const expiredRequiredDocs = requiredDocuments.filter((req) => {
+      if (!req.hasExpiry) return false;
+
+      const doc = documentMap.get(req.documentType);
+      if (!doc || !doc.expiryDate) return false;
+
+      return new Date(doc.expiryDate) < new Date();
+    }).length;
+
+    // Determine if all required documents are complete
+    const hasCompleteDocumentation =
+      missingRequiredDocs === 0 && unverifiedRequiredDocs === 0 && expiredRequiredDocs === 0;
+
+    // Set overall status based on document state
+    if (hasCompleteDocumentation) {
+      overallStatus = 'complete';
+    } else if (expiredRequiredDocs > 0) {
+      overallStatus = 'expired';
+    } else if (rejectedCount > 0) {
+      overallStatus = 'rejected';
+    } else if (documents.length === 0) {
+      overallStatus = 'not_started';
+    }
+
+    // Return comprehensive document status information
+    return {
+      vehicleId: vehicleId.toString(),
+      documentStatuses,
+      hasCompleteDocumentation,
+      overallStatus,
+      stats: {
+        uploadedCount: documents.length,
+        requiredCount: requiredDocuments.length,
+        verifiedCount,
+        rejectedCount,
+        expiringSoonCount,
+        expiredCount,
+        missingRequiredCount: missingRequiredDocs,
+        unverifiedRequiredCount: unverifiedRequiredDocs,
       },
-    );
+    };
   }
 
   async getVehicleDocumentDetails(documentId: string) {
@@ -705,5 +955,278 @@ export class AdminDriversService {
   private async updateVehicleDocumentCompletionStatus(vehicleId: Types.ObjectId) {
     // Implement logic to check if all required vehicle documents are approved
     // and update vehicle's hasCompleteDocumentation field
+  }
+
+  private readonly DOCUMENT_REQUIREMENTS: any[] = [
+    {
+      documentType: DocumentType.NRIC,
+      isRequired: true,
+      displayName: 'NRIC (National Registration Identity Card)',
+      description: 'Malaysian identity card for citizens',
+      hasExpiry: false,
+    },
+    {
+      documentType: DocumentType.PASSPORT,
+      isRequired: true,
+      displayName: 'Passport',
+      description: 'Valid passport for foreign nationals',
+      hasExpiry: true,
+    },
+    {
+      documentType: DocumentType.DRIVING_LICENSE,
+      isRequired: true,
+      displayName: 'Driving License',
+      description: 'Valid Malaysian driving license',
+      hasExpiry: true,
+    },
+    {
+      documentType: DocumentType.PSV_LICENSE,
+      isRequired: true,
+      displayName: 'PSV License',
+      description: 'Public Service Vehicle license',
+      hasExpiry: true,
+    },
+    {
+      documentType: DocumentType.PAMANDU,
+      isRequired: true,
+      displayName: 'Pamandu Certificate',
+      description: 'Professional driving certification',
+      hasExpiry: true,
+    },
+    {
+      documentType: DocumentType.TAXI_PERMIT_DRIVER,
+      isRequired: true,
+      displayName: 'Taxi Permit (Driver)',
+      description: 'Taxi driver permit for specific areas',
+      hasExpiry: true,
+    },
+  ];
+  private readonly VEHICLE_DOCUMENT_REQUIREMENTS: any[] = [
+    {
+      documentType: VehicleDocumentType.CAR_INSURANCE,
+      isRequired: true,
+      displayName: 'Car Insurance',
+      hasExpiry: false,
+    },
+    {
+      documentType: VehicleDocumentType.CAR_RENTAL_AGREEMENT,
+      isRequired: false,
+      displayName: 'Car Rental Agreement',
+      hasExpiry: true,
+    },
+    {
+      documentType: VehicleDocumentType.PUSPAKOM_INSPECTION,
+      isRequired: true,
+      displayName: 'Puspakom Inspection',
+      hasExpiry: true,
+    },
+    {
+      documentType: VehicleDocumentType.TAXI_PERMIT_VEHICLE,
+      isRequired: true,
+      displayName: 'Taxi Permit Vehicle',
+      hasExpiry: true,
+    },
+    {
+      documentType: VehicleDocumentType.AUTHORIZATION_LETTER,
+      isRequired: false,
+      displayName: 'Authorization Letter',
+      hasExpiry: true,
+    },
+  ];
+  // EVP Management Methods
+  async createDriverEvp(createDriverEvpDto: CreateDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
+    const { driverId, certificateNumber, startDate, endDate, documentUrl, notes } = createDriverEvpDto;
+
+    // Check if driver exists
+    const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
+    if (!driver) {
+      throw new NotFoundException(`Driver with ID ${driverId} not found`);
+    }
+
+    // Get all driver documents
+    const driverDocs = await this.driverDocumentRepository.find({
+      driverId: new Types.ObjectId(driverId),
+      isActive: true,
+    });
+
+    // Check if driver has any documents
+    if (driverDocs.length === 0) {
+      throw new BadRequestException('Driver has no documents uploaded');
+    }
+
+    // Check if all required document types have been uploaded and verified
+    const requiredDocTypes = this.DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired).map((req) => req.documentType);
+
+    // Create a map of document types to their details
+    const driverDocMap = new Map();
+    driverDocs.forEach((doc) => {
+      driverDocMap.set(doc.documentType, {
+        isVerified: doc.status === DocumentStatus.VERIFIED,
+        expiryDate: doc.expiryDate,
+        status: doc.status,
+        document: doc,
+      });
+    });
+
+    // Check for missing documents
+    const missingDocs = requiredDocTypes.filter((docType) => !driverDocMap.has(docType));
+    if (missingDocs.length > 0) {
+      const missingDocNames = missingDocs.map((docType) => {
+        const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+        return docReq ? docReq.displayName : docType;
+      });
+      throw new BadRequestException(`Required documents are missing: ${missingDocNames.join(', ')}`);
+    }
+
+    // Check for unverified documents
+    const unverifiedDocs = requiredDocTypes.filter(
+      (docType) => driverDocMap.has(docType) && !driverDocMap.get(docType).isVerified,
+    );
+
+    if (unverifiedDocs.length > 0) {
+      const unverifiedDocNames = unverifiedDocs.map((docType) => {
+        const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+        return docReq ? docReq.displayName : docType;
+      });
+      throw new BadRequestException(`These documents are not verified: ${unverifiedDocNames.join(', ')}`);
+    }
+
+    // Check for expired documents that have expiry dates
+    // const now = new Date();
+    // const expiredDocs = requiredDocTypes.filter((docType) => {
+    //   const doc = driverDocMap.get(docType);
+    //   const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+
+    //   // Only check documents with expiry dates
+    //   if (docReq && docReq.hasExpiry && doc && doc.expiryDate) {
+    //     return new Date(doc.expiryDate) < now;
+    //   }
+    //   return false;
+    // });
+
+    // if (expiredDocs.length > 0) {
+    //   const expiredDocNames = expiredDocs.map((docType) => {
+    //     const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+    //     const doc = driverDocMap.get(docType);
+    //     const expiryDate = doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'unknown';
+    //     return `${docReq ? docReq.displayName : docType} (expired on ${expiryDate})`;
+    //   });
+    //   throw new BadRequestException(`These documents are expired: ${expiredDocNames.join(', ')}`);
+    // }
+
+    // Check if there's already an active EVP
+    const existingActiveEvp = await this.driverEvpRepository.findOne({
+      driverId: new Types.ObjectId(driverId),
+      isActive: true,
+      endDate: { $gt: new Date() },
+      revokedAt: { $exists: false },
+    });
+
+    if (existingActiveEvp) {
+      throw new BadRequestException('Driver already has an active EVP');
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start >= end) {
+      throw new BadRequestException('End date must be after start date');
+    }
+
+    if (start < new Date()) {
+      throw new BadRequestException('Start date cannot be in the past');
+    }
+
+    // Create new EVP
+    const evp = await this.driverEvpRepository.create({
+      _id: new Types.ObjectId(),
+      driverId: new Types.ObjectId(driverId),
+      certificateNumber,
+      startDate: start,
+      endDate: end,
+      documentUrl,
+      notes,
+      isActive: true,
+      issuedBy: new Types.ObjectId(adminId),
+    });
+
+    return this.mapToEvpResponseDto(evp);
+  }
+
+  async getDriverEvps(
+    driverId: string,
+    query: GetDriverEvpsDto,
+  ): Promise<{ evps: DriverEvpResponseDto[]; total: number; page: number; limit: number }> {
+    const { page = 1, limit = 10, activeOnly = false } = query;
+
+    // Check if driver exists
+    const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
+    if (!driver) {
+      throw new NotFoundException(`Driver with ID ${driverId} not found`);
+    }
+
+    const { evps, total } = await this.driverEvpRepository.findDriverEvps(driverId, page, limit, activeOnly);
+
+    return {
+      evps: evps.map((evp) => this.mapToEvpResponseDto(evp)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getEvpById(evpId: string): Promise<DriverEvpResponseDto> {
+    const evp = await this.driverEvpRepository.findById(evpId);
+
+    if (!evp) {
+      throw new NotFoundException(`EVP with ID ${evpId} not found`);
+    }
+
+    return this.mapToEvpResponseDto(evp);
+  }
+
+  async revokeEvp(evpId: string, revokeDto: RevokeDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
+    // Find the EVP
+    const evp = await this.driverEvpRepository.findById(evpId);
+
+    if (!evp) {
+      throw new NotFoundException(`EVP with ID ${evpId} not found`);
+    }
+
+    if (!evp.isActive) {
+      throw new BadRequestException('EVP is already inactive or revoked');
+    }
+
+    // Revoke the EVP
+    const updatedEvp = await this.driverEvpRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(evpId) },
+      {
+        isActive: false,
+        revokedAt: new Date(),
+        revokedBy: new Types.ObjectId(adminId),
+        notes: evp.notes ? `${evp.notes}\n\nRevoked: ${revokeDto.reason}` : `Revoked: ${revokeDto.reason}`,
+      },
+    );
+
+    return this.mapToEvpResponseDto(updatedEvp);
+  }
+
+  private mapToEvpResponseDto(evp: any): DriverEvpResponseDto {
+    return {
+      _id: evp._id.toString(),
+      driverId: evp.driverId.toString(),
+      certificateNumber: evp.certificateNumber,
+      startDate: evp.startDate,
+      endDate: evp.endDate,
+      documentUrl: evp.documentUrl,
+      isActive: evp.isActive,
+      notes: evp.notes,
+      issuedBy: evp.issuedBy.toString(),
+      revokedAt: evp.revokedAt,
+      revokedBy: evp.revokedBy ? evp.revokedBy.toString() : undefined,
+      createdAt: evp.createdAt,
+      updatedAt: evp.updatedAt,
+    };
   }
 }

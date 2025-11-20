@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { AdminDriversService } from './adminDrivers.service';
-import { JwtAdminAuthGuard, RolesGuard } from '@urcab-workspace/shared';
+import { JwtAdminAuthGuard, RolesGuard, CurrentUser } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
   DriverDetailsResponseDto,
@@ -12,6 +12,10 @@ import {
   GetReportsDto,
   AssignReportDto,
   ResolveReportDto,
+  CreateDriverEvpDto,
+  GetDriverEvpsDto,
+  RevokeDriverEvpDto,
+  DriverEvpResponseDto,
 } from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
@@ -288,5 +292,57 @@ export class AdminDriversController {
   @SetRolesMetaData(Role.ADMIN)
   async resolveReport(@Param('reportId') reportId: string, @Body() body: ResolveReportDto) {
     return this.adminDriversService.resolveReport(reportId, body);
+  }
+
+  // EVP Management APIs
+  @Post(':driverId/evp')
+  @ApiOperation({ summary: 'Generate an EVP (Electronic Verification Permit) for a driver' })
+  @ApiParam({ name: 'driverId', description: 'Driver ID' })
+  @ApiResponse({ status: 201, description: 'EVP created successfully', type: DriverEvpResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - Driver documents not verified or already has active EVP' })
+  @ApiResponse({ status: 404, description: 'Driver not found' })
+  @SetRolesMetaData(Role.ADMIN)
+  async createDriverEvp(
+    @Param('driverId') driverId: string,
+    @Body() createEvpDto: CreateDriverEvpDto,
+    @CurrentUser() user: any,
+  ) {
+    // Override driverId in DTO with path parameter
+    createEvpDto.driverId = driverId;
+    return this.adminDriversService.createDriverEvp(createEvpDto, user.sub);
+  }
+
+  @Get(':driverId/evp')
+  @ApiOperation({ summary: 'Get all EVPs for a driver' })
+  @ApiParam({ name: 'driverId', description: 'Driver ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
+  @ApiResponse({ status: 200, description: 'EVPs retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Driver not found' })
+  @SetRolesMetaData(Role.ADMIN)
+  async getDriverEvps(@Param('driverId') driverId: string, @Query() query: GetDriverEvpsDto) {
+    return this.adminDriversService.getDriverEvps(driverId, query);
+  }
+
+  @Get('evp/:evpId')
+  @ApiOperation({ summary: 'Get EVP details by ID' })
+  @ApiParam({ name: 'evpId', description: 'EVP ID' })
+  @ApiResponse({ status: 200, description: 'EVP details retrieved successfully', type: DriverEvpResponseDto })
+  @ApiResponse({ status: 404, description: 'EVP not found' })
+  @SetRolesMetaData(Role.ADMIN)
+  async getEvpById(@Param('evpId') evpId: string) {
+    return this.adminDriversService.getEvpById(evpId);
+  }
+
+  @Patch('evp/:evpId/revoke')
+  @ApiOperation({ summary: 'Revoke an EVP' })
+  @ApiParam({ name: 'evpId', description: 'EVP ID' })
+  @ApiResponse({ status: 200, description: 'EVP revoked successfully', type: DriverEvpResponseDto })
+  @ApiResponse({ status: 400, description: 'EVP is already inactive or revoked' })
+  @ApiResponse({ status: 404, description: 'EVP not found' })
+  @SetRolesMetaData(Role.ADMIN)
+  async revokeEvp(@Param('evpId') evpId: string, @Body() revokeDto: RevokeDriverEvpDto, @CurrentUser() user: any) {
+    return this.adminDriversService.revokeEvp(evpId, revokeDto, user.sub);
   }
 }

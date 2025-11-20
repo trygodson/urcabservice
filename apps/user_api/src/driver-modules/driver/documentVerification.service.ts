@@ -107,7 +107,7 @@ export class DocumentVerificationStatusService {
       documents.forEach((doc) => {
         documentMap.set(doc.documentType, doc);
       });
-
+      // console.log(documentMap, 'documentMap');
       // console.log(documents);
       const documentStatuses: DocumentVerificationStatusDto[] = [];
       let verifiedCount = 0;
@@ -174,8 +174,6 @@ export class DocumentVerificationStatusService {
         rejectedCount,
         requiredCount: requiredDocuments.length,
         expiringSoonCount,
-        // lastUpdated:
-        //   documents.length > 0 ? new Date(Math.max(...documents.map((d) => d?.lastUpdatedAt.getTime()))) : new Date(),
       };
     } catch (error) {
       this.logger.error(error, `Failed to get document verification status for driver ${driverId}`, error.stack);

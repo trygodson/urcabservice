@@ -14,7 +14,7 @@ export class VehicleTypesController {
 
   @Post()
   @SetRolesMetaData(Role.ADMIN)
-  @ApiOperation({ summary: 'Create a new vehicle type' })
+  @ApiOperation({ summary: 'Create a new vehicle type with time-based pricing' })
   @ApiResponse({ status: 201, description: 'Vehicle type created successfully' })
   create(@Body() createVehicleTypeDto: CreateVehicleTypeDto, @CurrentUser() user: any) {
     return this.vehicleTypesService.create(createVehicleTypeDto, user.sub);
@@ -30,15 +30,15 @@ export class VehicleTypesController {
     return this.vehicleTypesService.findAll(query);
   }
 
-  // @Get(':id')
-  // @SetRolesMetaData(Role.ADMIN)
-  // @ApiOperation({ summary: 'Get a single vehicle type by ID' })
-  // @ApiParam({ name: 'id', description: 'Vehicle Type ID' })
-  // @ApiResponse({ status: 200, description: 'Vehicle type retrieved successfully' })
-  // @ApiResponse({ status: 404, description: 'Vehicle type not found' })
-  // findOne(@Param('id') id: string) {
-  //   return this.vehicleTypesService.findOne(id);
-  // }
+  @Get(':id')
+  @SetRolesMetaData(Role.ADMIN)
+  @ApiOperation({ summary: 'Get a single vehicle type by ID' })
+  @ApiParam({ name: 'id', description: 'Vehicle Type ID' })
+  @ApiResponse({ status: 200, description: 'Vehicle type retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Vehicle type not found' })
+  findOne(@Param('id') id: string) {
+    return this.vehicleTypesService.findOne(id);
+  }
 
   @Patch(':id')
   @SetRolesMetaData(Role.ADMIN)
@@ -62,7 +62,7 @@ export class VehicleTypesController {
 
   // @Post('seed')
   // @SetRolesMetaData(Role.ADMIN)
-  // @ApiOperation({ summary: 'Seed vehicle types from enum values' })
+  // @ApiOperation({ summary: 'Seed vehicle types from enum values with time-based pricing' })
   // @ApiResponse({ status: 200, description: 'Vehicle types seeded successfully' })
   // seedVehicleTypes(@Body() seedDto: SeedVehicleTypeDto, @CurrentUser() user: any) {
   //   return this.vehicleTypesService.seedVehicleTypes(seedDto, user.sub);

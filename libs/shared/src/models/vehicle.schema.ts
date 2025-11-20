@@ -85,7 +85,7 @@ export class Vehicle extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: Number,
-    required: true,
+    // required: true,
     min: 2,
     max: 8,
   })

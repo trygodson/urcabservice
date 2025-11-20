@@ -87,16 +87,16 @@ export class CreateVehicleDto {
   @Length(10, 50)
   vin: string;
 
-  @ApiProperty({
-    description: 'Seating capacity',
-    example: 4,
-    minimum: 2,
-    maximum: 8,
-  })
-  @IsNumber()
-  @Min(2)
-  @Max(8)
-  seatingCapacity: number;
+  // @ApiProperty({
+  //   description: 'Seating capacity',
+  //   example: 4,
+  //   minimum: 2,
+  //   maximum: 8,
+  // })
+  // @IsNumber()
+  // @Min(2)
+  // @Max(8)
+  // seatingCapacity: number;
 
   @ApiPropertyOptional({
     description: 'Vehicle type',

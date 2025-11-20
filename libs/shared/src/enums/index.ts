@@ -247,63 +247,56 @@ export enum PaymentConfirmationStatus {
 }
 
 export enum VehicleTypeEnum {
-  SEDAN = 'sedan', // 4 passengers
-  HATCHBACK = 'hatchback', // 4 passengers
-  COMPACT = 'compact', // 4 passengers
+  JUSTCAB = 'justcab', // 4 passengers
+  // HATCHBACK = 'hatchback', // 4 passengers
+  // COMPACT = 'compact', // 4 passengers
 
   // Medium Cars (Comfort)
-  SUV_SMALL = 'suv_small', // 4-5 passengers
-  CROSSOVER = 'crossover', // 5 passengers
-  ESTATE = 'estate', // 5 passengers
-
-  // Large Cars (Premium)
-  SUV_LARGE = 'suv_large', // 6-7 passengers
-  LUXURY_SEDAN = 'luxury_sedan', // 4 passengers
-  EXECUTIVE = 'executive', // 4 passengers
+  // SUV_SMALL = 'suv_small', // 4-5 passengers
+  // CROSSOVER = 'crossover', // 5 passengers
+  // ESTATE = 'estate', // 5 passengers
 
   // Multi-passenger Vehicles
   MPV = 'mpv', // 7-8 passengers
-  MINIVAN = 'minivan', // 8 passengers
-  VAN = 'van', // 9-12 passengers
-  MICROBUS = 'microbus', // 13-16 passengers
+  // MINIVAN = 'minivan', // 8 passengers
+  // VAN = 'van', // 9-12 passengers
+  // MICROBUS = 'microbus', // 13-16 passengers
 
   // Commercial Vehicles
-  PICKUP_TRUCK = 'pickup_truck', // 2-5 passengers
-  TRUCK = 'truck', // 2-3 passengers
+  // PICKUP_TRUCK = 'pickup_truck', // 2-5 passengers
+  // TRUCK = 'truck', // 2-3 passengers
 
   // Specialized
   TAXI = 'taxi', // 4 passengers
-  WHEELCHAIR_ACCESSIBLE = 'wheelchair_accessible', // 3-4 passengers + wheelchair
+  // WHEELCHAIR_ACCESSIBLE = 'wheelchair_accessible', // 3-4 passengers + wheelchair
 
-  // Luxury/Premium
-  LUXURY_SUV = 'luxury_suv', // 6-7 passengers
-  LIMOUSINE = 'limousine', // 8-10 passengers
+  // // Luxury/Premium
+  // LUXURY_SUV = 'luxury_suv', // 6-7 passengers
+  // LIMOUSINE = 'limousine', // 8-10 passengers
 
   // Electric/Eco
-  ELECTRIC_CAR = 'electric_car', // 4-5 passengers
-  HYBRID = 'hybrid',
 }
 
 export const VEHICLE_CAPACITY = {
-  [VehicleTypeEnum.SEDAN]: 4,
-  [VehicleTypeEnum.HATCHBACK]: 4,
-  [VehicleTypeEnum.COMPACT]: 4,
-  [VehicleTypeEnum.SUV_SMALL]: 5,
-  [VehicleTypeEnum.CROSSOVER]: 5,
-  [VehicleTypeEnum.ESTATE]: 5,
-  [VehicleTypeEnum.SUV_LARGE]: 7,
-  [VehicleTypeEnum.LUXURY_SEDAN]: 4,
-  [VehicleTypeEnum.EXECUTIVE]: 4,
+  [VehicleTypeEnum.JUSTCAB]: 4,
+  // [VehicleTypeEnum.HATCHBACK]: 4,
+  // [VehicleTypeEnum.COMPACT]: 4,
+  // [VehicleTypeEnum.SUV_SMALL]: 5,
+  // [VehicleTypeEnum.CROSSOVER]: 5,
+  // [VehicleTypeEnum.ESTATE]: 5,
+  // [VehicleTypeEnum.SUV_LARGE]: 7,
+  // [VehicleTypeEnum.LUXURY_SEDAN]: 4,
+  // [VehicleTypeEnum.EXECUTIVE]: 4,
   [VehicleTypeEnum.MPV]: 8,
-  [VehicleTypeEnum.MINIVAN]: 8,
-  [VehicleTypeEnum.VAN]: 12,
-  [VehicleTypeEnum.MICROBUS]: 16,
-  [VehicleTypeEnum.PICKUP_TRUCK]: 5,
-  [VehicleTypeEnum.TRUCK]: 3,
+  // [VehicleTypeEnum.MINIVAN]: 8,
+  // [VehicleTypeEnum.VAN]: 12,
+  // [VehicleTypeEnum.MICROBUS]: 16,
+  // [VehicleTypeEnum.PICKUP_TRUCK]: 5,
+  // [VehicleTypeEnum.TRUCK]: 3,
   [VehicleTypeEnum.TAXI]: 4,
-  [VehicleTypeEnum.WHEELCHAIR_ACCESSIBLE]: 4,
-  [VehicleTypeEnum.LUXURY_SUV]: 7,
-  [VehicleTypeEnum.LIMOUSINE]: 10,
-  [VehicleTypeEnum.ELECTRIC_CAR]: 5,
-  [VehicleTypeEnum.HYBRID]: 5,
+  // [VehicleTypeEnum.WHEELCHAIR_ACCESSIBLE]: 4,
+  // [VehicleTypeEnum.LUXURY_SUV]: 7,
+  // [VehicleTypeEnum.LIMOUSINE]: 10,
+  // [VehicleTypeEnum.ELECTRIC_CAR]: 5,
+  // [VehicleTypeEnum.HYBRID]: 5,
 } as const;

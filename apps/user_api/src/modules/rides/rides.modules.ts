@@ -4,6 +4,9 @@ import { FirebaseRideService } from './firebase-ride.service';
 import { FirebaseRideController } from './firebase-ride.controller';
 import {
   DatabaseModule,
+  DriverEvp,
+  DriverEvpRepository,
+  DriverEvpSchema,
   DriverLocation,
   DriverLocationSchema,
   NotificationsModule,
@@ -52,6 +55,7 @@ import { RideGateway } from './gateway/ride.gateway';
       { name: Vehicle.name, schema: VehicleSchema },
       { name: Rating.name, schema: RatingSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
+      { name: DriverEvp.name, schema: DriverEvpSchema },
       { name: VehicleType.name, schema: VehicleTypeSchema },
     ]),
     NotificationsModule,
@@ -68,6 +72,7 @@ import { RideGateway } from './gateway/ride.gateway';
     DriverLocationRepository,
     RatingRepository,
     VehicleTypeRepository,
+    DriverEvpRepository,
   ],
   exports: [RidesService, RideWebSocketService, RideGateway],
 })

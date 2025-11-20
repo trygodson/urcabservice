@@ -91,7 +91,7 @@ export class VehicleTypesService {
         await this.vehicleTypeRepository.findOneAndUpdate(
           { _id: existingVehicleType._id },
           {
-            pricePerKM: this.getDefaultPricePerKM(vehicleTypeName),
+            pricingPeriods: this.getDefaultPricingPeriods(vehicleTypeName),
             capacity: VEHICLE_CAPACITY[vehicleTypeName],
             updatedBy: new Types.ObjectId(userId),
           },
@@ -102,8 +102,9 @@ export class VehicleTypesService {
 
       // Create new vehicle type
       await this.vehicleTypeRepository.createVehicleType({
+        _id: new Types.ObjectId(),
         name: vehicleTypeName,
-        pricePerKM: this.getDefaultPricePerKM(vehicleTypeName) as number,
+        pricingPeriods: this.getDefaultPricingPeriods(vehicleTypeName),
         capacity: VEHICLE_CAPACITY[vehicleTypeName] as number,
         isActive: true,
         createdBy: new Types.ObjectId(userId),
@@ -118,58 +119,93 @@ export class VehicleTypesService {
     };
   }
 
-  // Helper method to determine default pricing based on vehicle type
-  private getDefaultPricePerKM(vehicleType: string): number {
+  // Helper method to determine default pricing periods based on vehicle type
+  private getDefaultPricingPeriods(vehicleType: string) {
+    // Get base price tier for this vehicle type
+    const basePriceTier = this.getBasePriceTier(vehicleType);
+
+    // Create standard pricing periods for all vehicle types
+    return [
+      // Day rate (9AM - 5PM)
+      {
+        name: 'Day Rate',
+        startTime: '09:00',
+        endTime: '17:00',
+        baseFare: basePriceTier * 3,
+        baseDistance: 2.0,
+        incrementalRate: basePriceTier * 0.25,
+        incrementalDistance: 1.0,
+      },
+      // Evening rate (5PM - 10PM)
+      {
+        name: 'Evening Rate',
+        startTime: '17:00',
+        endTime: '22:00',
+        baseFare: basePriceTier * 3.5,
+        baseDistance: 2.0,
+        incrementalRate: basePriceTier * 0.3,
+        incrementalDistance: 1.0,
+      },
+      // Night rate (10PM - 12AM)
+      {
+        name: 'Night Rate',
+        startTime: '22:00',
+        endTime: '00:00',
+        baseFare: basePriceTier * 4,
+        baseDistance: 2.0,
+        incrementalRate: basePriceTier * 0.35,
+        incrementalDistance: 0.5,
+      },
+      // Late night rate (12AM - 6AM)
+      {
+        name: 'Late Night Rate',
+        startTime: '00:00',
+        endTime: '06:00',
+        baseFare: basePriceTier * 4.5,
+        baseDistance: 2.0,
+        incrementalRate: basePriceTier * 0.375,
+        incrementalDistance: 0.2,
+      },
+      // Morning rate (6AM - 9AM)
+      {
+        name: 'Morning Rate',
+        startTime: '06:00',
+        endTime: '09:00',
+        baseFare: basePriceTier * 3.5,
+        baseDistance: 2.0,
+        incrementalRate: basePriceTier * 0.3,
+        incrementalDistance: 0.5,
+      },
+    ];
+  }
+
+  // Helper method to determine base price tier based on vehicle type
+  private getBasePriceTier(vehicleType: string): number {
     // Basic price tiers based on vehicle type category
     switch (vehicleType) {
       // Economy tier
-      case VehicleTypeEnum.SEDAN:
-      case VehicleTypeEnum.HATCHBACK:
-      case VehicleTypeEnum.COMPACT:
-        return 1.0;
+      case VehicleTypeEnum.JUSTCAB:
+        return 0.8;
 
       // Comfort tier
-      case VehicleTypeEnum.SUV_SMALL:
-      case VehicleTypeEnum.CROSSOVER:
-      case VehicleTypeEnum.ESTATE:
+
+      // Taxi tier (using the exact values from the example)
       case VehicleTypeEnum.TAXI:
-        return 1.5;
+        return 1.0; // Base multiplier is 1.0 for taxi
 
       // Premium tier
-      case VehicleTypeEnum.SUV_LARGE:
-      case VehicleTypeEnum.LUXURY_SEDAN:
-      case VehicleTypeEnum.EXECUTIVE:
-        return 2.0;
 
       // XL/Family tier
       case VehicleTypeEnum.MPV:
-      case VehicleTypeEnum.MINIVAN:
-        return 2.5;
+        return 1.7;
 
       // Special tier
-      case VehicleTypeEnum.VAN:
-      case VehicleTypeEnum.MICROBUS:
-      case VehicleTypeEnum.PICKUP_TRUCK:
-      case VehicleTypeEnum.TRUCK:
-        return 3.0;
-
-      // Accessible tier
-      case VehicleTypeEnum.WHEELCHAIR_ACCESSIBLE:
-        return 2.0;
-
-      // Luxury tier
-      case VehicleTypeEnum.LUXURY_SUV:
-      case VehicleTypeEnum.LIMOUSINE:
-        return 4.0;
 
       // Eco tier
-      case VehicleTypeEnum.ELECTRIC_CAR:
-      case VehicleTypeEnum.HYBRID:
-        return 1.8;
 
       // Default
       default:
-        return 1.5;
+        return 1.0;
     }
   }
 }

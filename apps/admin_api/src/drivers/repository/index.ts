@@ -4,3 +4,4 @@ export * from './adminIssueReport.repository';
 export * from './adminVehicle.repository';
 export * from './adminRide.repository';
 export * from './adminVehicleDocument.repository';
+export * from './admin-driver-evp.repository';
