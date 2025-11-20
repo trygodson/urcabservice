@@ -11,7 +11,7 @@ export class UpdateVehicleTypeDto {
 
   @ApiProperty({
     description: 'Array of pricing periods for different times of day',
-    type: [PricingPeriodDto],
+    type: () => PricingPeriodDto,
     isArray: true,
     required: false,
   })
