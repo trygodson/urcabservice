@@ -99,7 +99,8 @@ export class UserController {
     }
 
     const options: FileUploadOptions = {
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'],
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+      // allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'],
       maxSize: 5 * 1024 * 1024, // 5MB
     };
 

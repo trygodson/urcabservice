@@ -142,7 +142,7 @@ export class VehicleService {
     try {
       const vehicles = await this.vehicleRepository.getDriverVehicles(driverId, includeInactive);
 
-      console.log(vehicles, '=====vehicles===');
+      // console.log(vehicles, '=====vehicles===');
       // return [];
       return vehicles.map((vehicle) => this.mapToResponseDto(vehicle));
     } catch (error) {

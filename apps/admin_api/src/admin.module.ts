@@ -8,6 +8,7 @@ import { AdminAuthModule } from './auth';
 import { AdminDriversModule } from './drivers/adminDrivers.module';
 import { VehicleTypesModule } from './vehicleTypes/vehicleTypes.module';
 import { AdminPassengersModule } from './passengers/adminPassengers.module';
+import { AdminSettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AdminPassengersModule } from './passengers/adminPassengers.module';
     AdminDriversModule,
     VehicleTypesModule,
     AdminPassengersModule,
+    AdminSettingsModule,
   ],
 
   // providers: [AdminService],
