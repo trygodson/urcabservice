@@ -21,6 +21,7 @@ import {
   GetDriverEvpsDto,
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
+  VehicleRejectionDto,
 } from './dto';
 import {
   AdminDriverDocumentRepository,
@@ -161,6 +162,7 @@ export class AdminDriversService {
 
     const updateData: any = {
       isDriverVerified: isVerified,
+      hasCompleteDocumentation: isVerified,
       driverVerifiedAt: isVerified ? new Date() : null,
       // driverVerifiedByAdminId: adminId, // You'll need to get this from JWT token
     };
@@ -430,7 +432,7 @@ export class AdminDriversService {
     };
   }
 
-  async approveVehicle(vehicleId: string, body: VehicleApprovalDto) {
+  async approveVehicle(vehicleId: string, body?: VehicleApprovalDto) {
     const vehicle = await this.vehicleRepository.findOne({
       _id: new Types.ObjectId(vehicleId),
     });
@@ -441,20 +443,21 @@ export class AdminDriversService {
 
     const documentDetails = await this.getVehicleDocuments(vehicleId);
     if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
-      throw new BadRequestException('Vehicle documents are complete');
+      throw new BadRequestException('Vehicle documents are not complete');
     }
 
     const updateData = {
       status: VehicleStatus.VERIFIED,
       verifiedAt: new Date(),
+      hasCompleteDocumentation: true,
       // verifiedByAdminId: adminId, // Get from JWT
-      verificationNotes: body.verificationNotes,
+      // verificationNotes: body.verificationNotes,
     };
 
     return this.vehicleRepository.findOneAndUpdate({ _id: new Types.ObjectId(vehicleId) }, updateData);
   }
 
-  async rejectVehicle(vehicleId: string, body: VehicleApprovalDto) {
+  async rejectVehicle(vehicleId: string, body?: VehicleRejectionDto) {
     const vehicle = await this.vehicleRepository.findOne({
       _id: new Types.ObjectId(vehicleId),
     });
@@ -470,6 +473,7 @@ export class AdminDriversService {
 
     const updateData = {
       status: VehicleStatus.REJECTED,
+      hasCompleteDocumentation: false,
       rejectionReason: body.rejectionReason,
     };
 

@@ -1,6 +1,6 @@
 export * from './evp.dto';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
@@ -158,13 +158,14 @@ export class DocumentApprovalDto {
 }
 
 export class VehicleApprovalDto {
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ required: false })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   verificationNotes?: string;
-
-  @ApiProperty({ required: false })
+}
+export class VehicleRejectionDto {
+  @ApiPropertyOptional({ required: false })
   @IsOptional()
   @IsString()
   @MaxLength(500)

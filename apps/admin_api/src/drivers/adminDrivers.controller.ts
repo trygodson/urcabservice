@@ -16,6 +16,7 @@ import {
   GetDriverEvpsDto,
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
+  VehicleRejectionDto,
 } from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
@@ -121,8 +122,17 @@ export class AdminDriversController {
   @ApiOperation({ summary: 'Verify or reject driver' })
   @ApiParam({ name: 'driverId', description: 'Driver ID' })
   @SetRolesMetaData(Role.ADMIN)
-  async verifyDriver(@Param('driverId') driverId: string, @Body() body: { isVerified: boolean; notes?: string }) {
-    return this.adminDriversService.verifyDriver(driverId, body.isVerified, body.notes);
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        isVerified: { type: 'boolean', description: 'Is driver verified' },
+        // notes: { type: 'string', description: 'Notes' },
+      },
+    },
+  })
+  async verifyDriver(@Param('driverId') driverId: string, @Body() body: { isVerified: boolean }) {
+    return this.adminDriversService.verifyDriver(driverId, body.isVerified);
   }
 
   @Patch(':driverId/status')
@@ -206,15 +216,15 @@ export class AdminDriversController {
   @ApiOperation({ summary: 'Approve vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
   @SetRolesMetaData(Role.ADMIN)
-  async approveVehicle(@Param('vehicleId') vehicleId: string, @Body() body: VehicleApprovalDto) {
-    return this.adminDriversService.approveVehicle(vehicleId, body);
+  async approveVehicle(@Param('vehicleId') vehicleId: string) {
+    return this.adminDriversService.approveVehicle(vehicleId);
   }
 
   @Patch('vehicles/:vehicleId/reject')
   @ApiOperation({ summary: 'Reject vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
   @SetRolesMetaData(Role.ADMIN)
-  async rejectVehicle(@Param('vehicleId') vehicleId: string, @Body() body: VehicleApprovalDto) {
+  async rejectVehicle(@Param('vehicleId') vehicleId: string, @Body() body?: VehicleRejectionDto) {
     return this.adminDriversService.rejectVehicle(vehicleId, body);
   }
 
