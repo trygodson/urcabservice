@@ -87,7 +87,7 @@ export class RidesService {
         passengerCount: createRideDto.passengerCount || 1,
         specialRequests: createRideDto.specialRequests,
         estimatedFare: createRideDto.estimatedPrice,
-        estimatedDistance: parseFloat(createRideDto.estimatedDistance),
+        estimatedDistance: parseFloat(createRideDto.estimatedDistance.toString()),
         estimatedDuration: rideDetails.duration,
         status: RideStatus.PENDING_DRIVER_ACCEPTANCE, // New status
         // paymentMethod: PaymentMethod.CASH,
