@@ -94,11 +94,11 @@ export class CreateRideDto {
   estimatedPrice?: number;
 
   @ApiProperty({
-    description: 'Estimated price for the ride (calculated by system)',
+    description: 'Estimated distance for the ride (calculated by system)',
   })
-  @IsNumberString()
+  @IsString()
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
-  estimatedDistance?: number;
+  estimatedDistance?: string;
 
   @ApiProperty({
     example: 'Please call when you arrive at the pickup location',
