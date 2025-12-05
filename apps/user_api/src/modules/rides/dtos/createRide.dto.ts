@@ -59,24 +59,6 @@ export class CreateRideDto {
   @IsNotEmpty({ message: 'Payment method is required' })
   paymentMethod: PaymentMethod;
 
-  // @ApiPropertyOptional({
-  //   description: 'Selected driver ID (optional - if not provided, system will find available drivers)',
-  //   type: String,
-  //   example: '6895aa24e3cfb4357b561b46',
-  // })
-  // @IsOptional()
-  // @IsMongoId()
-  // selectedDriverId?: string;
-
-  // @ApiProperty({
-  //   description: 'Selected Vehicle ID',
-  //   type: String,
-  //   example: '6895aa24e3cfb4357b561b46',
-  // })
-  // @IsNotEmpty()
-  // @IsMongoId()
-  // vehicleId?: string;
-
   @ApiPropertyOptional({
     example: '2024-12-31T10:30:00.000Z',
     description: 'Scheduled time for the ride (required for scheduled rides)',
@@ -87,7 +69,7 @@ export class CreateRideDto {
   @Transform(({ value }) => (value ? new Date(value) : undefined))
   scheduledTime?: Date;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1,
     description: 'Number of passengers',
     minimum: 1,
@@ -98,9 +80,34 @@ export class CreateRideDto {
   @IsOptional()
   @IsNumber({}, { message: 'Passenger count must be a number' })
   @Min(1, { message: 'At least 1 passenger is required' })
-  @Max(4, { message: 'Maximum 4 passengers allowed' })
+  // @Max(4, { message: 'Maximum 4 passengers allowed' })
   @Transform(({ value }) => value || 1)
   passengerCount?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Estimated price for the ride (calculated by system)',
+    minimum: 1,
+    maximum: 4,
+    required: false,
+    default: 1,
+  })
+  @IsNumber({}, { message: 'Estimated price must be a number' })
+  // @Max(4, { message: 'Maximum 4 passengers allowed' })
+  @Transform(({ value }) => value || 1)
+  estimatedPrice?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Estimated price for the ride (calculated by system)',
+    minimum: 1,
+    maximum: 4,
+    required: false,
+    default: 1,
+  })
+  @IsString({ message: 'Estimated distance must be a string' })
+  // @Max(4, { message: 'Maximum 4 passengers allowed' })
+  estimatedDistance?: string;
 
   @ApiProperty({
     example: 'Please call when you arrive at the pickup location',

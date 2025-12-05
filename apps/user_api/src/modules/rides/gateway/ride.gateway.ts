@@ -126,6 +126,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
       driverId: string;
     },
   ) {
+    // console.log(data, '===== location driver with passenger====');
     try {
       if (client.userType !== 'driver') {
         client.emit('error', { message: 'Only drivers can update location' });
@@ -150,11 +151,11 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           type: 'Point',
           coordinates: [data.longitude, data.latitude],
         },
-        heading: data.heading || null,
-        speed: data.speed || null,
-        accuracy: data.accuracy || null,
-        timestamp: data.timestamp || Date.now(),
-        lastLocationUpdate: new Date(),
+        // heading: data.heading || null,
+        // speed: data.speed || null,
+        // accuracy: data.accuracy || null,
+        // timestamp: data.timestamp || Date.now(),
+        // lastLocationUpdate: new Date(),
       };
 
       // Update driver location in database and Redis
@@ -167,10 +168,10 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
         driverLocation: {
           latitude: data.latitude,
           longitude: data.longitude,
-          heading: data.heading,
-          speed: data.speed,
-          accuracy: data.accuracy,
-          timestamp: locationUpdate.timestamp,
+          // heading: data.heading,
+          // speed: data.speed,
+          // accuracy: data.accuracy,
+          // timestamp: locationUpdate.timestamp,
         },
       });
 

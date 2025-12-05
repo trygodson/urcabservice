@@ -86,8 +86,8 @@ export class RidesService {
         scheduledTime: createRideDto.rideType === RideType.IMMEDIATE ? new Date() : createRideDto.scheduledTime,
         passengerCount: createRideDto.passengerCount || 1,
         specialRequests: createRideDto.specialRequests,
-        estimatedFare: rideDetails.estimatedFare,
-        estimatedDistance: rideDetails.distance,
+        estimatedFare: createRideDto.estimatedPrice,
+        estimatedDistance: parseFloat(createRideDto.estimatedDistance),
         estimatedDuration: rideDetails.duration,
         status: RideStatus.PENDING_DRIVER_ACCEPTANCE, // New status
         // paymentMethod: PaymentMethod.CASH,
@@ -889,6 +889,7 @@ export class RidesService {
         }
       }
 
+      // console.log(nearbyDrivers, '=====nearbyDrivers====');
       if (nearbyDrivers.length === 0) {
         this.logger.warn(`No drivers found near pickup location for ride ${ride._id}`);
         // Update ride status to indicate no drivers available

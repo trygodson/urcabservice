@@ -34,14 +34,7 @@ import { AdminSettingsModule } from './settings/settings.module';
 
     HttpModule,
     ScheduleModule.forRoot(),
-    // BullModule.registerQueue(
-    //   {
-    //     name: CONFIG_NAMES.SINGLE_ELECTION_QUEUE_JOB_NOTIFICATION,
-    //   },
-    //   {
-    //     name: CONFIG_NAMES.STAGED_ELECTION_QUEUE_JOB_NOTIFICATION,
-    //   },
-    // ),
+
     AdminAuthModule,
     AdminDriversModule,
     VehicleTypesModule,
