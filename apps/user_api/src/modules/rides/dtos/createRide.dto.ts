@@ -11,6 +11,7 @@ import {
   Max,
   MaxLength,
   IsMongoId,
+  IsNumberString,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { PaymentMethod, RideType, VehicleType } from '@urcab-workspace/shared';
@@ -95,7 +96,7 @@ export class CreateRideDto {
   @ApiProperty({
     description: 'Estimated price for the ride (calculated by system)',
   })
-  @IsString({ message: 'Estimated distance must be a string' })
+  @IsNumberString({}, { message: 'Estimated distance must be a number' })
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
   estimatedDistance?: string;
 
