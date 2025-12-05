@@ -87,12 +87,8 @@ export class CreateRideDto {
   @ApiProperty({
     example: 1,
     description: 'Estimated price for the ride (calculated by system)',
-    minimum: 1,
-    maximum: 4,
-    required: false,
-    default: 1,
   })
-  @IsNumber({}, { message: 'Estimated price must be a number' })
+  // @IsNumber({}, { message: 'Estimated price must be a number' })
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
   @Transform(({ value }) => value || 1)
   estimatedPrice?: number;
@@ -100,12 +96,10 @@ export class CreateRideDto {
   @ApiProperty({
     example: 1,
     description: 'Estimated price for the ride (calculated by system)',
-    minimum: 1,
-    maximum: 4,
-    required: false,
+
     default: 1,
   })
-  @IsString({ message: 'Estimated distance must be a string' })
+  // @IsString({ message: 'Estimated distance must be a string' })
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
   estimatedDistance?: string;
 
