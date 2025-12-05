@@ -48,8 +48,9 @@ export class CreateRideDto {
     description: 'Vehicle type ID',
     example: '6895aa24e3cfb4357b561b46',
   })
+  @IsOptional()
   @IsMongoId({ message: 'Invalid vehicle type' })
-  vehicleTypeId: string;
+  vehicleTypeId?: string;
 
   @ApiProperty({
     enum: PaymentMethod,
@@ -91,12 +92,14 @@ export class CreateRideDto {
   // @IsNumber({}, { message: 'Estimated price must be a number' })
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
   @Transform(({ value }) => value || 1)
+  @IsOptional()
   estimatedPrice?: number;
 
   @ApiProperty({
     description: 'Estimated distance for the ride (calculated by system)',
   })
   @IsString()
+  @IsOptional()
   // @Max(4, { message: 'Maximum 4 passengers allowed' })
   estimatedDistance?: string;
 
@@ -109,14 +112,4 @@ export class CreateRideDto {
   @IsString({ message: 'Special requests must be a string' })
   @MaxLength(500, { message: 'Special requests must not exceed 500 characters' })
   specialRequests?: string;
-
-  // @ApiProperty({
-  //   example: 15.5,
-  //   description: 'Estimated fare for the ride (calculated by system)',
-  //   required: false,
-  // })
-  // @IsOptional()
-  // @IsNumber({}, { message: 'Estimated fare must be a number' })
-  // @Min(0, { message: 'Estimated fare must be positive' })
-  // estimatedFare?: number;
 }

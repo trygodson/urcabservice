@@ -28,6 +28,28 @@ import { JwtAuthGuard, RolesGuard, Role, CurrentUser, User, SetRolesMetaData } f
 export class RidesController {
   constructor(private readonly ridesService: RidesService) {}
 
+  @Post()
+  @ApiOperation({ summary: 'Book a new ride' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Ride booked successfully',
+    type: RideResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid booking data or validation error',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User not authenticated',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.PASSENGER)
+  async bookRide(@Body() createRideDto: CreateRideDto, @CurrentUser() user: User): Promise<RideResponseDto> {
+    const passengerId = new Types.ObjectId(user._id);
+    return await this.ridesService.bookRide(passengerId, createRideDto);
+  }
+
   @Get('current')
   @ApiOperation({ summary: 'Get current active ride for passenger' })
   @ApiResponse({
@@ -239,28 +261,6 @@ export class RidesController {
     }
 
     return await this.ridesService.findNearbyDrivers(longitude, latitude, radius, 20, passenger);
-  }
-
-  @Post()
-  @ApiOperation({ summary: 'Book a new ride' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Ride booked successfully',
-    type: RideResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid booking data or validation error',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'User not authenticated',
-  })
-  @HttpCode(HttpStatus.CREATED)
-  @SetRolesMetaData(Role.PASSENGER)
-  async bookRide(@Body() createRideDto: CreateRideDto, @CurrentUser() user: User): Promise<RideResponseDto> {
-    const passengerId = new Types.ObjectId(user._id);
-    return await this.ridesService.bookRide(passengerId, createRideDto);
   }
 
   @Get(':id')
