@@ -9,6 +9,7 @@ import { AdminDriversModule } from './drivers/adminDrivers.module';
 import { VehicleTypesModule } from './vehicleTypes/vehicleTypes.module';
 import { AdminPassengersModule } from './passengers/adminPassengers.module';
 import { AdminSettingsModule } from './settings/settings.module';
+import { PricingZonesModule } from './pricing-zones/pricing-zones.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AdminSettingsModule } from './settings/settings.module';
     VehicleTypesModule,
     AdminPassengersModule,
     AdminSettingsModule,
+    PricingZonesModule,
   ],
 
   // providers: [AdminService],

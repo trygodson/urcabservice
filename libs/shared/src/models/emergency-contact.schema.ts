@@ -70,7 +70,7 @@ export class EmergencyContact extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: Boolean,
-    default: true,
+    default: false,
   })
   notifyOnEmergency: boolean;
 

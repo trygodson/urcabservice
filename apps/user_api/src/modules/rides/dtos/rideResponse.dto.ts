@@ -160,8 +160,7 @@ export class VehiclePriceRequestDto {
 export class VehiclePriceDto {
   @ApiProperty({
     description: 'Type of vehicle',
-
-    example: '',
+    example: 'TAXI',
   })
   type: string;
 
@@ -176,6 +175,12 @@ export class VehiclePriceDto {
     example: 25.5,
   })
   estimatedPrice: number;
+
+  @ApiProperty({
+    description: 'Pricing period information (for debugging)',
+    required: false,
+  })
+  pricingPeriod?: any;
 
   @ApiProperty({
     description: 'Estimated duration of the ride in minutes',

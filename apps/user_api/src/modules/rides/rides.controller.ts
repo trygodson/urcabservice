@@ -66,7 +66,7 @@ export class RidesController {
   // Add this endpoint to apps/user_api/src/modules/rides/rides.controller.ts
 
   @Get('vehicles/prices')
-  @ApiOperation({ summary: 'Get vehicle types with prices based on capacity and distance' })
+  @ApiOperation({ summary: 'Get vehicle types with prices based on capacity, distance and locations' })
   @ApiQuery({
     name: 'seatingCapacity',
     description: 'Required passenger seating capacity',
@@ -81,6 +81,34 @@ export class RidesController {
     type: 'number',
     example: 10.5,
   })
+  @ApiQuery({
+    name: 'pickupLongitude',
+    description: 'Pickup location longitude',
+    required: false,
+    type: 'number',
+    example: 101.7152,
+  })
+  @ApiQuery({
+    name: 'pickupLatitude',
+    description: 'Pickup location latitude',
+    required: false,
+    type: 'number',
+    example: 3.1548,
+  })
+  @ApiQuery({
+    name: 'dropoffLongitude',
+    description: 'Dropoff location longitude',
+    required: false,
+    type: 'number',
+    example: 101.6865,
+  })
+  @ApiQuery({
+    name: 'dropoffLatitude',
+    description: 'Dropoff location latitude',
+    required: false,
+    type: 'number',
+    example: 3.1421,
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Vehicle prices retrieved successfully',
@@ -90,6 +118,10 @@ export class RidesController {
   async getVehiclePrices(
     @Query('seatingCapacity', new ParseIntPipe()) seatingCapacity: number,
     @Query('distance', new ParseFloatPipe()) distance: number,
+    @Query('pickupLongitude', new ParseFloatPipe({ optional: true })) pickupLongitude?: number,
+    @Query('pickupLatitude', new ParseFloatPipe({ optional: true })) pickupLatitude?: number,
+    @Query('dropoffLongitude', new ParseFloatPipe({ optional: true })) dropoffLongitude?: number,
+    @Query('dropoffLatitude', new ParseFloatPipe({ optional: true })) dropoffLatitude?: number,
   ) {
     if (seatingCapacity < 1) {
       throw new BadRequestException('Seating capacity must be at least 1');
@@ -99,62 +131,27 @@ export class RidesController {
       throw new BadRequestException('Distance must be greater than 0');
     }
 
-    const vehicles = await this.ridesService.getVehiclesByCapacityAndPrice(seatingCapacity, distance);
+    // Create location objects if coordinates are provided
+    let pickupLocation;
+    let dropoffLocation;
+
+    if (pickupLongitude !== undefined && pickupLatitude !== undefined) {
+      pickupLocation = { longitude: pickupLongitude, latitude: pickupLatitude };
+    }
+
+    if (dropoffLongitude !== undefined && dropoffLatitude !== undefined) {
+      dropoffLocation = { longitude: dropoffLongitude, latitude: dropoffLatitude };
+    }
+
+    const vehicles = await this.ridesService.getVehiclesByCapacityAndPrice(
+      seatingCapacity,
+      distance,
+      pickupLocation,
+      dropoffLocation,
+    );
 
     return vehicles;
   }
-
-  // @Get('vehicles/prices/test-time')
-  // @ApiOperation({ summary: 'Test vehicle prices with specific time of day' })
-  // @ApiQuery({
-  //   name: 'seatingCapacity',
-  //   description: 'Required passenger seating capacity',
-  //   required: true,
-  //   type: 'number',
-  //   example: 4,
-  // })
-  // @ApiQuery({
-  //   name: 'distance',
-  //   description: 'Ride distance in kilometers',
-  //   required: true,
-  //   type: 'number',
-  //   example: 10.5,
-  // })
-  // @ApiQuery({
-  //   name: 'time',
-  //   description: 'Time of day in HH:MM format to simulate',
-  //   required: true,
-  //   type: 'string',
-  //   example: '22:30',
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.OK,
-  //   description: 'Vehicle prices retrieved successfully',
-  //   type: VehiclePriceListResponseDto,
-  // })
-  // @SetRolesMetaData(Role.PASSENGER)
-  // async testTimePrices(
-  //   @Query('seatingCapacity', new ParseIntPipe()) seatingCapacity: number,
-  //   @Query('distance', new ParseFloatPipe()) distance: number,
-  //   @Query('time') timeString: string,
-  // ) {
-  //   if (seatingCapacity < 1) {
-  //     throw new BadRequestException('Seating capacity must be at least 1');
-  //   }
-
-  //   if (distance <= 0) {
-  //     throw new BadRequestException('Distance must be greater than 0');
-  //   }
-
-  //   // Validate time format
-  //   if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeString)) {
-  //     throw new BadRequestException('Time must be in HH:MM format (24-hour)');
-  //   }
-
-  //   const vehicles = await this.ridesService.testPricesWithTime(seatingCapacity, distance, timeString);
-
-  //   return vehicles;
-  // }
 
   @Get('passenger/history')
   @ApiOperation({ summary: 'Get passenger ride history' })
@@ -378,4 +375,106 @@ export class RidesController {
     const userId = new Types.ObjectId(user._id);
     return await this.ridesService.cancelRide(rideId, userId, reason);
   }
+
+  // @Get('vehicles/prices/test-time')
+  // @ApiOperation({ summary: 'Test vehicle prices with specific time of day and locations' })
+  // @ApiQuery({
+  //   name: 'seatingCapacity',
+  //   description: 'Required passenger seating capacity',
+  //   required: true,
+  //   type: 'number',
+  //   example: 4,
+  // })
+  // @ApiQuery({
+  //   name: 'distance',
+  //   description: 'Ride distance in kilometers',
+  //   required: true,
+  //   type: 'number',
+  //   example: 10.5,
+  // })
+  // @ApiQuery({
+  //   name: 'time',
+  //   description: 'Time of day in HH:MM format to simulate',
+  //   required: true,
+  //   type: 'string',
+  //   example: '22:30',
+  // })
+  // @ApiQuery({
+  //   name: 'pickupLongitude',
+  //   description: 'Pickup location longitude',
+  //   required: false,
+  //   type: 'number',
+  //   example: 101.7152,
+  // })
+  // @ApiQuery({
+  //   name: 'pickupLatitude',
+  //   description: 'Pickup location latitude',
+  //   required: false,
+  //   type: 'number',
+  //   example: 3.1548,
+  // })
+  // @ApiQuery({
+  //   name: 'dropoffLongitude',
+  //   description: 'Dropoff location longitude',
+  //   required: false,
+  //   type: 'number',
+  //   example: 101.6865,
+  // })
+  // @ApiQuery({
+  //   name: 'dropoffLatitude',
+  //   description: 'Dropoff location latitude',
+  //   required: false,
+  //   type: 'number',
+  //   example: 3.1421,
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.OK,
+  //   description: 'Vehicle prices retrieved successfully',
+  //   type: VehiclePriceListResponseDto,
+  // })
+  // @SetRolesMetaData(Role.PASSENGER)
+  // async testTimePrices(
+  //   @Query('seatingCapacity', new ParseIntPipe()) seatingCapacity: number,
+  //   @Query('distance', new ParseFloatPipe()) distance: number,
+  //   @Query('time') timeString: string,
+  //   @Query('pickupLongitude', new ParseFloatPipe({ optional: true })) pickupLongitude?: number,
+  //   @Query('pickupLatitude', new ParseFloatPipe({ optional: true })) pickupLatitude?: number,
+  //   @Query('dropoffLongitude', new ParseFloatPipe({ optional: true })) dropoffLongitude?: number,
+  //   @Query('dropoffLatitude', new ParseFloatPipe({ optional: true })) dropoffLatitude?: number,
+  // ) {
+  //   if (seatingCapacity < 1) {
+  //     throw new BadRequestException('Seating capacity must be at least 1');
+  //   }
+
+  //   if (distance <= 0) {
+  //     throw new BadRequestException('Distance must be greater than 0');
+  //   }
+
+  //   // Validate time format
+  //   if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeString)) {
+  //     throw new BadRequestException('Time must be in HH:MM format (24-hour)');
+  //   }
+
+  //   // Create location objects if coordinates are provided
+  //   let pickupLocation;
+  //   let dropoffLocation;
+
+  //   if (pickupLongitude !== undefined && pickupLatitude !== undefined) {
+  //     pickupLocation = { longitude: pickupLongitude, latitude: pickupLatitude };
+  //   }
+
+  //   if (dropoffLongitude !== undefined && dropoffLatitude !== undefined) {
+  //     dropoffLocation = { longitude: dropoffLongitude, latitude: dropoffLatitude };
+  //   }
+
+  //   const vehicles = await this.ridesService.testPricesWithTime(
+  //     seatingCapacity,
+  //     distance,
+  //     timeString,
+  //     pickupLocation,
+  //     dropoffLocation,
+  //   );
+
+  //   return vehicles;
+  // }
 }

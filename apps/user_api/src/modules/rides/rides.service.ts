@@ -4,6 +4,7 @@ import {
   FirebaseNotificationService,
   PaymentMethod,
   PaymentStatus,
+  PricingZoneRepository,
   RatingRepository,
   RideNotificationData,
   RideRepository,
@@ -33,6 +34,7 @@ export class RidesService {
     private readonly rideWebSocketService: RideWebSocketService,
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly driverEvpRepository: DriverEvpRepository,
+    private readonly pricingZoneRepository: PricingZoneRepository,
   ) {}
 
   async bookRide(passengerId: Types.ObjectId, createRideDto: CreateRideDto): Promise<RideResponseDto> {
@@ -214,6 +216,8 @@ export class RidesService {
   async getVehiclesByCapacityAndPrice(
     seatingCapacity: number,
     distance: number,
+    pickupLocation?: { longitude: number; latitude: number },
+    dropoffLocation?: { longitude: number; latitude: number },
   ): Promise<{ success: boolean; data: VehiclePriceDto[] }> {
     try {
       // Calculate estimated duration based on distance
@@ -236,11 +240,13 @@ export class RidesService {
       }
 
       // Calculate price for each eligible vehicle type
-      const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map((vt) => {
-        // Calculate price based on time periods
-        const finalPrice = this.calculateTimeBasedFare(vt, distance);
+      const vehiclePrices: VehiclePriceDto[] = [];
 
-        return {
+      for (const vt of eligibleVehicleTypes) {
+        // Calculate price based on time periods and zones
+        const finalPrice = await this.calculateTimeBasedFare(vt, distance, pickupLocation, dropoffLocation);
+
+        vehiclePrices.push({
           type: vt.name,
           capacity: vt.capacity,
           estimatedPrice: parseFloat(finalPrice.toFixed(2)),
@@ -248,8 +254,8 @@ export class RidesService {
           vehicleTypeId: vt._id.toString(),
           description: vt.description,
           iconUrl: vt.iconUrl,
-        };
-      });
+        });
+      }
 
       // Sort by price (ascending)
       return {
@@ -262,95 +268,177 @@ export class RidesService {
     }
   }
 
-  /**
-   * Test endpoint to calculate prices with a specific time of day
-   * @param seatingCapacity Required seating capacity
-   * @param distance Distance in kilometers
-   * @param timeString Time in HH:MM format to simulate
-   * @returns Vehicle prices at the specified time
-   */
-  async testPricesWithTime(
-    seatingCapacity: number,
-    distance: number,
-    timeString: string,
-  ): Promise<{ success: boolean; data: VehiclePriceDto[]; currentTime: string }> {
-    try {
-      // Calculate estimated duration based on distance
-      const estimatedDuration = this.estimateDuration(distance);
+  // /**
+  //  * Test endpoint to calculate prices with a specific time of day
+  //  * @param seatingCapacity Required seating capacity
+  //  * @param distance Distance in kilometers
+  //  * @param timeString Time in HH:MM format to simulate
+  //  * @param pickupLocation Optional pickup location coordinates
+  //  * @param dropoffLocation Optional dropoff location coordinates
+  //  * @returns Vehicle prices at the specified time
+  //  */
+  // async testPricesWithTime(
+  //   seatingCapacity: number,
+  //   distance: number,
+  //   timeString: string,
+  //   pickupLocation?: { longitude: number; latitude: number },
+  //   dropoffLocation?: { longitude: number; latitude: number },
+  // ): Promise<{ success: boolean; data: VehiclePriceDto[]; currentTime: string; locationInfo?: any }> {
+  //   try {
+  //     // Calculate estimated duration based on distance
+  //     const estimatedDuration = this.estimateDuration(distance);
 
-      // Query the database for all active vehicle types
-      const vehicleTypes = await this.vehicleTypeRepository.findActiveVehicleTypes();
+  //     // Query the database for all active vehicle types
+  //     const vehicleTypes = await this.vehicleTypeRepository.findActiveVehicleTypes();
 
-      if (!vehicleTypes || vehicleTypes.length === 0) {
-        this.logger.warn('No active vehicle types found in database');
-        return { success: false, data: [], currentTime: timeString };
-      }
+  //     if (!vehicleTypes || vehicleTypes.length === 0) {
+  //       this.logger.warn('No active vehicle types found in database');
+  //       return { success: false, data: [], currentTime: timeString };
+  //     }
 
-      // Filter vehicle types by required capacity
-      const eligibleVehicleTypes = vehicleTypes.filter((vt) => vt.capacity >= seatingCapacity);
+  //     // Filter vehicle types by required capacity
+  //     const eligibleVehicleTypes = vehicleTypes.filter((vt) => vt.capacity >= seatingCapacity);
 
-      if (eligibleVehicleTypes.length === 0) {
-        this.logger.debug(`No vehicle types found with capacity >= ${seatingCapacity}`);
-        return { success: false, data: [], currentTime: timeString };
-      }
+  //     if (eligibleVehicleTypes.length === 0) {
+  //       this.logger.debug(`No vehicle types found with capacity >= ${seatingCapacity}`);
+  //       return { success: false, data: [], currentTime: timeString };
+  //     }
 
-      // Calculate price for each eligible vehicle type with the provided time
-      const vehiclePrices: VehiclePriceDto[] = eligibleVehicleTypes.map((vt) => {
-        // Find pricing period for the specific time
-        const pricingPeriod = this.findApplicablePricingPeriod(vt.pricingPeriods, timeString);
+  //     // Get zone information if locations are provided
+  //     let locationInfo;
+  //     let zoneMultiplier = 1.0;
 
-        // Calculate price based on pricing period or fallback to default
-        let finalPrice = 0;
+  //     if (pickupLocation && dropoffLocation) {
+  //       const pickupZoneInfo = await this.pricingZoneRepository.findZoneForLocation(
+  //         pickupLocation.longitude,
+  //         pickupLocation.latitude,
+  //       );
 
-        if (pricingPeriod) {
-          // Add base fare for initial distance
-          finalPrice = pricingPeriod.baseFare;
+  //       const dropoffZoneInfo = await this.pricingZoneRepository.findZoneForLocation(
+  //         dropoffLocation.longitude,
+  //         dropoffLocation.latitude,
+  //       );
 
-          // If distance exceeds base distance, add incremental charges
-          if (distance > pricingPeriod.baseDistance) {
-            const extraDistance = distance - pricingPeriod.baseDistance;
-            const incrementsNeeded = Math.ceil(extraDistance / pricingPeriod.incrementalDistance);
-            finalPrice += incrementsNeeded * pricingPeriod.incrementalRate;
-          }
-        } else {
-          // Fallback if no period found
-          finalPrice = this.calculateFare(distance, estimatedDuration);
-        }
+  //       if (pickupZoneInfo && dropoffZoneInfo) {
+  //         zoneMultiplier = Math.max(pickupZoneInfo.priceMultiplier, dropoffZoneInfo.priceMultiplier);
+  //         locationInfo = {
+  //           pickup: {
+  //             inZone: true,
+  //             zoneName: pickupZoneInfo.name,
+  //             zoneId: pickupZoneInfo._id.toString(),
+  //             multiplier: pickupZoneInfo.priceMultiplier,
+  //           },
+  //           dropoff: {
+  //             inZone: true,
+  //             zoneName: dropoffZoneInfo.name,
+  //             zoneId: dropoffZoneInfo._id.toString(),
+  //             multiplier: dropoffZoneInfo.priceMultiplier,
+  //           },
+  //           effectiveMultiplier: zoneMultiplier,
+  //         };
+  //       } else if (pickupZoneInfo) {
+  //         zoneMultiplier = pickupZoneInfo.priceMultiplier;
+  //         locationInfo = {
+  //           pickup: {
+  //             inZone: true,
+  //             zoneName: pickupZoneInfo.name,
+  //             zoneId: pickupZoneInfo._id.toString(),
+  //             multiplier: pickupZoneInfo.priceMultiplier,
+  //           },
+  //           dropoff: { inZone: false },
+  //           effectiveMultiplier: zoneMultiplier,
+  //         };
+  //       } else if (dropoffZoneInfo) {
+  //         zoneMultiplier = dropoffZoneInfo.priceMultiplier;
+  //         locationInfo = {
+  //           pickup: { inZone: false },
+  //           dropoff: {
+  //             inZone: true,
+  //             zoneName: dropoffZoneInfo.name,
+  //             zoneId: dropoffZoneInfo._id.toString(),
+  //             multiplier: dropoffZoneInfo.priceMultiplier,
+  //           },
+  //           effectiveMultiplier: zoneMultiplier,
+  //         };
+  //       } else {
+  //         locationInfo = {
+  //           pickup: { inZone: false },
+  //           dropoff: { inZone: false },
+  //           effectiveMultiplier: 1.0,
+  //         };
+  //       }
+  //     }
 
-        return {
-          type: vt.name,
-          capacity: vt.capacity,
-          estimatedPrice: parseFloat(finalPrice.toFixed(2)),
-          estimatedDuration: Math.round(estimatedDuration),
-          vehicleTypeId: vt._id.toString(),
-          description: vt.description,
-          iconUrl: vt.iconUrl,
-          // Include pricing period info for debugging
-          pricingPeriod: pricingPeriod
-            ? {
-                name: pricingPeriod.name,
-                startTime: pricingPeriod.startTime,
-                endTime: pricingPeriod.endTime,
-                baseFare: pricingPeriod.baseFare,
-                baseDistance: pricingPeriod.baseDistance,
-                incrementalRate: pricingPeriod.incrementalRate,
-                incrementalDistance: pricingPeriod.incrementalDistance,
-              }
-            : 'No applicable pricing period found',
-        };
-      });
+  //     // Calculate price for each eligible vehicle type with the provided time
+  //     const vehiclePrices: VehiclePriceDto[] = [];
 
-      // Sort by price (ascending)
-      return {
-        success: true,
-        data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice),
-        currentTime: timeString,
-      };
-    } catch (error) {
-      this.logger.error(`Error testing prices with time ${timeString}: ${error.message}`, error.stack);
-      return { success: false, data: [], currentTime: timeString };
-    }
-  }
+  //     for (const vt of eligibleVehicleTypes) {
+  //       // Find pricing period for the specific time
+  //       const pricingPeriod = this.findApplicablePricingPeriod(vt.pricingPeriods, timeString);
+
+  //       // Calculate price based on pricing period or fallback to default
+  //       let finalPrice = 0;
+
+  //       if (pricingPeriod) {
+  //         // Add base fare for initial distance
+  //         finalPrice = pricingPeriod.baseFare;
+
+  //         // If distance exceeds base distance, add incremental charges
+  //         if (distance > pricingPeriod.baseDistance) {
+  //           const extraDistance = distance - pricingPeriod.baseDistance;
+  //           const incrementsNeeded = Math.ceil(extraDistance / pricingPeriod.incrementalDistance);
+  //           finalPrice += incrementsNeeded * pricingPeriod.incrementalRate;
+  //         }
+
+  //         // Apply zone multiplier if locations are provided
+  //         if (locationInfo) {
+  //           finalPrice *= zoneMultiplier;
+  //         }
+  //       } else {
+  //         // Fallback if no period found
+  //         finalPrice = this.calculateFare(distance, estimatedDuration);
+
+  //         // Apply zone multiplier if locations are provided
+  //         if (locationInfo) {
+  //           finalPrice *= zoneMultiplier;
+  //         }
+  //       }
+
+  //       vehiclePrices.push({
+  //         type: vt.name,
+  //         capacity: vt.capacity,
+  //         estimatedPrice: parseFloat(finalPrice.toFixed(2)),
+  //         estimatedDuration: Math.round(estimatedDuration),
+  //         vehicleTypeId: vt._id.toString(),
+  //         description: vt.description,
+  //         iconUrl: vt.iconUrl,
+  //         // Include pricing period info for debugging
+  //         pricingPeriod: pricingPeriod
+  //           ? {
+  //               name: pricingPeriod.name,
+  //               startTime: pricingPeriod.startTime,
+  //               endTime: pricingPeriod.endTime,
+  //               baseFare: pricingPeriod.baseFare,
+  //               baseDistance: pricingPeriod.baseDistance,
+  //               incrementalRate: pricingPeriod.incrementalRate,
+  //               incrementalDistance: pricingPeriod.incrementalDistance,
+  //             }
+  //           : 'No applicable pricing period found',
+  //       });
+  //     }
+
+  //     // Sort by price (ascending)
+  //     return {
+  //       success: true,
+  //       data: vehiclePrices.sort((a, b) => a.estimatedPrice - b.estimatedPrice),
+  //       currentTime: timeString,
+  //       locationInfo: locationInfo,
+  //     };
+  //   } catch (error) {
+  //     this.logger.error(`Error testing prices with time ${timeString}: ${error.message}`, error.stack);
+  //     return { success: false, data: [], currentTime: timeString };
+  //   }
+  // }
 
   private async sendRideRequestToSelectedDriver(
     ride: any,
@@ -440,7 +528,19 @@ export class RidesService {
     // Use Google Maps API or similar service for accurate calculations
     const distance = this.calculateDistance(pickup.coordinates, dropoff.coordinates);
     const duration = this.estimateDuration(distance);
-    const estimatedFare = this.calculateFare(distance, duration);
+
+    // Get vehicle type for standard pricing (can be adjusted based on selection)
+    const defaultVehicle = await this.vehicleTypeRepository.findOneByName('TAXI');
+
+    // Calculate estimated fare with time and zone pricing
+    const estimatedFare = defaultVehicle
+      ? await this.calculateTimeBasedFare(
+          defaultVehicle,
+          distance,
+          { longitude: pickup.coordinates.longitude, latitude: pickup.coordinates.latitude },
+          { longitude: dropoff.coordinates.longitude, latitude: dropoff.coordinates.latitude },
+        )
+      : this.calculateFare(distance, duration);
 
     return {
       distance: parseFloat(distance.toFixed(2)),
@@ -485,7 +585,20 @@ export class RidesService {
    * @param distance Distance in kilometers
    * @returns Calculated fare in RM
    */
-  private calculateTimeBasedFare(vehicleType: any, distance: number): number {
+  /**
+   * Calculate fare using time-based pricing model from vehicle type with zone adjustments
+   * @param vehicleType The vehicle type with pricing periods
+   * @param distance Distance in kilometers
+   * @param pickupLocation Optional pickup location coordinates
+   * @param dropoffLocation Optional dropoff location coordinates
+   * @returns Calculated fare in RM
+   */
+  private async calculateTimeBasedFare(
+    vehicleType: any,
+    distance: number,
+    pickupLocation?: { longitude: number; latitude: number },
+    dropoffLocation?: { longitude: number; latitude: number },
+  ): Promise<number> {
     // Get current time
     const now = new Date();
     const currentTimeString =
@@ -515,7 +628,44 @@ export class RidesService {
       fare += incrementsNeeded * applicablePeriod.incrementalRate;
     }
 
-    return fare;
+    // Apply zone multiplier if locations are provided
+    let zoneMultiplier = 1.0;
+
+    if (pickupLocation && dropoffLocation) {
+      try {
+        // Try to find pickup zone
+        const pickupZone = await this.pricingZoneRepository.findZoneForLocation(
+          pickupLocation.longitude,
+          pickupLocation.latitude,
+        );
+
+        // Try to find dropoff zone
+        const dropoffZone = await this.pricingZoneRepository.findZoneForLocation(
+          dropoffLocation.longitude,
+          dropoffLocation.latitude,
+        );
+
+        // Calculate multiplier (we could use max or average - here using max of pickup/dropoff)
+        if (pickupZone && dropoffZone) {
+          zoneMultiplier = Math.max(pickupZone.priceMultiplier, dropoffZone.priceMultiplier);
+          this.logger.log(
+            `Applied zone pricing: pickup=${pickupZone.name}, dropoff=${dropoffZone.name}, multiplier=${zoneMultiplier}`,
+          );
+        } else if (pickupZone) {
+          zoneMultiplier = pickupZone.priceMultiplier;
+          this.logger.log(`Applied pickup zone pricing: zone=${pickupZone.name}, multiplier=${zoneMultiplier}`);
+        } else if (dropoffZone) {
+          zoneMultiplier = dropoffZone.priceMultiplier;
+          this.logger.log(`Applied dropoff zone pricing: zone=${dropoffZone.name}, multiplier=${zoneMultiplier}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error finding pricing zones: ${error.message}`, error.stack);
+        // Use default multiplier if there's an error
+      }
+    }
+
+    // Apply zone multiplier to fare
+    return fare * zoneMultiplier;
   }
 
   /**

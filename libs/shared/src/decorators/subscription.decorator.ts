@@ -2,9 +2,9 @@
 import { SetMetadata } from '@nestjs/common';
 
 export enum SubscriptionTier {
-  BASIC = 'BASIC',
-  BRONZE = 'BRONZE',
-  SILVER = 'SILVER',
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
 }
 
 export const REQUIRES_SUBSCRIPTION_KEY = 'requires_subscription';

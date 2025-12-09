@@ -12,3 +12,4 @@ export * from './driver-document.repository';
 export * from './vehicle-document.repository';
 export * from './vehicleType.repository';
 export * from './driver-evp.repository';
+export * from './pricing-zone.repository';
