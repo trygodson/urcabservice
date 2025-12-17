@@ -6,9 +6,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from '@urcab-workspace/shared';
 // import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
-// import MockDate from 'mockdate';
-
-// MockDate.set('2025-07-28T10:59:59');
 
 async function bootstrap() {
   const app = await NestFactory.create(AdminModule);

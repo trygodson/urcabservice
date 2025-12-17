@@ -2,6 +2,7 @@ export enum Role {
   PASSENGER = 1,
   DRIVER = 2,
   ADMIN = 3,
+  SUPER_ADMIN = 4,
 }
 
 export enum UserRolesEnum {

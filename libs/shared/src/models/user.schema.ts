@@ -3,6 +3,7 @@ import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { Gender, Role } from '../enums';
+import { AdminRole } from './role.schema';
 
 @Schema({
   collection: 'user',
@@ -17,6 +18,14 @@ export class User extends AbstractDocument {
     maxlength: 20,
   })
   type?: number;
+
+  @ApiProperty()
+  @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: AdminRole.name,
+    required: false,
+  })
+  roleId?: Types.ObjectId; // Reference to custom role
 
   @ApiProperty()
   @Prop({
@@ -318,6 +327,9 @@ export class User extends AbstractDocument {
   //   default: 0,
   // })
   // rankingPoints?: number;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
@@ -328,6 +340,7 @@ UserSchema.index({ email: 1 });
 UserSchema.index({ userName: 1 });
 UserSchema.index({ phone: 1 });
 UserSchema.index({ type: 1 });
+UserSchema.index({ roleId: 1 });
 UserSchema.index({ isDriverVerified: 1 });
 UserSchema.index({ hasCompleteDocumentation: 1 });
 UserSchema.index({ country: 1 });

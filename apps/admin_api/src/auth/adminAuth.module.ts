@@ -16,6 +16,12 @@ import {
   User,
   UserRepository,
   UserSchema,
+  AdminRole,
+  RoleSchema,
+  RoleRepository,
+  Permission,
+  PermissionSchema,
+  PermissionRepository,
 } from '@urcab-workspace/shared';
 
 @Module({
@@ -36,10 +42,20 @@ import {
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: AdminRole.name, schema: RoleSchema },
+      { name: Permission.name, schema: PermissionSchema },
     ]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAStrategy, LocalStrategy, UserRepository, RefreshTokenRepository],
+  providers: [
+    AuthService,
+    JwtAStrategy,
+    LocalStrategy,
+    UserRepository,
+    RefreshTokenRepository,
+    RoleRepository,
+    PermissionRepository,
+  ],
   exports: [AuthService],
 })
 export class AdminAuthModule {}

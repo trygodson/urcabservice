@@ -13,3 +13,5 @@ export * from './vehicle-document.repository';
 export * from './vehicleType.repository';
 export * from './driver-evp.repository';
 export * from './pricing-zone.repository';
+export * from './permission.repository';
+export * from './role.repository';

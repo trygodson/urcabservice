@@ -30,6 +30,8 @@ import {
   timeZoneMoment,
   User,
   UserRepository,
+  RoleRepository,
+  PermissionRepository,
 } from '@urcab-workspace/shared';
 // import { WalletsService } from '../wallets/wallets.service';
 
@@ -38,6 +40,8 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly refreshTokenReposiotry: RefreshTokenRepository,
+    private readonly roleRepository: RoleRepository,
+    private readonly permissionRepository: PermissionRepository,
     // private readonly countryRepository: CountryRepository,
     // @Inject(forwardRef(() => WalletsService))
     // private readonly walletsService: WalletsService,
@@ -111,19 +115,51 @@ export class AuthService {
         // Check if user has completed onboarding
         // const needsOnboarding = !user.country || !user.isOnboardingComplete;
 
-        if (user.type === Role.ADMIN) {
+        if (user.type === Role.ADMIN || user.type === Role.SUPER_ADMIN) {
           // body?.fcmToken &&
           //   (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
+          console.log(user, 'user');
+          // Get role and permissions
+          let permissions: string[] = [];
+          let roleName: string | null = null;
+          const isSuperAdmin = user.type === Role.SUPER_ADMIN;
+
+          if (user.roleId && !isSuperAdmin) {
+            const role = await this.roleRepository.findById(user.roleId.toString());
+            console.log(role, 'role');
+            if (role && role.permissions && role.permissions.length > 0) {
+              roleName = role.name;
+              // Fetch permissions by IDs
+              const permissionIds = role.permissions.map((p: any) =>
+                typeof p === 'object' && p._id ? p._id.toString() : p.toString(),
+              );
+              const permissionDocs = await this.permissionRepository.findByIds(permissionIds);
+              permissions = permissionDocs.map((p) => p.name);
+            }
+          } else if (isSuperAdmin) {
+            // Super admin gets all permissions - we'll use a special flag
+            roleName = 'Super Admin';
+            permissions = ['*']; // Special permission indicating all access
+          }
 
           return {
             success: true,
             data: {
               accessToken: access_token,
               refreshToken: refresh_token,
-              type: user.type,
-              isProfileUpdated: user.isProfileUpdated,
-              isOnboardingComplete: user.isOnboardingComplete,
-              // needsOnboarding,
+              user: {
+                _id: user._id.toString(),
+                fullName: user.fullName,
+                email: user.email,
+                type: user.type,
+                roleId: user.roleId?.toString(),
+                roleName: roleName,
+                permissions: permissions,
+                isSuperAdmin: isSuperAdmin,
+                isProfileUpdated: user.isProfileUpdated,
+                isOnboardingComplete: user.isOnboardingComplete,
+                isActive: user.isActive,
+              },
             },
           };
         } else {
@@ -237,7 +273,7 @@ export class AuthService {
 
   async verifyUser(email: string, password: string): Promise<User | never> {
     const theuser = await this.userRepository.findOne({ email: email }, [], {
-      select: 'passwordSalt passwordHash isEmailConfirmed type email',
+      select: 'passwordSalt passwordHash isEmailConfirmed type email roleId',
     });
 
     if (!theuser) {

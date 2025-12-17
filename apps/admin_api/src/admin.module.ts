@@ -10,6 +10,9 @@ import { VehicleTypesModule } from './vehicleTypes/vehicleTypes.module';
 import { AdminPassengersModule } from './passengers/adminPassengers.module';
 import { AdminSettingsModule } from './settings/settings.module';
 import { PricingZonesModule } from './pricing-zones/pricing-zones.module';
+import { RolesModule } from './roles/roles.module';
+import { UsersModule } from './users/users.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { PricingZonesModule } from './pricing-zones/pricing-zones.module';
     AdminPassengersModule,
     AdminSettingsModule,
     PricingZonesModule,
+    RolesModule,
+    UsersModule,
+    PermissionsModule,
   ],
 
   // providers: [AdminService],
