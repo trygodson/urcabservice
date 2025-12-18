@@ -13,7 +13,7 @@ export class VehicleTypesController {
   constructor(private readonly vehicleTypesService: VehicleTypesService) {}
 
   @Post()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Create a new vehicle type with time-based pricing' })
   @ApiResponse({ status: 201, description: 'Vehicle type created successfully' })
   create(@Body() createVehicleTypeDto: CreateVehicleTypeDto, @CurrentUser() user: any) {
@@ -21,7 +21,7 @@ export class VehicleTypesController {
   }
 
   @Get()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get all vehicle types with pagination' })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
@@ -31,7 +31,7 @@ export class VehicleTypesController {
   }
 
   @Get(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get a single vehicle type by ID' })
   @ApiParam({ name: 'id', description: 'Vehicle Type ID' })
   @ApiResponse({ status: 200, description: 'Vehicle type retrieved successfully' })
@@ -41,7 +41,7 @@ export class VehicleTypesController {
   }
 
   @Patch(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Update a vehicle type' })
   @ApiParam({ name: 'id', description: 'Vehicle Type ID' })
   @ApiResponse({ status: 200, description: 'Vehicle type updated successfully' })
@@ -51,7 +51,7 @@ export class VehicleTypesController {
   }
 
   @Delete(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Delete a vehicle type' })
   @ApiParam({ name: 'id', description: 'Vehicle Type ID' })
   @ApiResponse({ status: 200, description: 'Vehicle type deleted successfully' })
@@ -61,7 +61,7 @@ export class VehicleTypesController {
   }
 
   // @Post('seed')
-  // @SetRolesMetaData(Role.ADMIN)
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   // @ApiOperation({ summary: 'Seed vehicle types from enum values with time-based pricing' })
   // @ApiResponse({ status: 200, description: 'Vehicle types seeded successfully' })
   // seedVehicleTypes(@Body() seedDto: SeedVehicleTypeDto, @CurrentUser() user: any) {

@@ -29,7 +29,7 @@ export class AdminDriversController {
 
   // Driver Management APIs
   @Get()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get all drivers with filters and pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -47,7 +47,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'documentType', required: false, type: String })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPendingDriverDocuments(@Query() query: any) {
     return this.adminDriversService.getPendingDriverDocuments(query);
   }
@@ -57,7 +57,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'documentType', required: false, type: String })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPendingVehicleDocuments(@Query() query: any) {
     return this.adminDriversService.getPendingVehicleDocuments(query);
   }
@@ -72,7 +72,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'passengerId', required: false, type: String })
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getAllRides(@Query() query: GetRidesDto) {
     return this.adminDriversService.getAllRides(query);
   }
@@ -80,14 +80,14 @@ export class AdminDriversController {
   // Dashboard/Statistics APIs
   @Get('dashboard/stats')
   @ApiOperation({ summary: 'Get driver management dashboard statistics' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDashboardStats() {
     return this.adminDriversService.getDashboardStats();
   }
 
   @Get('dashboard/pending-tasks')
   @ApiOperation({ summary: 'Get pending admin tasks' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPendingTasks() {
     return this.adminDriversService.getPendingTasks();
   }
@@ -100,7 +100,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'issueType', required: false, type: String })
   @ApiQuery({ name: 'severityLevel', required: false, type: Number })
   @ApiQuery({ name: 'assignedToMe', required: false, type: Boolean })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getAllReports(@Query() query: GetReportsDto) {
     return this.adminDriversService.getAllReports(query);
   }
@@ -113,7 +113,7 @@ export class AdminDriversController {
     description: 'Driver details retrieved successfully',
     type: DriverDetailsResponseDto,
   })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDriverDetails(@Param('driverId') driverId: string) {
     return this.adminDriversService.getDriverDetails(driverId);
   }
@@ -121,7 +121,7 @@ export class AdminDriversController {
   @Patch(':driverId/verify')
   @ApiOperation({ summary: 'Verify or reject driver' })
   @ApiParam({ name: 'driverId', description: 'Driver ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiBody({
     schema: {
       type: 'object',
@@ -157,7 +157,7 @@ export class AdminDriversController {
       },
     },
   })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async updateDriverStatus(@Param('driverId') driverId: string, @Body() body: { isActive: boolean; reason?: string }) {
     return this.adminDriversService.updateDriverStatus(driverId, body.isActive, body.reason);
   }
@@ -166,7 +166,7 @@ export class AdminDriversController {
   @Get(':driverId/documents')
   @ApiOperation({ summary: 'Get all documents for a driver' })
   @ApiParam({ name: 'driverId', description: 'Driver ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDriverDocuments(@Param('driverId') driverId: string) {
     return this.adminDriversService.getDriverDocuments(driverId);
   }
@@ -174,7 +174,7 @@ export class AdminDriversController {
   @Get('documents/:documentId')
   @ApiOperation({ summary: 'Get specific document details' })
   @ApiParam({ name: 'documentId', description: 'Document ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDocumentDetails(@Param('documentId') documentId: string) {
     return this.adminDriversService.getDocumentDetails(documentId);
   }
@@ -182,7 +182,7 @@ export class AdminDriversController {
   @Patch('documents/:documentId/approve')
   @ApiOperation({ summary: 'Approve driver document' })
   @ApiParam({ name: 'documentId', description: 'Document ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async approveDriverDocument(@Param('documentId') documentId: string, @Body() body: DocumentApprovalDto) {
     return this.adminDriversService.approveDriverDocument(documentId, body);
   }
@@ -190,7 +190,7 @@ export class AdminDriversController {
   @Patch('documents/:documentId/reject')
   @ApiOperation({ summary: 'Reject driver document' })
   @ApiParam({ name: 'documentId', description: 'Document ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async rejectDriverDocument(@Param('documentId') documentId: string, @Body() body: DocumentApprovalDto) {
     return this.adminDriversService.rejectDriverDocument(documentId, body);
   }
@@ -199,7 +199,7 @@ export class AdminDriversController {
   @Get(':driverId/vehicles')
   @ApiOperation({ summary: 'Get all vehicles for a driver' })
   @ApiParam({ name: 'driverId', description: 'Driver ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDriverVehicles(@Param('driverId') driverId: string) {
     return this.adminDriversService.getDriverVehicles(driverId);
   }
@@ -207,7 +207,7 @@ export class AdminDriversController {
   @Get('vehicles/:vehicleId')
   @ApiOperation({ summary: 'Get vehicle details' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getVehicleDetails(@Param('vehicleId') vehicleId: string) {
     return this.adminDriversService.getVehicleDetails(vehicleId);
   }
@@ -215,7 +215,7 @@ export class AdminDriversController {
   @Patch('vehicles/:vehicleId/approve')
   @ApiOperation({ summary: 'Approve vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async approveVehicle(@Param('vehicleId') vehicleId: string) {
     return this.adminDriversService.approveVehicle(vehicleId);
   }
@@ -223,7 +223,7 @@ export class AdminDriversController {
   @Patch('vehicles/:vehicleId/reject')
   @ApiOperation({ summary: 'Reject vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async rejectVehicle(@Param('vehicleId') vehicleId: string, @Body() body?: VehicleRejectionDto) {
     return this.adminDriversService.rejectVehicle(vehicleId, body);
   }
@@ -232,7 +232,7 @@ export class AdminDriversController {
   @Get('vehicles/:vehicleId/documents')
   @ApiOperation({ summary: 'Get all documents for a vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getVehicleDocuments(@Param('vehicleId') vehicleId: string) {
     return this.adminDriversService.getVehicleDocuments(vehicleId);
   }
@@ -240,7 +240,7 @@ export class AdminDriversController {
   @Get('vehicle-documents/:documentId')
   @ApiOperation({ summary: 'Get vehicle document details' })
   @ApiParam({ name: 'documentId', description: 'Vehicle Document ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getVehicleDocumentDetails(@Param('documentId') documentId: string) {
     return this.adminDriversService.getVehicleDocumentDetails(documentId);
   }
@@ -248,7 +248,7 @@ export class AdminDriversController {
   @Patch('vehicle-documents/:documentId/approve')
   @ApiOperation({ summary: 'Approve vehicle document' })
   @ApiParam({ name: 'documentId', description: 'Vehicle Document ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async approveVehicleDocument(@Param('documentId') documentId: string, @Body() body: VehicleDocumentApprovalDto) {
     return this.adminDriversService.approveVehicleDocument(documentId, body);
   }
@@ -266,7 +266,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, type: String })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDriverRides(@Param('driverId') driverId: string, @Query() query: any) {
     return this.adminDriversService.getDriverRides(driverId, query);
   }
@@ -274,7 +274,7 @@ export class AdminDriversController {
   @Get('rides/:rideId')
   @ApiOperation({ summary: 'Get ride details' })
   @ApiParam({ name: 'rideId', description: 'Ride ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getRideDetails(@Param('rideId') rideId: string) {
     return this.adminDriversService.getRideDetails(rideId);
   }
@@ -291,7 +291,7 @@ export class AdminDriversController {
   @Patch('reports/:reportId/assign')
   @ApiOperation({ summary: 'Assign report to admin' })
   @ApiParam({ name: 'reportId', description: 'Report ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async assignReport(@Param('reportId') reportId: string, @Body() body: AssignReportDto) {
     return this.adminDriversService.assignReport(reportId, body);
   }
@@ -299,7 +299,7 @@ export class AdminDriversController {
   @Patch('reports/:reportId/resolve')
   @ApiOperation({ summary: 'Resolve report' })
   @ApiParam({ name: 'reportId', description: 'Report ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async resolveReport(@Param('reportId') reportId: string, @Body() body: ResolveReportDto) {
     return this.adminDriversService.resolveReport(reportId, body);
   }
@@ -311,7 +311,7 @@ export class AdminDriversController {
   @ApiResponse({ status: 201, description: 'EVP created successfully', type: DriverEvpResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - Driver documents not verified or already has active EVP' })
   @ApiResponse({ status: 404, description: 'Driver not found' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async createDriverEvp(
     @Param('driverId') driverId: string,
     @Body() createEvpDto: CreateDriverEvpDto,
@@ -330,7 +330,7 @@ export class AdminDriversController {
   @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'EVPs retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Driver not found' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDriverEvps(@Param('driverId') driverId: string, @Query() query: GetDriverEvpsDto) {
     return this.adminDriversService.getDriverEvps(driverId, query);
   }
@@ -340,7 +340,7 @@ export class AdminDriversController {
   @ApiParam({ name: 'evpId', description: 'EVP ID' })
   @ApiResponse({ status: 200, description: 'EVP details retrieved successfully', type: DriverEvpResponseDto })
   @ApiResponse({ status: 404, description: 'EVP not found' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getEvpById(@Param('evpId') evpId: string) {
     return this.adminDriversService.getEvpById(evpId);
   }
@@ -351,7 +351,7 @@ export class AdminDriversController {
   @ApiResponse({ status: 200, description: 'EVP revoked successfully', type: DriverEvpResponseDto })
   @ApiResponse({ status: 400, description: 'EVP is already inactive or revoked' })
   @ApiResponse({ status: 404, description: 'EVP not found' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async revokeEvp(@Param('evpId') evpId: string, @Body() revokeDto: RevokeDriverEvpDto, @CurrentUser() user: any) {
     return this.adminDriversService.revokeEvp(evpId, revokeDto, user.sub);
   }

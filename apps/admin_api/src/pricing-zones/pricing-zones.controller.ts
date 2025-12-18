@@ -18,7 +18,7 @@ export class PricingZonesController {
   constructor(private readonly pricingZonesService: PricingZonesService) {}
 
   @Post()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Create a new pricing zone' })
   @ApiResponse({ status: 201, description: 'Pricing zone created successfully' })
   async create(@Body() createPricingZoneDto: CreatePricingZoneDto, @CurrentUser() user: any) {
@@ -26,7 +26,7 @@ export class PricingZonesController {
   }
 
   @Get()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get all pricing zones with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -40,7 +40,7 @@ export class PricingZonesController {
   }
 
   @Get('check-location')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Check if a location is within a pricing zone' })
   @ApiQuery({ name: 'longitude', required: true, type: Number })
   @ApiQuery({ name: 'latitude', required: true, type: Number })
@@ -50,7 +50,7 @@ export class PricingZonesController {
   }
 
   @Get(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get a pricing zone by ID' })
   @ApiParam({ name: 'id', description: 'Pricing Zone ID' })
   @ApiResponse({ status: 200, description: 'Pricing zone retrieved successfully' })
@@ -60,7 +60,7 @@ export class PricingZonesController {
   }
 
   @Patch(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Update a pricing zone' })
   @ApiParam({ name: 'id', description: 'Pricing Zone ID' })
   @ApiResponse({ status: 200, description: 'Pricing zone updated successfully' })
@@ -70,7 +70,7 @@ export class PricingZonesController {
   }
 
   @Delete(':id')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Delete a pricing zone' })
   @ApiParam({ name: 'id', description: 'Pricing Zone ID' })
   @ApiResponse({ status: 200, description: 'Pricing zone deleted successfully' })
@@ -80,7 +80,7 @@ export class PricingZonesController {
   }
 
   @Get('search/locations')
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Search for locations using Mapbox Geocoding API' })
   @ApiQuery({ name: 'query', required: true, description: 'Search text for location' })
   @ApiQuery({ name: 'country', required: false, description: 'Country code to limit results (e.g. ng)' })

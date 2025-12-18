@@ -14,7 +14,7 @@ export class AdminPassengersController {
 
   // Passenger Management APIs
   @Get()
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get all passengers with filters and pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -28,7 +28,7 @@ export class AdminPassengersController {
 
   @Get('dashboard/stats')
   @ApiOperation({ summary: 'Get passenger management dashboard statistics' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getDashboardStats() {
     return this.adminPassengersService.getDashboardStats();
   }
@@ -41,7 +41,7 @@ export class AdminPassengersController {
     description: 'Passenger details retrieved successfully',
     type: PassengerDetailsResponseDto,
   })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerDetails(@Param('passengerId') passengerId: string) {
     return this.adminPassengersService.getPassengerDetails(passengerId);
   }
@@ -49,7 +49,7 @@ export class AdminPassengersController {
   @Patch(':passengerId/status')
   @ApiOperation({ summary: 'Update passenger status (activate/deactivate)' })
   @ApiParam({ name: 'passengerId', description: 'Passenger ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async updatePassengerStatus(
     @Param('passengerId') passengerId: string,
     @Body() body: { isActive: boolean; reason?: string },
@@ -65,7 +65,7 @@ export class AdminPassengersController {
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerRides(@Param('passengerId') passengerId: string, @Query() query: GetPassengerRidesDto) {
     return this.adminPassengersService.getPassengerRides(passengerId, query);
   }
@@ -73,7 +73,7 @@ export class AdminPassengersController {
   @Get('rides/:rideId')
   @ApiOperation({ summary: 'Get ride details' })
   @ApiParam({ name: 'rideId', description: 'Ride ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getRideDetails(@Param('rideId') rideId: string) {
     return this.adminPassengersService.getRideDetails(rideId);
   }
@@ -81,7 +81,7 @@ export class AdminPassengersController {
   @Get(':passengerId/documents')
   @ApiOperation({ summary: 'Get all documents for a passenger' })
   @ApiParam({ name: 'passengerId', description: 'Passenger ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerDocuments(@Param('passengerId') passengerId: string) {
     return this.adminPassengersService.getPassengerDocuments(passengerId);
   }
@@ -95,7 +95,7 @@ export class AdminPassengersController {
   @ApiQuery({ name: 'issueType', required: false, type: String })
   @ApiQuery({ name: 'severityLevel', required: false, type: Number })
   @ApiQuery({ name: 'assignedToMe', required: false, type: Boolean })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerReports(@Param('passengerId') passengerId: string, @Query() query: GetPassengerReportsDto) {
     return this.adminPassengersService.getPassengerReports(passengerId, query);
   }
@@ -103,7 +103,7 @@ export class AdminPassengersController {
   @Get(':passengerId/ratings')
   @ApiOperation({ summary: 'Get all ratings for a passenger' })
   @ApiParam({ name: 'passengerId', description: 'Passenger ID' })
-  @SetRolesMetaData(Role.ADMIN)
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerRatings(@Param('passengerId') passengerId: string) {
     return this.adminPassengersService.getPassengerRatings(passengerId);
   }

@@ -54,7 +54,7 @@ export class VehicleDocumentRecord extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: 'vehicle',
+    ref: 'Vehicle',
     required: true,
   })
   vehicleId: Types.ObjectId;
@@ -62,7 +62,7 @@ export class VehicleDocumentRecord extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: 'user',
+    ref: 'User',
     required: true,
   })
   uploadedByDriverId: Types.ObjectId;
@@ -162,7 +162,7 @@ export class VehicleDocumentRecord extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: User.name,
+    ref: 'User',
     required: false,
   })
   verifiedByAdminId?: Types.ObjectId;
