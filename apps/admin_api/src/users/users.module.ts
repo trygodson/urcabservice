@@ -9,6 +9,9 @@ import {
   RoleRepository,
   AdminRole,
   RoleSchema,
+  Permission,
+  PermissionSchema,
+  PermissionRepository,
 } from '@urcab-workspace/shared';
 
 @Module({
@@ -16,10 +19,11 @@ import {
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: AdminRole.name, schema: RoleSchema },
+      { name: Permission.name, schema: PermissionSchema },
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UserRepository, RoleRepository],
+  providers: [UsersService, UserRepository, RoleRepository, PermissionRepository],
   exports: [UsersService],
 })
 export class UsersModule {}
