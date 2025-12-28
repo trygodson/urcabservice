@@ -1,16 +1,27 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
+  BalanceType,
   DriverOnlineStatus,
   FirebaseNotificationService,
+  generateRandomString,
+  PaymentMethod,
+  PaymentStatus,
   RatingRepository,
   RideRepository,
   RideStatus,
   SubscriptionRepository,
+  TransactionCategory,
+  TransactionStatus,
+  TransactionType,
   UserRepository,
   VehicleRepository,
+  WalletRepository,
+  WalletTransaction,
 } from '@urcab-workspace/shared';
 import { RideResponseDto } from 'apps/user_api/src/modules/rides/dtos';
 import { Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { DriverRideRepository } from './repository/driverRide.repository';
 import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
@@ -64,6 +75,8 @@ export class DriverRideService {
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly firebaseRideService: FirebaseRideService,
     private readonly subscriptionRepository: SubscriptionRepository,
+    private readonly walletRepository: WalletRepository,
+    @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
   async acceptRide(
@@ -94,7 +107,7 @@ export class DriverRideService {
       // Check subscription and ride request limits (for free plan)
       // Ensure driver has a free subscription
       await this.subscriptionRepository.getOrCreateFreeSubscription(driverId.toString());
-      
+
       // Check if driver can accept more ride requests
       const canAccept = await this.subscriptionRepository.canAcceptRideRequest(driverId.toString());
       if (!canAccept.canAccept) {
@@ -121,6 +134,15 @@ export class DriverRideService {
         selectedVehicleId: vehicle._id,
         driverAssignedAt: new Date(),
       });
+
+      // Create wallet transaction for the ride (status: PENDING)
+      await this.createRideTransaction(
+        rideId,
+        ride.passengerId._id.toString(),
+        driverId.toString(),
+        ride.estimatedFare || 0,
+        ride.paymentMethod,
+      );
 
       // Update driver availability
 
@@ -394,6 +416,9 @@ export class DriverRideService {
       // Use final fare from request or estimated fare
       const finalFare = completeData.finalFare || ride.estimatedFare || 0;
 
+      // Determine payment status based on payment method
+      const paymentStatus = ride.paymentMethod === PaymentMethod.CASH ? PaymentStatus.COMPLETED : PaymentStatus.PENDING;
+
       // Update ride with completion data
       const updateData = {
         status: RideStatus.RIDE_COMPLETED,
@@ -402,6 +427,7 @@ export class DriverRideService {
         actualDistance: completeData.actualDistance || ride.estimatedDistance,
         actualDuration,
         notes: completeData.notes,
+        paymentStatus,
       };
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
@@ -409,6 +435,9 @@ export class DriverRideService {
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+
+      // Update wallet transaction and wallets based on payment method
+      await this.updateRideTransaction(rideId, finalFare, ride.paymentMethod, paymentStatus);
 
       // Update driver availability - make them available again
       await this.driverLocationRepository.updateDriverStatus(driverId, DriverOnlineStatus.ONLINE, true);
@@ -754,7 +783,8 @@ export class DriverRideService {
     return {
       _id: ride._id,
       passengerId: ride.passengerId,
-
+      paymentMethod: ride.paymentMethod,
+      paymentStatus: ride.paymentStatus,
       driverId: ride.driverId,
       pickupLocation: ride.pickupLocation,
       dropoffLocation: ride.dropoffLocation,
@@ -773,5 +803,150 @@ export class DriverRideService {
       startedAt: ride.startedAt,
       completedAt: ride.completedAt,
     };
+  }
+
+  /**
+   * Create wallet transaction when ride is accepted
+   */
+  private async createRideTransaction(
+    rideId: string,
+    passengerId: string,
+    driverId: string,
+    amount: number,
+    paymentMethod: string,
+  ): Promise<void> {
+    try {
+      // Get or create driver wallet
+      let driverWallet = await this.walletRepository.findOne({ user: new Types.ObjectId(driverId) });
+      if (!driverWallet) {
+        // Create wallet using model directly
+        const WalletModel = this.walletRepository['model'];
+        driverWallet = await WalletModel.create({
+          _id: new Types.ObjectId(),
+          user: new Types.ObjectId(driverId),
+          depositBalance: 0,
+          withdrawableBalance: 0,
+          totalBalance: 0,
+          totalDeposited: 0,
+          lastTransactionDate: new Date(),
+        });
+      }
+
+      // Generate transaction reference
+      const transactionRef = this.generateTransactionRef(TransactionType.CREDIT, TransactionCategory.RIDE);
+
+      // Create transaction with PENDING status
+      const transaction = new this.transactionModel({
+        _id: new Types.ObjectId(),
+        transactionRef,
+        user: new Types.ObjectId(driverId),
+        wallet: driverWallet._id,
+        type: TransactionType.CREDIT,
+        status: TransactionStatus.PENDING,
+        category: TransactionCategory.RIDE,
+        balanceType: BalanceType.WITHDRAWABLE,
+        amount,
+        depositBalanceBefore: driverWallet.depositBalance,
+        depositBalanceAfter: driverWallet.depositBalance,
+        withdrawableBalanceBefore: driverWallet.withdrawableBalance,
+        withdrawableBalanceAfter: driverWallet.withdrawableBalance,
+        totalBalanceBefore: driverWallet.totalBalance,
+        totalBalanceAfter: driverWallet.totalBalance,
+        description: `Ride payment - ${paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Card'}`,
+        paymentMethod,
+        metadata: {
+          rideId,
+          passengerId,
+          paymentMethod,
+        },
+      });
+
+      await transaction.save();
+      this.logger.log(`Created ride transaction ${transactionRef} for ride ${rideId} with amount ${amount}`);
+    } catch (error) {
+      this.logger.error(`Failed to create ride transaction for ride ${rideId}:`, error.stack);
+      // Don't throw error - transaction creation failure shouldn't block ride acceptance
+    }
+  }
+
+  /**
+   * Update wallet transaction and wallets when ride is completed
+   */
+  private async updateRideTransaction(
+    rideId: string,
+    finalFare: number,
+    paymentMethod: string,
+    paymentStatus: PaymentStatus,
+  ): Promise<void> {
+    try {
+      // Find the transaction for this ride
+      const transaction = await this.transactionModel.findOne({
+        'metadata.rideId': rideId,
+        category: TransactionCategory.RIDE,
+      });
+
+      if (!transaction) {
+        this.logger.warn(`No transaction found for ride ${rideId}`);
+        return;
+      }
+
+      // Update transaction amount if final fare differs
+      if (transaction.amount !== finalFare) {
+        transaction.amount = finalFare;
+      }
+
+      // Get current wallet state for transaction record
+      const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+      if (!driverWallet) {
+        throw new NotFoundException('Driver wallet not found');
+      }
+
+      // If payment is cash, mark transaction as completed but don't update wallet
+      // (Driver collected cash directly, so wallet balance doesn't change)
+      if (paymentMethod === PaymentMethod.CASH && paymentStatus === PaymentStatus.COMPLETED) {
+        // Update transaction status to completed for record-keeping
+        // Wallet balances remain unchanged since driver received cash directly
+        transaction.status = TransactionStatus.COMPLETED;
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change
+        transaction.completedAt = new Date();
+        transaction.description = `Ride payment completed - Cash (RM${finalFare}) - Cash collected directly`;
+
+        await transaction.save();
+        this.logger.log(
+          `Ride ${rideId} completed with cash payment of RM${finalFare}. Wallet balance unchanged (cash collected directly).`,
+        );
+      } else {
+        // For card payments, keep transaction as PENDING
+        // Wallet will be updated when payment is confirmed via payment callback
+        transaction.status = TransactionStatus.PENDING;
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change until payment confirmed
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change until payment confirmed
+        transaction.description = `Ride payment pending - Card (RM${finalFare})`;
+        await transaction.save();
+        this.logger.log(
+          `Ride ${rideId} completed with card payment. Transaction remains pending until payment is confirmed.`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to update ride transaction for ride ${rideId}:`, error.stack);
+      // Don't throw error - transaction update failure shouldn't block ride completion
+    }
+  }
+
+  /**
+   * Generate transaction reference
+   */
+  private generateTransactionRef(type: TransactionType, category: TransactionCategory): string {
+    const prefix = type === TransactionType.CREDIT ? 'CR' : 'DB';
+    const categoryCode = category.substring(0, 3).toUpperCase();
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = generateRandomString(4).toUpperCase();
+
+    return `${prefix}${categoryCode}${timestamp}${random}`;
   }
 }

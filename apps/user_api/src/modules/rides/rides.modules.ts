@@ -28,6 +28,8 @@ import {
   VehicleType,
   VehicleTypeRepository,
   VehicleTypeSchema,
+  WalletTransaction,
+  WalletTransactionSchema,
 } from '@urcab-workspace/shared';
 import { RidesController } from './rides.controller';
 import { ConfigService } from '@nestjs/config';
@@ -61,6 +63,7 @@ import { RideGateway } from './gateway/ride.gateway';
       { name: DriverEvp.name, schema: DriverEvpSchema },
       { name: VehicleType.name, schema: VehicleTypeSchema },
       { name: PricingZone.name, schema: PricingZoneSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
     ]),
     NotificationsModule,
   ],

@@ -41,8 +41,8 @@ export class RideRepository extends AbstractRepository<Ride> {
     try {
       return await this.model
         .findByIdAndUpdate(rideId, updateData, options)
-        .populate('passengerId', 'firstName lastName phone photo email')
-        .populate('driverId', 'firstName lastName phone photo email')
+        .populate('passengerId', 'firstName lastName fullName phone photo email')
+        .populate('driverId', 'firstName lastName fullName phone photo email')
         .lean()
         .exec();
     } catch (error) {
@@ -74,7 +74,7 @@ export class RideRepository extends AbstractRepository<Ride> {
             ],
           },
         })
-        .populate('driverId', 'firstName lastName phone photo')
+        .populate('driverId', 'firstName lastName fullName phone photo')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

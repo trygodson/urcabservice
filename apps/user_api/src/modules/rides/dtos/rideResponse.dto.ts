@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Types } from 'mongoose';
-import { RideStatus, RideType, VehicleType, VehicleTypeEnum } from '@urcab-workspace/shared';
+import {
+  PaymentMethod,
+  PaymentStatus,
+  RideStatus,
+  RideType,
+  VehicleType,
+  VehicleTypeEnum,
+} from '@urcab-workspace/shared';
 import { IsNumber, IsPositive, Min } from 'class-validator';
 
 export class RideResponseDto {
@@ -56,6 +63,18 @@ export class RideResponseDto {
     description: 'Current status of the ride',
   })
   status: RideStatus;
+
+  @ApiProperty({
+    enum: PaymentMethod,
+    description: 'Current status of the ride',
+  })
+  paymentMethod: PaymentMethod;
+
+  @ApiProperty({
+    enum: PaymentStatus,
+    description: 'Current status of the ride',
+  })
+  paymentStatus: PaymentStatus;
 
   @ApiProperty({
     example: 15.5,

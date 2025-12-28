@@ -290,6 +290,35 @@ export class RidesController {
     return await this.ridesService.getRideById(rideId, userId);
   }
 
+  @Get(':id/transaction')
+  @ApiOperation({ summary: 'Get wallet transaction for a ride by ride ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Ride ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Transaction retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Ride or transaction not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Access denied to this ride transaction',
+  })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getRideTransaction(@Param('id') rideId: string, @CurrentUser() user: User) {
+    if (!Types.ObjectId.isValid(rideId)) {
+      throw new BadRequestException('Invalid ride ID format');
+    }
+
+    const userId = new Types.ObjectId(user._id);
+    return await this.ridesService.getRideTransaction(rideId, userId);
+  }
+
   @Get(':id/driver-location')
   @ApiOperation({ summary: 'Get ride driver location by ID' })
   @SetRolesMetaData(Role.PASSENGER)

@@ -8,15 +8,19 @@ import {
   RatingRepository,
   RideNotificationData,
   RideRepository,
+  TransactionCategory,
   UserRepository,
   VEHICLE_CAPACITY,
   VehicleRepository,
   VehicleType,
   VehicleTypeRepository,
+  WalletTransaction,
 } from '@urcab-workspace/shared';
 import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceDto } from './dtos';
 import { RideStatus, RideType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { RideWebSocketService } from './ride-websocket.service';
 
@@ -35,6 +39,7 @@ export class RidesService {
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly driverEvpRepository: DriverEvpRepository,
     private readonly pricingZoneRepository: PricingZoneRepository,
+    @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
   async bookRide(passengerId: Types.ObjectId, createRideDto: CreateRideDto): Promise<RideResponseDto> {
@@ -131,6 +136,17 @@ export class RidesService {
           throw new BadRequestException(
             `You already have an active ride (${activeRide.status.toLowerCase().replace('_', ' ')}). ` +
               `Please complete or cancel your current ride before booking a new one. ` +
+              `Ride ID: ${activeRide._id}`,
+          );
+        }
+
+        // Check for pending payment (completed ride with pending card payment)
+        if (activeRide.status === RideStatus.RIDE_COMPLETED && activeRide.paymentStatus === PaymentStatus.PENDING) {
+          this.logger.warn(`Passenger ${passengerId} has completed ride ${activeRide._id} with pending payment`);
+
+          throw new BadRequestException(
+            `You have a completed ride with a pending payment. ` +
+              `Please complete the payment before booking a new ride. ` +
               `Ride ID: ${activeRide._id}`,
           );
         }
@@ -956,7 +972,9 @@ export class RidesService {
       dropoffLocation: ride.dropoffLocation,
       rideType: ride.rideType,
       status: ride.status,
+      paymentMethod: ride.paymentMethod,
       estimatedFare: ride.estimatedFare,
+      paymentStatus: ride.paymentStatus,
       finalFare: ride.finalFare,
       estimatedDistance: ride.estimatedDistance,
       estimatedDuration: ride.estimatedDuration,
@@ -1237,5 +1255,60 @@ export class RidesService {
       speed: driver.speed,
       estimatedArrivalTime,
     };
+  }
+
+  async getRideTransaction(rideId: string, userId: Types.ObjectId): Promise<any> {
+    try {
+      // Verify the ride exists and belongs to the user (as passenger or driver)
+      const ride = await this.rideRepository.findById(rideId);
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+      // console.log(ride, '=====ride====', userId, '=====userId====');
+      // Check if user is the passenger or driver
+      const isPassenger = ride.passengerId && ride.passengerId._id.toString() === userId.toString();
+      // const isDriver = ride.driverId && ride.driverId.toString() === userId.toString();
+
+      if (!isPassenger) {
+        throw new BadRequestException('You do not have access to this ride transaction');
+      }
+
+      // Find transaction by rideId in metadata
+      const transaction = await this.transactionModel
+        .findOne({
+          'metadata.rideId': rideId,
+          category: TransactionCategory.RIDE,
+        })
+        .lean()
+        .exec();
+
+      if (!transaction) {
+        throw new NotFoundException('Transaction not found for this ride');
+      }
+
+      return {
+        success: true,
+        data: {
+          _id: transaction._id.toString(),
+          transactionRef: transaction.transactionRef,
+          amount: transaction.amount,
+          status: transaction.status,
+          type: transaction.type,
+          category: transaction.category,
+          description: transaction.description,
+          reference: transaction.reference,
+          paymentMethod: transaction.paymentMethod,
+          createdAt: transaction.createdAt,
+          completedAt: transaction.completedAt,
+          metadata: transaction.metadata,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get transaction for ride ${rideId}:`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to get ride transaction');
+    }
   }
 }

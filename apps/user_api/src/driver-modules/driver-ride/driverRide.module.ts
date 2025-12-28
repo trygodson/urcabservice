@@ -21,6 +21,11 @@ import {
   Vehicle,
   VehicleRepository,
   VehicleSchema,
+  Wallet,
+  WalletRepository,
+  WalletSchema,
+  WalletTransaction,
+  WalletTransactionSchema,
 } from '@urcab-workspace/shared';
 import { DriverRideService } from './driverRide.service';
 import { DriverLocationRepository } from './repository/driver-location.repository';
@@ -49,6 +54,8 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
       { name: Vehicle.name, schema: VehicleSchema },
       { name: Rating.name, schema: RatingSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
+      { name: Wallet.name, schema: WalletSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
     ]),
     NotificationsModule,
   ],
@@ -63,6 +70,7 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
     RatingRepository,
     DriverLocationRepository,
     SubscriptionRepository,
+    WalletRepository,
   ],
 })
 export class DriverRideModule {}
