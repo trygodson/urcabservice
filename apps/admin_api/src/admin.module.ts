@@ -13,6 +13,8 @@ import { PricingZonesModule } from './pricing-zones/pricing-zones.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { SubscriptionPlansModule } from './subscription-plans/subscription-plans.module';
+import { DriverSubscriptionsModule } from './driver-subscriptions/driver-subscriptions.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { PermissionsModule } from './permissions/permissions.module';
     RolesModule,
     UsersModule,
     PermissionsModule,
+    SubscriptionPlansModule,
+    DriverSubscriptionsModule,
   ],
 
   // providers: [AdminService],

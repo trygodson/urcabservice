@@ -22,6 +22,9 @@ import {
   Permission,
   PermissionSchema,
   PermissionRepository,
+  Wallet,
+  WalletSchema,
+  WalletRepository,
 } from '@urcab-workspace/shared';
 
 @Module({
@@ -44,6 +47,7 @@ import {
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: AdminRole.name, schema: RoleSchema },
       { name: Permission.name, schema: PermissionSchema },
+      { name: Wallet.name, schema: WalletSchema },
     ]),
   ],
   controllers: [AuthController],
@@ -55,6 +59,7 @@ import {
     RefreshTokenRepository,
     RoleRepository,
     PermissionRepository,
+    WalletRepository,
   ],
   exports: [AuthService],
 })

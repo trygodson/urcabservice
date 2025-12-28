@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 import {
   AbstractRepository,
   DriverLocation,
@@ -18,6 +19,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
   constructor(
     @InjectModel(DriverLocation.name)
     driverLocationModel: Model<DriverLocationDocument>,
+    private readonly configService: ConfigService,
   ) {
     super(driverLocationModel);
   }
@@ -110,6 +112,12 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const now = new Date();
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+
+      // Get free plan daily limit from config (default to 3)
+      const freePlanDailyLimit = parseInt(this.configService.get<string>('FREE_PLAN_DAILY_LIMIT') || '3', 10);
       // if (!vehicleType || !Object.values(VehicleType).includes(vehicleType)) {
       //   this.logger.warn(`Invalid vehicle type requested: ${vehicleType}`);
       //   throw new Error('Invalid vehicle type');
@@ -244,6 +252,40 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
             },
           },
           {
+            $lookup: {
+              from: 'subscriptions',
+              localField: 'driverId',
+              foreignField: 'driverId',
+              as: 'subscriptions',
+              pipeline: [
+                {
+                  $match: {
+                    status: 'active',
+                    startDate: { $lte: now },
+                    endDate: { $gte: now },
+                  },
+                },
+                {
+                  $sort: {
+                    type: 1, // Prioritize paid subscriptions (daily, weekly, monthly) over free
+                  },
+                },
+                {
+                  $limit: 1, // Get the most relevant subscription (paid if exists, otherwise free)
+                },
+                {
+                  $project: {
+                    type: 1,
+                    status: 1,
+                    dailyRideRequests: 1,
+                    lastRideRequestDate: 1,
+                    endDate: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
             $addFields: {
               debugLookup: {
                 hasDriver: { $gt: [{ $size: '$driver' }, 0] },
@@ -251,6 +293,73 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                 driverCount: { $size: '$driver' },
                 vehicleCount: { $size: '$vehicle' },
                 requestedVehicleType: new Types.ObjectId(vehicleTypeId),
+                hasSubscription: { $gt: [{ $size: '$subscriptions' }, 0] },
+              },
+              // Get the active subscription (first one from sorted lookup)
+              activeSubscription: {
+                $arrayElemAt: ['$subscriptions', 0],
+              },
+            },
+          },
+          {
+            $addFields: {
+              // Check if driver can accept rides based on subscription
+              canAcceptRides: {
+                $cond: {
+                  if: { $gt: [{ $size: '$subscriptions' }, 0] },
+                  then: {
+                    $cond: {
+                      // If paid subscription (not free), always allow
+                      if: { $ne: [{ $arrayElemAt: ['$subscriptions.type', 0] }, 'free'] },
+                      then: true,
+                      else: {
+                        // For free plan, check daily limit
+                        $let: {
+                          vars: {
+                            lastRequestDate: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] },
+                            dailyRideRequests: {
+                              $ifNull: [{ $arrayElemAt: ['$subscriptions.dailyRideRequests', 0] }, 0],
+                            },
+                            lastRequestDay: {
+                              $cond: {
+                                if: { $ne: [{ $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] }, null] },
+                                then: {
+                                  $dateFromParts: {
+                                    year: { $year: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
+                                    month: { $month: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
+                                    day: { $dayOfMonth: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
+                                  },
+                                },
+                                else: null,
+                              },
+                            },
+                            todayDate: {
+                              $dateFromParts: {
+                                year: { $year: now },
+                                month: { $month: now },
+                                day: { $dayOfMonth: now },
+                              },
+                            },
+                          },
+                          in: {
+                            $cond: {
+                              // If last request was today, check count against limit
+                              if: {
+                                $and: [
+                                  { $ne: ['$$lastRequestDate', null] },
+                                  { $eq: ['$$lastRequestDay', '$$todayDate'] },
+                                ],
+                              },
+                              then: { $lt: ['$$dailyRideRequests', freePlanDailyLimit] },
+                              else: true, // New day, reset count, allow
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  else: false, // No subscription means can't accept
+                },
               },
             },
           },
@@ -259,6 +368,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
               'driver.0': { $exists: true }, // Ensure driver exists and is verified
               'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
               'vehicleTypeInfo.0': { $exists: true }, // Ensure vehicle type info exists
+              canAcceptRides: true, // Only include drivers who can accept rides based on subscription
             },
           },
           {

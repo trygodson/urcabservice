@@ -32,6 +32,7 @@ import {
   UserRepository,
   RoleRepository,
   PermissionRepository,
+  WalletRepository,
 } from '@urcab-workspace/shared';
 // import { WalletsService } from '../wallets/wallets.service';
 
@@ -44,7 +45,7 @@ export class AuthService {
     private readonly permissionRepository: PermissionRepository,
     // private readonly countryRepository: CountryRepository,
     // @Inject(forwardRef(() => WalletsService))
-    // private readonly walletsService: WalletsService,
+    private readonly walletRepository: WalletRepository,
     private readonly configService: ConfigService,
   ) {}
 
@@ -118,7 +119,7 @@ export class AuthService {
         if (user.type === Role.ADMIN || user.type === Role.SUPER_ADMIN) {
           // body?.fcmToken &&
           //   (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
-          console.log(user, 'user');
+          // console.log(user, 'user');
           // Get role and permissions
           let permissions: string[] = [];
           let roleName: string | null = null;
@@ -137,6 +138,19 @@ export class AuthService {
               permissions = permissionDocs.map((p) => p.name);
             }
           } else if (isSuperAdmin) {
+            const wallet = await this.walletRepository.findOne({ user: user._id.toString() });
+            // console.log(wallet, 'wallet');
+            if (!wallet) {
+              await this.walletRepository.model.create({
+                _id: new Types.ObjectId(),
+                user: user._id,
+                depositBalance: 0,
+                withdrawableBalance: 0,
+                totalBalance: 0,
+                totalDeposited: 0,
+                lastTransactionDate: new Date(),
+              });
+            }
             // Super admin gets all permissions - we'll use a special flag
             roleName = 'Super Admin';
             permissions = ['*']; // Special permission indicating all access

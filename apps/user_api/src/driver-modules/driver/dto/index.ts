@@ -9,9 +9,116 @@ import {
   ValidateNested,
   Length,
   IsNotEmpty,
+  MaxLength,
+  IsMongoId,
+  IsNumber,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DocumentType, LicenseClass, LicenseType } from '@urcab-workspace/shared';
+import { DocumentType, LicenseClass, LicenseType, DriverOnlineStatus } from '@urcab-workspace/shared';
+
+export * from './subscription-plans-response.dto';
+
+export class UpdateDriverStatusDto {
+  @ApiProperty({
+    enum: DriverOnlineStatus,
+    description: 'Driver status: online or offline',
+    example: DriverOnlineStatus.ONLINE,
+  })
+  @IsEnum(DriverOnlineStatus)
+  @IsNotEmpty()
+  status: DriverOnlineStatus;
+}
+
+export class GetSubscriptionTransactionsDto {
+  @ApiProperty({ required: false, default: 1, description: 'Page number' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiProperty({ required: false, default: 10, description: 'Number of items per page' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 10;
+}
+
+export class SubscriptionTransactionResponseDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiProperty()
+  transactionRef: string;
+
+  @ApiProperty()
+  amount: number;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty()
+  type: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  description: string;
+
+  @ApiProperty({ required: false })
+  reference?: string;
+
+  @ApiProperty({ required: false })
+  subscriptionPlanId?: string;
+
+  @ApiProperty({ required: false })
+  planName?: string;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty({ required: false })
+  completedAt?: Date;
+}
+
+export class SubscriptionTransactionsListResponseDto {
+  @ApiProperty({ type: [SubscriptionTransactionResponseDto] })
+  transactions: SubscriptionTransactionResponseDto[];
+
+  @ApiProperty()
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export class CreateSubscriptionTransactionDto {
+  @ApiProperty({ description: 'Subscription plan ID' })
+  @IsMongoId()
+  @IsNotEmpty()
+  planId: string;
+
+  @ApiProperty({ description: 'Start date of the subscription', required: false })
+  @IsDateString()
+  @IsOptional()
+  startDate?: string; // If not provided, will use current date
+
+  // @ApiProperty({ description: 'Payment method', required: false })
+  // @IsString()
+  // @IsOptional()
+  // @MaxLength(100)
+  // paymentMethod?: string;
+
+  // @ApiProperty({ description: 'Payment date', required: false })
+  // @IsDateString()
+  // @IsOptional()
+  // paymentDate?: string;
+}
 
 export class NRICDetailsDto {
   @ApiProperty({ description: 'Full name as shown on NRIC' })

@@ -4,10 +4,12 @@ import { UpdateDriverProfileDto, updateFCMDto, User, UserRepository } from '@urc
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DocumentVerificationStatusService } from '../user-verification/documentVerificationStatus.service';
-
+import * as md5 from 'md5';
+import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class UserService {
   constructor(
+    private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     @InjectModel(User.name) private readonly userRepository2: Model<User>,
     private readonly documentVerificationService: DocumentVerificationStatusService,
@@ -109,6 +111,7 @@ export class UserService {
       throw new UnauthorizedException(error.message || 'Failed to update profile');
     }
   }
+
   async updateFCMToken(userId: string, updateDto: updateFCMDto) {
     try {
       const user = await this.userRepository.findById(userId);

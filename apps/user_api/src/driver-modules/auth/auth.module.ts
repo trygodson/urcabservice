@@ -18,6 +18,9 @@ import {
   User,
   UserRepository,
   UserSchema,
+  Wallet,
+  WalletRepository,
+  WalletSchema,
 } from '@urcab-workspace/shared';
 import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 
@@ -40,6 +43,7 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
+      { name: Wallet.name, schema: WalletSchema },
       // { name: RefreshToken.name, schema: RefreshTokenSchema },
       // { name: Country.name, schema: CountrySchema },
       // { name: Wallet.name, schema: WalletSchema },
@@ -47,7 +51,7 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
     // forwardRef(() => WalletsModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserRepository, DriverLocationRepository, RefreshTokenRepository],
+  providers: [AuthService, WalletRepository, UserRepository, DriverLocationRepository, RefreshTokenRepository],
   exports: [AuthService],
 })
 export class DriverAuthModule {}

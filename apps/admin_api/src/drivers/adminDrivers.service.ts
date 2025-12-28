@@ -442,7 +442,7 @@ export class AdminDriversService {
     }
 
     const documentDetails = await this.getVehicleDocuments(vehicleId);
-    if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
+    if (documentDetails.overallStatus !== 'complete' || !documentDetails.hasCompleteDocumentation) {
       throw new BadRequestException('Vehicle documents are not complete');
     }
 

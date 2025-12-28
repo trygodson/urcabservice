@@ -4,6 +4,7 @@ import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { SubscriptionType, SubscriptionStatus } from '../enums';
 import { User } from './user.schema';
+import { SubscriptionPlan } from './subscription-plan.schema';
 
 @Schema({ collection: 'subscriptions', timestamps: true })
 export class Subscription extends AbstractDocument {
@@ -17,11 +18,19 @@ export class Subscription extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: SubscriptionPlan.name,
+    required: false,
+  })
+  planId?: Types.ObjectId; // Reference to the subscription plan
+
+  @ApiProperty()
+  @Prop({
     type: String,
     enum: SubscriptionType,
     required: true,
   })
-  type: string; // daily or weekly
+  type: string; // daily, weekly, or monthly
 
   @ApiProperty()
   @Prop({
@@ -51,7 +60,7 @@ export class Subscription extends AbstractDocument {
     required: true,
     min: 0,
   })
-  price: number;
+  price: number; // Price at the time of subscription creation (captured from plan)
 
   @ApiProperty()
   @Prop({
@@ -113,6 +122,21 @@ export class Subscription extends AbstractDocument {
     min: 0,
   })
   totalEarnings: number; // Total earnings during this subscription period
+
+  @ApiProperty()
+  @Prop({
+    type: Number,
+    default: 0,
+    min: 0,
+  })
+  dailyRideRequests: number; // Number of ride requests today (for free plan limit)
+
+  @ApiProperty()
+  @Prop({
+    type: Date,
+    required: false,
+  })
+  lastRideRequestDate?: Date; // Last date ride requests were tracked (for resetting daily count)
 
   @ApiProperty()
   @Prop({
@@ -181,6 +205,9 @@ export class Subscription extends AbstractDocument {
     maxlength: 200,
   })
   discountReason?: string; // Reason for discount (promo code, loyalty, etc.)
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

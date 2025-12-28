@@ -65,6 +65,15 @@ export class UserController {
     return await this.userService.updateFCMToken(user._id.toString(), updateProfileDto);
   }
 
+  // @Post('returnUrl')
+  // @Public()
+  // async returnUrl(@Body() updateProfileDto: any) {
+  //   console.log(updateProfileDto, '---data from returnUrl=----');
+
+  //   return;
+  //   // return await this.userService.updateFCMToken(user._id.toString(), updateProfileDto);
+  // }
+
   @Post('upload')
   @Public()
   @ApiOperation({ summary: 'Upload a single file' })

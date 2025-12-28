@@ -36,6 +36,7 @@ import {
   User,
   VerifyOtpDto,
   DriverOnlineStatus,
+  WalletRepository,
 } from '@urcab-workspace/shared';
 import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 // import { WalletsService } from '../wallets/wallets.service';
@@ -48,10 +49,25 @@ export class AuthService {
     private readonly refreshTokenReposiotry: RefreshTokenRepository,
     // private readonly countryRepository: CountryRepository,
     // @Inject(forwardRef(() => WalletsService))
-    // private readonly walletsService: WalletsService,
+    private readonly walletRepository: WalletRepository,
     private readonly configService: ConfigService,
   ) {}
 
+  private async createWallet(user: User) {
+    const wallet = await this.walletRepository.findAdminWallet();
+
+    if (!wallet) {
+      await this.walletRepository.model.create({
+        _id: new Types.ObjectId(),
+        user: user._id,
+        depositBalance: 0,
+        withdrawableBalance: 0,
+        totalBalance: 0,
+        totalDeposited: 0,
+        lastTransactionDate: new Date(),
+      });
+    }
+  }
   async register(body: RegisterUserDto) {
     try {
       await this.validateCreateUser(body.email);
@@ -138,9 +154,9 @@ export class AuthService {
         // const needsOnboarding = !user.country || !user.isOnboardingComplete;
 
         if (user.type === Role.DRIVER) {
+          await this.createWallet(user);
           body?.fcmToken &&
             (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
-
           return {
             success: true,
             accountVerified: true,

@@ -5,6 +5,7 @@ import {
   RatingRepository,
   RideRepository,
   RideStatus,
+  SubscriptionRepository,
   UserRepository,
   VehicleRepository,
 } from '@urcab-workspace/shared';
@@ -62,6 +63,7 @@ export class DriverRideService {
     private readonly ratingRepository: RatingRepository,
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly firebaseRideService: FirebaseRideService,
+    private readonly subscriptionRepository: SubscriptionRepository,
   ) {}
 
   async acceptRide(
@@ -88,6 +90,21 @@ export class DriverRideService {
       if (!driverLocation || !driverLocation.isAvailableForRides) {
         throw new BadRequestException('You Are no longer available');
       }
+
+      // Check subscription and ride request limits (for free plan)
+      // Ensure driver has a free subscription
+      await this.subscriptionRepository.getOrCreateFreeSubscription(driverId.toString());
+      
+      // Check if driver can accept more ride requests
+      const canAccept = await this.subscriptionRepository.canAcceptRideRequest(driverId.toString());
+      if (!canAccept.canAccept) {
+        throw new BadRequestException(
+          `You have reached your daily limit of 3 ride requests. ${canAccept.remaining} requests remaining. Please upgrade your subscription for unlimited rides.`,
+        );
+      }
+
+      // Increment daily ride requests count
+      await this.subscriptionRepository.incrementDailyRideRequests(driverId.toString());
 
       const driver = await this.userRepository.findById(driverId.toString());
       const passenger = await this.userRepository.findById(ride.passengerId._id.toString());

@@ -10,12 +10,28 @@ export enum UserRolesEnum {
   PASSENGER = 1,
   DRIVER = 2,
 }
+export enum BalanceType {
+  DEPOSIT = 'DEPOSIT',
+  WITHDRAWABLE = 'WITHDRAWABLE',
+  BOTH = 'BOTH', // For transactions affecting both balances
+}
 
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',
 }
+export enum TransactionType {
+  DEBIT = 1,
+  CREDIT = 2,
+}
 
+export enum TransactionStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  PENDING_REVIEW = 'PENDING_REVIEW',
+  REVERSED = 'REVERSED',
+}
 export enum RideStatus {
   SEARCHING_DRIVER = 'searching_driver',
   SCHEDULED = 'scheduled',
@@ -76,8 +92,10 @@ export enum IssuePriority {
 }
 
 export enum SubscriptionType {
+  FREE = 'free',
   DAILY = 'daily',
   WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
 }
 
 export enum SubscriptionStatus {

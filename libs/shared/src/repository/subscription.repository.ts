@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { AbstractRepository } from '../database';
 import { Subscription, SubscriptionDocument } from '../models';
 
@@ -16,20 +16,34 @@ export class SubscriptionRepository extends AbstractRepository<SubscriptionDocum
    * Find subscriptions by driver ID
    */
   async findByDriverId(driverId: string): Promise<SubscriptionDocument[]> {
-    return this.model.find({ driverId }).sort({ createdAt: -1 }).exec();
+    return this.model
+      .find({ driverId, type: { $ne: 'free' } })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   /**
    * Find active subscription for a driver
+   * Returns paid subscription if exists, otherwise returns free subscription
    */
   async findActiveSubscription(driverId: string): Promise<SubscriptionDocument | null> {
     const now = new Date();
-    return this.findOne({
+
+    // First check for paid subscriptions
+    const paidSubscription = await this.findOne({
       driverId,
       status: 'active',
+      type: { $ne: 'free' },
       startDate: { $lte: now },
       endDate: { $gte: now },
     });
+
+    if (paidSubscription) {
+      return paidSubscription;
+    }
+
+    // If no paid subscription, return free subscription (or create if doesn't exist)
+    return this.getOrCreateFreeSubscription(driverId);
   }
 
   /**
@@ -102,13 +116,14 @@ export class SubscriptionRepository extends AbstractRepository<SubscriptionDocum
    * Create new subscription
    */
   async createSubscription(subscriptionData: any): Promise<SubscriptionDocument> {
-    // End any existing active subscriptions for the driver
+    // End any existing active subscriptions for the driver (except free plan)
     if (subscriptionData.driverId) {
       await this.model
         .updateMany(
           {
             driverId: subscriptionData.driverId,
             status: 'active',
+            type: { $ne: 'free' }, // Don't expire free plans when creating paid subscriptions
           },
           { status: 'expired' },
         )
@@ -116,6 +131,147 @@ export class SubscriptionRepository extends AbstractRepository<SubscriptionDocum
     }
 
     return this.create(subscriptionData);
+  }
+
+  /**
+   * Get or create free subscription for driver
+   */
+  async getOrCreateFreeSubscription(driverId: string): Promise<SubscriptionDocument> {
+    const now = new Date();
+
+    // Check if driver already has an active free subscription
+    let existingFreeSubscription = await this.findOne({
+      driverId,
+      type: 'free',
+      status: 'active',
+    });
+
+    if (existingFreeSubscription) {
+      // Reset daily count if it's a new day
+      const lastRequestDate = existingFreeSubscription.lastRideRequestDate
+        ? new Date(existingFreeSubscription.lastRideRequestDate)
+        : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (!lastRequestDate || lastRequestDate < today) {
+        // Reset daily count for new day
+        existingFreeSubscription = await this.findOneAndUpdate(
+          { _id: existingFreeSubscription._id },
+          {
+            dailyRideRequests: 0,
+            lastRideRequestDate: today,
+          },
+        );
+      }
+
+      return existingFreeSubscription;
+    }
+
+    // Create new free subscription
+    const newFreeSubscription = await this.model.create({
+      _id: new Types.ObjectId(),
+      driverId: new Types.ObjectId(driverId),
+      planId: null, // Free plan doesn't have a planId
+      type: 'free',
+      status: 'active',
+      startDate: now,
+      endDate: new Date('2099-12-31'), // Free plan never expires
+      price: 0,
+      autoRenew: true,
+      ridesCompleted: 0,
+      totalEarnings: 0,
+      dailyRideRequests: 0,
+      lastRideRequestDate: now,
+    });
+
+    return newFreeSubscription.toObject() as SubscriptionDocument;
+  }
+
+  /**
+   * Increment daily ride requests for free plan only
+   * Paid subscriptions don't need tracking
+   */
+  async incrementDailyRideRequests(driverId: string): Promise<void> {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    // Check if driver has a paid subscription (unlimited rides, no need to track)
+    const paidSubscription = await this.findOne({
+      driverId,
+      status: 'active',
+      type: { $ne: 'free' },
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    });
+
+    // If paid subscription exists, don't increment (unlimited)
+    if (paidSubscription) {
+      return;
+    }
+
+    // Get or create free subscription
+    const freeSubscription = await this.getOrCreateFreeSubscription(driverId);
+
+    // Reset if new day
+    const lastRequestDate = freeSubscription.lastRideRequestDate
+      ? new Date(freeSubscription.lastRideRequestDate)
+      : null;
+
+    let updateData: any = {};
+    if (!lastRequestDate || lastRequestDate < today) {
+      updateData.dailyRideRequests = 1;
+      updateData.lastRideRequestDate = today;
+    } else {
+      updateData.dailyRideRequests = (freeSubscription.dailyRideRequests || 0) + 1;
+    }
+
+    await this.findOneAndUpdate({ _id: freeSubscription._id }, updateData);
+  }
+
+  /**
+   * Check if driver can accept more ride requests (for free plan)
+   * Paid subscriptions have unlimited rides
+   */
+  async canAcceptRideRequest(driverId: string): Promise<{ canAccept: boolean; remaining: number }> {
+    const now = new Date();
+
+    // Check if driver has a paid subscription
+    const paidSubscription = await this.findOne({
+      driverId,
+      status: 'active',
+      type: { $ne: 'free' },
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    });
+
+    // Paid subscriptions have unlimited rides
+    if (paidSubscription) {
+      return { canAccept: true, remaining: Infinity };
+    }
+
+    // Check free subscription limits
+    const freeSubscription = await this.findOne({
+      driverId,
+      type: 'free',
+      status: 'active',
+    });
+
+    // If no free subscription, create one and allow
+    if (!freeSubscription) {
+      await this.getOrCreateFreeSubscription(driverId);
+      return { canAccept: true, remaining: 3 };
+    }
+
+    const dailyLimit = 3;
+    const currentCount = freeSubscription.dailyRideRequests || 0;
+    const remaining = Math.max(0, dailyLimit - currentCount);
+
+    return {
+      canAccept: currentCount < dailyLimit,
+      remaining,
+    };
   }
 
   /**

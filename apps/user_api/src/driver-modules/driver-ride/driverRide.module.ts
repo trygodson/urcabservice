@@ -12,6 +12,9 @@ import {
   Ride,
   RideRepository,
   RideSchema,
+  Subscription,
+  SubscriptionRepository,
+  SubscriptionSchema,
   User,
   UserRepository,
   UserSchema,
@@ -45,6 +48,7 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
       { name: DriverLocation.name, schema: DriverLocationSchema },
       { name: Vehicle.name, schema: VehicleSchema },
       { name: Rating.name, schema: RatingSchema },
+      { name: Subscription.name, schema: SubscriptionSchema },
     ]),
     NotificationsModule,
   ],
@@ -58,6 +62,7 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
     UserRepository,
     RatingRepository,
     DriverLocationRepository,
+    SubscriptionRepository,
   ],
 })
 export class DriverRideModule {}
