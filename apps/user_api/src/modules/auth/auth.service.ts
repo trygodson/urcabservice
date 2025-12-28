@@ -260,12 +260,12 @@ export class AuthService {
   async googleSignIn(accessToken: string) {
     try {
       const client = new OAuth2Client({
-        clientId: this.configService.getOrThrow('G_CLIENTID'),
-        clientSecret: this.configService.getOrThrow('G_CLIENTSECRET'),
+        clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
+        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
-        audience: this.configService.getOrThrow('G_CLIENTID'),
+        audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
       const user = await this.userRepository.findOne({ email: payload.email });
@@ -281,12 +281,12 @@ export class AuthService {
   async googleSignUp(accessToken: string, ipAddress?: string) {
     try {
       const client = new OAuth2Client({
-        clientId: this.configService.getOrThrow('G_CLIENTID'),
-        clientSecret: this.configService.getOrThrow('G_CLIENTSECRET'),
+        clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
+        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
-        audience: this.configService.getOrThrow('G_CLIENTID'),
+        audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
 
