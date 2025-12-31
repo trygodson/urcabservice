@@ -15,6 +15,8 @@ import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { SubscriptionPlansModule } from './subscription-plans/subscription-plans.module';
 import { DriverSubscriptionsModule } from './driver-subscriptions/driver-subscriptions.module';
+import { PassengerTransactionsModule } from './passenger-transactions/passenger-transactions.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { DriverSubscriptionsModule } from './driver-subscriptions/driver-subscri
     PermissionsModule,
     SubscriptionPlansModule,
     DriverSubscriptionsModule,
+    PassengerTransactionsModule,
+    DashboardModule,
   ],
 
   // providers: [AdminService],

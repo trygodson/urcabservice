@@ -251,7 +251,7 @@ export class DriverService {
     const dWallet = await this.walletRepository.findById(transaction.wallet.toString());
 
     // Create subscription with current price from plan (captured at creation time)
-    const subscription = await this.subscriptionRepository.createSubscription({
+    await this.subscriptionRepository.createSubscription({
       _id: new Types.ObjectId(),
       driverId: new Types.ObjectId(transaction.user.toString()),
       planId: new Types.ObjectId(transaction.subscriptionPlanId),
@@ -260,8 +260,7 @@ export class DriverService {
       startDate,
       endDate,
       price: finalPrice, // Capture current price from plan
-
-      paymentReference: transaction.reference,
+      paymentReference: tranID,
       paymentDate: new Date(),
       approvedByAdminId: null,
       approvedAt: new Date(),

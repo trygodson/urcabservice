@@ -6,6 +6,7 @@ import {
   SubscriptionStatus,
 } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
+import * as XLSX from 'xlsx';
 
 @Injectable()
 export class DriverSubscriptionsService {
@@ -90,13 +91,32 @@ export class DriverSubscriptionsService {
     return this.mapToResponseDto(subscription);
   }
 
-  async getAllSubscriptions(page: number = 1, limit: number = 10, status?: string) {
+  async getAllSubscriptions(
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
     const skip = (page - 1) * limit;
     const filter: any = {
       type: { $ne: 'free' }, // Exclude free subscriptions
     };
     if (status) {
       filter.status = status;
+    }
+
+    // Date filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
     }
 
     // Get all subscriptions with pagination (excluding free plans)
@@ -167,6 +187,131 @@ export class DriverSubscriptionsService {
       discountReason: subscription.discountReason,
       createdAt: subscription.createdAt,
       updatedAt: subscription.updatedAt,
+    };
+  }
+
+  async exportSubscriptions(
+    format: 'csv' | 'excel',
+    startDate?: string,
+    endDate?: string,
+    status?: string,
+  ) {
+    const filter: any = {
+      type: { $ne: 'free' }, // Exclude free subscriptions
+    };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    // Date filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Get all subscriptions (no pagination for export)
+    const subscriptions = await this.subscriptionRepository.find(filter, ['driverId', 'planId']);
+
+    // Sort by createdAt descending
+    subscriptions.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // Prepare data for export
+    const exportData = subscriptions.map((subscription) => {
+      const mapped = this.mapToResponseDto(subscription);
+      return {
+        'Subscription ID': mapped._id,
+        'Driver Name': mapped.driver?.fullName || 'N/A',
+        'Driver Email': mapped.driver?.email || 'N/A',
+        'Driver Phone': mapped.driver?.phone || 'N/A',
+        'Plan Name': mapped.plan?.name || 'N/A',
+        Type: mapped.type,
+        Status: mapped.status,
+        'Start Date': mapped.startDate ? new Date(mapped.startDate).toISOString().split('T')[0] : '',
+        'End Date': mapped.endDate ? new Date(mapped.endDate).toISOString().split('T')[0] : '',
+        Price: mapped.price,
+        'Payment Method': mapped.paymentMethod || 'N/A',
+        'Payment Reference': mapped.paymentReference || 'N/A',
+        'Payment Date': mapped.paymentDate ? new Date(mapped.paymentDate).toISOString().split('T')[0] : '',
+        'Rides Completed': mapped.ridesCompleted || 0,
+        'Total Earnings': mapped.totalEarnings || 0,
+        'Auto Renew': mapped.autoRenew ? 'Yes' : 'No',
+        'Discount %': mapped.discountPercentage || 0,
+        'Discount Reason': mapped.discountReason || '',
+        'Created At': mapped.createdAt ? new Date(mapped.createdAt).toISOString() : '',
+        'Updated At': mapped.updatedAt ? new Date(mapped.updatedAt).toISOString() : '',
+      };
+    });
+
+    if (format === 'csv') {
+      return this.generateCSV(exportData);
+    } else {
+      return this.generateExcel(exportData);
+    }
+  }
+
+  private generateCSV(data: any[]): { buffer: Buffer; filename: string; mimeType: string } {
+    if (data.length === 0) {
+      throw new BadRequestException('No data to export');
+    }
+
+    // Get headers from first object
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(',')];
+
+    // Add data rows
+    for (const row of data) {
+      const values = headers.map((header) => {
+        const value = row[header];
+        // Escape commas and quotes in CSV
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const csvContent = csvRows.join('\n');
+    const buffer = Buffer.from(csvContent, 'utf-8');
+
+    return {
+      buffer,
+      filename: `driver-subscriptions-${new Date().toISOString().split('T')[0]}.csv`,
+      mimeType: 'text/csv',
+    };
+  }
+
+  private generateExcel(data: any[]): { buffer: Buffer; filename: string; mimeType: string } {
+    if (data.length === 0) {
+      throw new BadRequestException('No data to export');
+    }
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Driver Subscriptions');
+
+    // Generate buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    return {
+      buffer,
+      filename: `driver-subscriptions-${new Date().toISOString().split('T')[0]}.xlsx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
   }
 }

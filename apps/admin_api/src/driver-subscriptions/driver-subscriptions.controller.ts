@@ -1,5 +1,19 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Query,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Res,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { DriverSubscriptionsService } from './driver-subscriptions.service';
 import { CreateDriverSubscriptionDto, DriverSubscriptionResponseDto } from './dto';
 import { JwtAdminAuthGuard, SetRolesMetaData, Role, CurrentUser } from '@urcab-workspace/shared';
@@ -27,17 +41,59 @@ export class DriverSubscriptionsController {
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
   @ApiQuery({ name: 'status', required: false, enum: ['active', 'expired', 'suspended', 'cancelled'] })
+  @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Start date filter (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, description: 'End date filter (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: 'List of subscriptions' })
   async getAllSubscriptions(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     return this.driverSubscriptionsService.getAllSubscriptions(
       page ? parseInt(page.toString()) : 1,
       limit ? parseInt(limit.toString()) : 10,
       status,
+      startDate,
+      endDate,
     );
+  }
+
+  @Get('export')
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Export driver subscriptions to CSV or Excel' })
+  @ApiQuery({
+    name: 'format',
+    required: true,
+    enum: ['csv', 'excel'],
+    description: 'Export format: csv or excel',
+  })
+  @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Start date filter (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, description: 'End date filter (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'expired', 'suspended', 'cancelled'] })
+  @ApiResponse({ status: 200, description: 'Export file generated successfully' })
+  async exportSubscriptions(
+    @Res() res: Response,
+    @Query('format') format: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+  ) {
+    if (!format || (format !== 'csv' && format !== 'excel')) {
+      throw new BadRequestException('Invalid format. Must be "csv" or "excel"');
+    }
+
+    const exportResult = await this.driverSubscriptionsService.exportSubscriptions(
+      format as 'csv' | 'excel',
+      startDate,
+      endDate,
+      status,
+    );
+
+    res.setHeader('Content-Type', exportResult.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${exportResult.filename}"`);
+    res.send(exportResult.buffer);
   }
 
   @Get('driver/:driverId')
