@@ -68,13 +68,7 @@ export class DashboardService {
   }
 
   private async getOverallStatistics() {
-    const [
-      totalRides,
-      activeDrivers,
-      totalDrivers,
-      pendingDocuments,
-      pendingVehicleDocuments,
-    ] = await Promise.all([
+    const [totalRides, activeDrivers, totalDrivers, pendingDocuments, pendingVehicleDocuments] = await Promise.all([
       // Total rides
       this.rideModel.countDocuments({}),
 
@@ -112,6 +106,7 @@ export class DashboardService {
     let startDate: Date;
     let endDate: Date = now;
     let groupByFormat: string;
+    let useWeekGrouping: boolean = false;
 
     switch (period) {
       case TimePeriod.DAY:
@@ -125,7 +120,7 @@ export class DashboardService {
         // Last 7 weeks
         startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 49); // 7 weeks
-        groupByFormat = '%Y-W%W'; // Year-Week
+        useWeekGrouping = true;
         break;
       case TimePeriod.MONTH:
         // Last 12 months
@@ -143,14 +138,44 @@ export class DashboardService {
           createdAt: { $gte: startDate, $lte: endDate },
         },
       },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: groupByFormat, date: '$createdAt' },
-          },
-          count: { $sum: 1 },
-        },
-      },
+      ...(useWeekGrouping
+        ? [
+            {
+              $addFields: {
+                weekString: {
+                  $concat: [
+                    { $toString: { $year: '$createdAt' } },
+                    '-W',
+                    {
+                      $toString: {
+                        $cond: {
+                          if: { $lt: [{ $week: '$createdAt' }, 10] },
+                          then: { $concat: ['0', { $toString: { $week: '$createdAt' } }] },
+                          else: { $toString: { $week: '$createdAt' } },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: '$weekString',
+                count: { $sum: 1 },
+              },
+            },
+          ]
+        : [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: groupByFormat, date: '$createdAt' },
+                },
+                count: { $sum: 1 },
+              },
+            },
+          ]),
       { $sort: { _id: 1 } },
     ]);
 
@@ -161,14 +186,44 @@ export class DashboardService {
           createdAt: { $gte: startDate, $lte: endDate },
         },
       },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: groupByFormat, date: '$createdAt' },
-          },
-          count: { $sum: 1 },
-        },
-      },
+      ...(useWeekGrouping
+        ? [
+            {
+              $addFields: {
+                weekString: {
+                  $concat: [
+                    { $toString: { $year: '$createdAt' } },
+                    '-W',
+                    {
+                      $toString: {
+                        $cond: {
+                          if: { $lt: [{ $week: '$createdAt' }, 10] },
+                          then: { $concat: ['0', { $toString: { $week: '$createdAt' } }] },
+                          else: { $toString: { $week: '$createdAt' } },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: '$weekString',
+                count: { $sum: 1 },
+              },
+            },
+          ]
+        : [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: groupByFormat, date: '$createdAt' },
+                },
+                count: { $sum: 1 },
+              },
+            },
+          ]),
       { $sort: { _id: 1 } },
     ]);
 
@@ -177,10 +232,7 @@ export class DashboardService {
     const cancelledMap = new Map(cancelledRides.map((r) => [r._id, r.count]));
 
     // Get all unique dates
-    const allDates = new Set([
-      ...completedRides.map((r) => r._id),
-      ...cancelledRides.map((r) => r._id),
-    ]);
+    const allDates = new Set([...completedRides.map((r) => r._id), ...cancelledRides.map((r) => r._id)]);
 
     let data: Array<{ date: string; completedRides: number; cancelledRides: number }>;
 
@@ -188,7 +240,7 @@ export class DashboardService {
       // For daily view, generate last 7 days and format as day names
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const last7Days: string[] = [];
-      
+
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
@@ -235,10 +287,7 @@ export class DashboardService {
 
       // On ride drivers (busy or has currentRideId)
       this.driverLocationModel.countDocuments({
-        $or: [
-          { status: DriverOnlineStatus.BUSY },
-          { currentRideId: { $exists: true, $ne: null } },
-        ],
+        $or: [{ status: DriverOnlineStatus.BUSY }, { currentRideId: { $exists: true, $ne: null } }],
       }),
     ]);
 
@@ -254,13 +303,14 @@ export class DashboardService {
     let startDate: Date;
     let endDate: Date = now;
     let groupByFormat: string;
+    let useWeekGrouping: boolean = false;
 
     switch (period) {
       case TimePeriod.WEEK:
         // Last 12 weeks
         startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 84); // 12 weeks
-        groupByFormat = '%Y-W%W'; // Year-Week
+        useWeekGrouping = true;
         break;
       case TimePeriod.MONTH:
         // Last 12 months
@@ -283,14 +333,44 @@ export class DashboardService {
           startDate: { $gte: startDate, $lte: endDate },
         },
       },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: groupByFormat, date: '$startDate' },
-          },
-          count: { $sum: 1 },
-        },
-      },
+      ...(useWeekGrouping
+        ? [
+            {
+              $addFields: {
+                weekString: {
+                  $concat: [
+                    { $toString: { $year: '$startDate' } },
+                    '-W',
+                    {
+                      $toString: {
+                        $cond: {
+                          if: { $lt: [{ $week: '$startDate' }, 10] },
+                          then: { $concat: ['0', { $toString: { $week: '$startDate' } }] },
+                          else: { $toString: { $week: '$startDate' } },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: '$weekString',
+                count: { $sum: 1 },
+              },
+            },
+          ]
+        : [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: groupByFormat, date: '$startDate' },
+                },
+                count: { $sum: 1 },
+              },
+            },
+          ]),
       { $sort: { _id: 1 } },
     ]);
 
@@ -302,4 +382,3 @@ export class DashboardService {
     return { data };
   }
 }
-
