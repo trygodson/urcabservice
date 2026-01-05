@@ -124,6 +124,19 @@ export class DriverDocumentController {
     return await this.passportDocumentService.uploadPassportDocument(driverId, passportDetails);
   }
 
+  @Get('passport')
+  @ApiOperation({ summary: 'Get passport document' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Passport document retrieved successfully',
+    type: DriverDocumentResponseDto,
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async getPassportDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.passportDocumentService.getPassportDocument(driverId);
+  }
+
   @Put('nric/:documentId')
   @ApiOperation({ summary: 'Update NRIC document' })
   @ApiParam({ name: 'documentId', description: 'Document ID', type: 'string' })
@@ -160,19 +173,6 @@ export class DriverDocumentController {
   ): Promise<DriverDocumentResponseDto> {
     const driverId = new Types.ObjectId(user._id);
     return await this.passportDocumentService.updatePassportDocument(documentId, driverId, passportDetails);
-  }
-
-  @Get('passport')
-  @ApiOperation({ summary: 'Get passport document' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Passport document retrieved successfully',
-    type: DriverDocumentResponseDto,
-  })
-  @SetRolesMetaData(Role.DRIVER)
-  async getPassportDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.passportDocumentService.getPassportDocument(driverId);
   }
 
   // ===== PSV License Document Endpoints =====

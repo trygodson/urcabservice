@@ -141,7 +141,7 @@ export class PassportDocumentService {
       status: document.status,
       passportDetails: document.passportDetails
         ? {
-            ...document.passportDetails._doc,
+            ...document.passportDetails,
             issueDate: document.passportDetails.issueDate?.toISOString(),
             expiryDate: document.passportDetails.expiryDate?.toISOString(),
           }

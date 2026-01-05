@@ -40,12 +40,10 @@ export class EmailNotificationService {
   }
 
   private initializeTransporter() {
-    const smtpServer = this.configService.get<string>('SMTP_SERVER') || 'smtp-relay.brevo.com';
+    const smtpServer = this.configService.get<string>('SMTP_SERVER');
     const smtpPort = this.configService.get<number>('SMTP_PORT') || 587;
-    const smtpUser = this.configService.get<string>('SMTP_USER') || '76e1f7002@smtp-brevo.com';
+    const smtpUser = this.configService.get<string>('SMTP_USER');
     const smtpPassword = this.configService.get<string>('SMTP_PASSWORD');
-    const smtpFrom = 'UrCab Platform';
-    const smtpFromName = 'UrCab Service';
 
     if (!smtpPassword) {
       this.logger.warn('SMTP_PASSWORD not configured. Email notifications will not work.');
