@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { RoleRepository, PermissionRepository, UserRepository } from '@urcab-workspace/shared';
-import { CreateRoleDto, UpdateRoleDto, RoleResponseDto } from './dto';
+import { CreateRoleDto, UpdateRoleDto, RoleResponseDto, QueryRolesDto } from './dto';
 import { Types } from 'mongoose';
 
 @Injectable()
@@ -40,8 +40,15 @@ export class RolesService {
     return this.findById(role._id.toString());
   }
 
-  async findAll(): Promise<RoleResponseDto[]> {
-    const roles = await this.roleRepository.findActiveRoles();
+  async findAll(query?: QueryRolesDto): Promise<RoleResponseDto[]> {
+    // Build filter based on query parameter
+    const filter: any = {};
+    if (query?.isActive !== undefined) {
+      filter.isActive = query.isActive;
+    }
+
+    // If no filter is provided, get all roles (active and inactive)
+    const roles = await this.roleRepository.find(filter);
     return Promise.all(roles.map((role) => this.mapToResponseDto(role)));
   }
 

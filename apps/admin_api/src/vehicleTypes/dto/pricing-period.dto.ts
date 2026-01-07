@@ -42,4 +42,14 @@ export class PricingPeriodDto {
   @IsNumber()
   @Min(0)
   incrementalDistance: number;
+
+  @ApiProperty({ description: 'Long distance in km (e.g., 1km or 0.2km)' })
+  @IsNumber()
+  @Min(0)
+  longDistance: number;
+
+  @ApiProperty({ description: 'Long distance surcharge (e.g., 1RM or 0.2RM)' })
+  @IsNumber()
+  @Min(0)
+  longDistanceSurcharge: number;
 }

@@ -382,6 +382,64 @@ export class DriverRideService {
     }
   }
 
+  async markRideReachedDestination(
+    rideId: string,
+    driverId: Types.ObjectId,
+    data: { tollAmount?: number },
+  ): Promise<RideResponseDto> {
+    try {
+      const ride = await this.rideRepository.findById(rideId);
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+
+      // Validate driver is assigned to this ride
+      if (!ride.driverId || !ride.driverId.equals(driverId)) {
+        throw new BadRequestException('You are not assigned to this ride');
+      }
+
+      if (ride.status) {
+        this.validateStatusChange(ride.status as RideStatus, RideStatus.RIDE_REACHED_DESTINATION as RideStatus);
+      }
+
+      const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+      const driver = await this.userRepository.findById(driverId.toString());
+      const vehicle = await this.vehicleRepository.findOne({
+        driverId: driverId.toString(),
+        isPrimary: true,
+      });
+      const rating = await this.ratingRepository.getAverageRating(driverId.toString());
+
+      const updateData: any = {
+        status: RideStatus.RIDE_REACHED_DESTINATION,
+      };
+
+      if (typeof data.tollAmount === 'number') {
+        updateData.tollAmount = data.tollAmount;
+      }
+
+      const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+
+      if (passenger?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.RIDE_REACHED_DESTINATION,
+          rideId,
+          { ...driver, vehicle, rating },
+          updatedRide,
+        );
+      }
+
+      this.logger.log(
+        `Ride ${rideId} marked as reached destination by driver ${driverId}. Toll: RM${data.tollAmount ?? 0}`,
+      );
+      return this.mapToResponseDto(updatedRide);
+    } catch (error) {
+      this.logger.error(`Failed to mark ride ${rideId} as reached destination by driver ${driverId}`, error.stack);
+      throw error;
+    }
+  }
+
   async completeRide(
     rideId: string,
     driverId: Types.ObjectId,
@@ -758,7 +816,12 @@ export class DriverRideService {
       [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
       [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
       [RideStatus.DRIVER_ACCEPTED]: [RideStatus.RIDE_STARTED, RideStatus.DRIVER_AT_PICKUPLOCATION],
-      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_STARTED]: [
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_REACHED_DESTINATION,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.RIDE_REACHED_DESTINATION]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
       [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
         RideStatus.RIDE_COMPLETED,
         RideStatus.DRIVER_HAS_PICKUP_PASSENGER,

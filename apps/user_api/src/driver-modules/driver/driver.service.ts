@@ -3,7 +3,12 @@ import {
   BalanceType,
   DriverLocation,
   DriverOnlineStatus,
+  FirebaseNotificationService,
   generateRandomString,
+  PaymentStatus,
+  RatingRepository,
+  RideRepository,
+  RideStatus,
   SubscriptionPlanRepository,
   SubscriptionRepository,
   SubscriptionStatus,
@@ -15,6 +20,7 @@ import {
   User,
   UserRepository,
   UserRolesEnum,
+  VehicleRepository,
   WalletRepository,
   WalletTransaction,
 } from '@urcab-workspace/shared';
@@ -68,6 +74,10 @@ export class DriverService {
     private readonly subscriptionPlanRepository: SubscriptionPlanRepository,
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly walletRepository: WalletRepository,
+    private readonly rideRepository: RideRepository,
+    private readonly vehicleRepository: VehicleRepository,
+    private readonly ratingRepository: RatingRepository,
+    private readonly firebaseNotificationService: FirebaseNotificationService,
   ) {}
   private generateTransactionRef(type: TransactionType, category: TransactionCategory): string {
     const prefix = type === TransactionType.CREDIT ? 'CR' : 'DB';
@@ -222,7 +232,7 @@ export class DriverService {
     // Calculate MD5 hash: md5(Amount+secretKey+domain+tranID+status)
     const hashString = `${amount}${secretKey}${domain}${tranID}${status}`;
     const calculatedHash = md5(hashString);
-    console.log(calculatedHash, 'calculatedHash', skey, 'skey');
+    // console.log(calculatedHash, 'calculatedHash', skey, 'skey');
     // Verify the hash matches the skey from the response
     // if (calculatedHash !== skey) {
     //   throw new BadRequestException('Invalid payment signature');
@@ -232,55 +242,141 @@ export class DriverService {
     if (!transaction) {
       throw new NotFoundException(`Transaction with ID ${orderid} not found`);
     }
-    const plan = await this.subscriptionPlanRepository.findById(transaction.subscriptionPlanId);
-    if (!plan) {
-      throw new NotFoundException(`Subscription plan with ID ${transaction.subscriptionPlanId} not found`);
+
+    if (transaction.category === TransactionCategory.RIDE) {
+      const ride = await this.rideRepository.findById(transaction.metadata.rideId);
+      if (!ride) {
+        throw new NotFoundException(`Ride with ID ${transaction.metadata.rideId} not found`);
+      }
+
+      // Update ride payment status to completed
+      const updateData: any = {
+        paymentStatus: PaymentStatus.COMPLETED,
+        paymentConfirmedAt: new Date(),
+      };
+
+      // Update payment status (especially important if ride status is RIDE_REACHED_DESTINATION)
+      await this.rideRepository.findByIdAndUpdate(transaction.metadata.rideId, updateData);
+
+      // Get driver wallet and update balances
+      const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+      if (!driverWallet) {
+        throw new NotFoundException('Driver wallet not found');
+      }
+
+      // Update wallet balances for card payment
+      const newWithdrawableBalance = driverWallet.withdrawableBalance + transaction.amount;
+      const newTotalBalance = driverWallet.totalBalance + transaction.amount;
+
+      await this.walletRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(transaction.wallet.toString()) },
+        {
+          withdrawableBalance: newWithdrawableBalance,
+          totalBalance: newTotalBalance,
+          lastTransactionDate: new Date(),
+        },
+      );
+
+      // Update transaction with final balances
+      transaction.status = TransactionStatus.COMPLETED;
+      transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+      transaction.withdrawableBalanceAfter = newWithdrawableBalance;
+      transaction.totalBalanceBefore = driverWallet.totalBalance;
+      transaction.totalBalanceAfter = newTotalBalance;
+      transaction.completedAt = new Date();
+      transaction.description = `Ride payment completed - Card (RM${transaction.amount})`;
+
+      await transaction.save();
+
+      // Get passenger and driver details for notifications
+      const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+      const driver = await this.userRepository.findById(ride.driverId?.toString());
+      const vehicle = await this.vehicleRepository.findOne({
+        driverId: ride.driverId?.toString(),
+        isPrimary: true,
+      });
+      const rating = await this.ratingRepository.getAverageRating(ride.driverId?.toString());
+
+      const updatedRide = await this.rideRepository.findById(transaction.metadata.rideId);
+
+      // Send payment completed notification to passenger
+      if (passenger?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          // 'PAYMENT_COMPLETED',
+          RideStatus.RIDE_REACHED_DESTINATION,
+          transaction.metadata.rideId,
+          { ...driver, vehicle, rating },
+          updatedRide,
+        );
+      }
+
+      // Send payment completed notification to driver
+      if (driver?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          driver.fcmToken,
+          // 'PAYMENT_COMPLETED',
+          RideStatus.RIDE_REACHED_DESTINATION,
+          transaction.metadata.rideId,
+          { ...passenger },
+          updatedRide,
+        );
+      }
+
+      this.logger.log(
+        `Ride ${transaction.metadata.rideId} payment completed. Amount: RM${transaction.amount}. Driver wallet updated.`,
+      );
+    } else if (transaction.category === TransactionCategory.SUBSCRIPTION) {
+      const plan = await this.subscriptionPlanRepository.findById(transaction.subscriptionPlanId);
+      if (!plan) {
+        throw new NotFoundException(`Subscription plan with ID ${transaction.subscriptionPlanId} not found`);
+      }
+
+      if (plan.status !== 'active' || !plan.isActive) {
+        throw new BadRequestException('Subscription plan is not active');
+      }
+
+      // Calculate dates
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + plan.validity);
+
+      // Calculate final price with discount
+      let finalPrice = plan.price;
+      const dWallet = await this.walletRepository.findById(transaction.wallet.toString());
+
+      // Create subscription with current price from plan (captured at creation time)
+      await this.subscriptionRepository.createSubscription({
+        _id: new Types.ObjectId(),
+        driverId: new Types.ObjectId(transaction.user.toString()),
+        planId: new Types.ObjectId(transaction.subscriptionPlanId),
+        type: plan.type,
+        status: SubscriptionStatus.ACTIVE,
+        startDate,
+        endDate,
+        price: finalPrice, // Capture current price from plan
+        paymentReference: tranID,
+        paymentDate: new Date(),
+        approvedByAdminId: null,
+        approvedAt: new Date(),
+        autoRenew: false,
+        discountPercentage: 0,
+        discountReason: '',
+
+        ridesCompleted: 0,
+        totalEarnings: 0,
+      });
+      // console.log(subscription, 'subscription', transaction);
+      await this.walletRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(transaction.wallet.toString()) },
+        {
+          depositBalance: transaction.depositBalanceAfter,
+          totalBalance: transaction.totalBalanceAfter,
+          totalDeposited: dWallet.totalDeposited + transaction.amount,
+          lastTransactionDate: new Date(),
+        },
+      );
     }
-
-    if (plan.status !== 'active' || !plan.isActive) {
-      throw new BadRequestException('Subscription plan is not active');
-    }
-
-    // Calculate dates
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + plan.validity);
-
-    // Calculate final price with discount
-    let finalPrice = plan.price;
-    const dWallet = await this.walletRepository.findById(transaction.wallet.toString());
-
-    // Create subscription with current price from plan (captured at creation time)
-    await this.subscriptionRepository.createSubscription({
-      _id: new Types.ObjectId(),
-      driverId: new Types.ObjectId(transaction.user.toString()),
-      planId: new Types.ObjectId(transaction.subscriptionPlanId),
-      type: plan.type,
-      status: SubscriptionStatus.ACTIVE,
-      startDate,
-      endDate,
-      price: finalPrice, // Capture current price from plan
-      paymentReference: tranID,
-      paymentDate: new Date(),
-      approvedByAdminId: null,
-      approvedAt: new Date(),
-      autoRenew: false,
-      discountPercentage: 0,
-      discountReason: '',
-
-      ridesCompleted: 0,
-      totalEarnings: 0,
-    });
-    // console.log(subscription, 'subscription', transaction);
-    await this.walletRepository.findOneAndUpdate(
-      { _id: new Types.ObjectId(transaction.wallet.toString()) },
-      {
-        depositBalance: transaction.depositBalanceAfter,
-        totalBalance: transaction.totalBalanceAfter,
-        totalDeposited: dWallet.totalDeposited + transaction.amount,
-        lastTransactionDate: new Date(),
-      },
-    );
 
     transaction.status = TransactionStatus.COMPLETED;
     await transaction.save();

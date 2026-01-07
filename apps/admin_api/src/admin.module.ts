@@ -17,6 +17,8 @@ import { SubscriptionPlansModule } from './subscription-plans/subscription-plans
 import { DriverSubscriptionsModule } from './driver-subscriptions/driver-subscriptions.module';
 import { PassengerTransactionsModule } from './passenger-transactions/passenger-transactions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReportsModule } from './reports/reports.module';
+import { FaqsModule } from './faqs/faqs.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DriverSubscriptionsModule,
     PassengerTransactionsModule,
     DashboardModule,
+    ReportsModule,
+    FaqsModule,
   ],
 
   // providers: [AdminService],

@@ -370,7 +370,12 @@ export class RideWebSocketService {
         RideStatus.RIDE_CANCELLED,
         RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
       ],
-      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_STARTED]: [
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_REACHED_DESTINATION,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.RIDE_REACHED_DESTINATION]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
       [RideStatus.RIDE_TIMEOUT]: [],
       [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
         RideStatus.DRIVER_HAS_PICKUP_PASSENGER,

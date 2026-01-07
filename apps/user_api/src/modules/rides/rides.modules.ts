@@ -28,6 +28,9 @@ import {
   VehicleType,
   VehicleTypeRepository,
   VehicleTypeSchema,
+  Wallet,
+  WalletRepository,
+  WalletSchema,
   WalletTransaction,
   WalletTransactionSchema,
 } from '@urcab-workspace/shared';
@@ -63,6 +66,7 @@ import { RideGateway } from './gateway/ride.gateway';
       { name: DriverEvp.name, schema: DriverEvpSchema },
       { name: VehicleType.name, schema: VehicleTypeSchema },
       { name: PricingZone.name, schema: PricingZoneSchema },
+      { name: Wallet.name, schema: WalletSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
     ]),
     NotificationsModule,
@@ -81,6 +85,7 @@ import { RideGateway } from './gateway/ride.gateway';
     VehicleTypeRepository,
     DriverEvpRepository,
     PricingZoneRepository,
+    WalletRepository,
   ],
   exports: [RidesService, RideWebSocketService, RideGateway],
 })

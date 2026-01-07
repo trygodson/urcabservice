@@ -14,6 +14,7 @@ import {
   VehicleRepository,
   VehicleType,
   VehicleTypeRepository,
+  WalletRepository,
   WalletTransaction,
 } from '@urcab-workspace/shared';
 import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceDto } from './dtos';
@@ -39,6 +40,7 @@ export class RidesService {
     private readonly firebaseNotificationService: FirebaseNotificationService,
     private readonly driverEvpRepository: DriverEvpRepository,
     private readonly pricingZoneRepository: PricingZoneRepository,
+    private readonly walletRepository: WalletRepository,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
@@ -645,6 +647,11 @@ export class RidesService {
       fare += incrementsNeeded * applicablePeriod.incrementalRate;
     }
 
+    if (distance >= applicablePeriod.longDistance && applicablePeriod.longDistance > 0) {
+      const longDistanceMultiples = Math.floor(distance / applicablePeriod.longDistance);
+      fare += longDistanceMultiples * applicablePeriod.longDistanceSurcharge;
+    }
+
     // Apply zone multiplier if locations are provided
     let zoneMultiplier = 1.0;
 
@@ -888,7 +895,12 @@ export class RidesService {
       [RideStatus.REJECTED_BY_DRIVER]: [RideStatus.PENDING_DRIVER_ACCEPTANCE, RideStatus.RIDE_CANCELLED],
       [RideStatus.SCHEDULED]: [RideStatus.SEARCHING_DRIVER, RideStatus.RIDE_CANCELLED],
       [RideStatus.DRIVER_ACCEPTED]: [RideStatus.RIDE_STARTED, RideStatus.RIDE_CANCELLED, RideStatus.RIDE_TIMEOUT],
-      [RideStatus.RIDE_STARTED]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+      [RideStatus.RIDE_STARTED]: [
+        RideStatus.RIDE_COMPLETED,
+        RideStatus.RIDE_REACHED_DESTINATION,
+        RideStatus.RIDE_CANCELLED,
+      ],
+      [RideStatus.RIDE_REACHED_DESTINATION]: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
       [RideStatus.DRIVER_AT_PICKUPLOCATION]: [
         RideStatus.RIDE_COMPLETED,
         RideStatus.RIDE_CANCELLED,
@@ -1257,7 +1269,7 @@ export class RidesService {
     };
   }
 
-  async getRideTransaction(rideId: string, userId: Types.ObjectId): Promise<any> {
+  async getRideTransaction(rideId: string, userId: Types.ObjectId, tip?: number): Promise<any> {
     try {
       // Verify the ride exists and belongs to the user (as passenger or driver)
       const ride = await this.rideRepository.findById(rideId);
@@ -1274,16 +1286,52 @@ export class RidesService {
       }
 
       // Find transaction by rideId in metadata
-      const transaction = await this.transactionModel
-        .findOne({
-          'metadata.rideId': rideId,
-          category: TransactionCategory.RIDE,
-        })
-        .lean()
-        .exec();
+      const transaction = await this.transactionModel.findOne({
+        'metadata.rideId': rideId,
+        category: TransactionCategory.RIDE,
+      });
 
       if (!transaction) {
         throw new NotFoundException('Transaction not found for this ride');
+      }
+
+      // If tip is provided, update the ride and transaction
+      if (typeof tip === 'number' && tip >= 0) {
+        // Update ride with tip
+        await this.rideRepository.findByIdAndUpdate(rideId, {
+          tips: tip,
+        });
+
+        // Calculate total amount: estimatedFare + tip + tollAmount
+        const estimatedFare = ride.estimatedFare || 0;
+        const tollAmount = ride.tollAmount || 0;
+        const totalAmount = estimatedFare + tip + tollAmount;
+
+        // Update transaction amount
+        const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+        if (!driverWallet) {
+          throw new NotFoundException('Driver wallet not found');
+        }
+
+        // Update transaction with new amount
+        transaction.amount = totalAmount;
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change until payment confirmed
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change until payment confirmed
+        transaction.description = `Ride payment - ${
+          transaction.paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Card'
+        } (Base: RM${estimatedFare}${tollAmount > 0 ? `, Toll: RM${tollAmount}` : ''}${
+          tip > 0 ? `, Tip: RM${tip}` : ''
+        })`;
+
+        await transaction.save();
+
+        this.logger.log(
+          `Updated ride ${rideId} transaction: Tip: RM${tip}, Total: RM${totalAmount} (Base: RM${estimatedFare}${
+            tollAmount > 0 ? `, Toll: RM${tollAmount}` : ''
+          }${tip > 0 ? `, Tip: RM${tip}` : ''})`,
+        );
       }
 
       return {

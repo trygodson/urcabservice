@@ -14,25 +14,33 @@ class PricingPeriod {
   @Prop({ required: true })
   startTime: string; // Format: "HH:MM" e.g., "09:00"
 
-  @ApiProperty() 
+  @ApiProperty()
   @Prop({ required: true })
   endTime: string; // Format: "HH:MM" e.g., "17:00"
 
   @ApiProperty()
   @Prop({ required: true, min: 0 })
   baseFare: number; // Base fare for initial distance (e.g., 3RM for 0-2km)
-  
+
   @ApiProperty()
   @Prop({ required: true, min: 0 })
   baseDistance: number; // Distance covered by base fare in km (e.g., 2km)
-  
+
   @ApiProperty()
   @Prop({ required: true, min: 0 })
   incrementalRate: number; // Additional fare per increment (e.g., 0.25RM)
-  
+
   @ApiProperty()
   @Prop({ required: true, min: 0 })
   incrementalDistance: number; // Increment distance in km (e.g., 1km or 0.2km)
+
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  longDistance: number; // Long distance in km (e.g., 1km or 0.2km)
+
+  @ApiProperty()
+  @Prop({ required: true, min: 0 })
+  longDistanceSurcharge: number; // Long distance surcharge (e.g., 1RM or 0.2RM)
 }
 
 @Schema({ collection: 'vehicleType', timestamps: true })

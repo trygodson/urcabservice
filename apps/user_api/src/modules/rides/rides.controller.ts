@@ -15,10 +15,10 @@ import {
   NotFoundException,
   ParseFloatPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { Types } from 'mongoose';
 import { RidesService } from './rides.service';
-import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceListResponseDto } from './dtos';
+import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceListResponseDto, AddTipDto } from './dtos';
 import { JwtAuthGuard, RolesGuard, Role, CurrentUser, User, SetRolesMetaData } from '@urcab-workspace/shared';
 
 @ApiTags('Rides')
@@ -290,13 +290,14 @@ export class RidesController {
     return await this.ridesService.getRideById(rideId, userId);
   }
 
-  @Get(':id/transaction')
-  @ApiOperation({ summary: 'Get wallet transaction for a ride by ride ID' })
+  @Post(':id/transaction')
+  @ApiOperation({ summary: 'Get wallet transaction for a ride and optionally add tip to update total amount' })
   @ApiParam({
     name: 'id',
     description: 'Ride ID',
     type: 'string',
   })
+  @ApiBody({ type: AddTipDto })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Transaction retrieved successfully',
@@ -310,13 +311,17 @@ export class RidesController {
     description: 'Access denied to this ride transaction',
   })
   @SetRolesMetaData(Role.PASSENGER)
-  async getRideTransaction(@Param('id') rideId: string, @CurrentUser() user: User) {
+  async getRideTransaction(@Param('id') rideId: string, @Body() body: AddTipDto, @CurrentUser() user: User) {
     if (!Types.ObjectId.isValid(rideId)) {
       throw new BadRequestException('Invalid ride ID format');
     }
 
+    if (body.tip !== undefined && (typeof body.tip !== 'number' || body.tip < 0)) {
+      throw new BadRequestException('Tip must be a non-negative number');
+    }
+
     const userId = new Types.ObjectId(user._id);
-    return await this.ridesService.getRideTransaction(rideId, userId);
+    return await this.ridesService.getRideTransaction(rideId, userId, body.tip);
   }
 
   @Get(':id/driver-location')

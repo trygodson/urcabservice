@@ -128,6 +128,10 @@ export class FirebaseNotificationService {
           title = '🎉 Ride Rejected';
           body = reason ?? 'Driver cancelled or rejected ride request, Thank you for using UrCab!';
           break;
+        case 'PAYMENT_COMPLETED':
+          title = '💳 Payment Completed';
+          body = 'Your ride payment has been successfully completed. Thank you for using UrCab!';
+          break;
         default:
           title = 'Ride Update';
           body = `Your ride status: ${status}`;

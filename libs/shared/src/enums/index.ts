@@ -40,6 +40,7 @@ export enum RideStatus {
   DRIVER_AT_PICKUPLOCATION = 'driver_at_pickuplocation',
   DRIVER_HAS_PICKUP_PASSENGER = 'driver_has_pickup_passenger',
   RIDE_STARTED = 'ride_started',
+  RIDE_REACHED_DESTINATION = 'ride_reached_destination',
   RIDE_COMPLETED = 'ride_completed',
   RIDE_CANCELLED = 'ride_cancelled',
   RIDE_TIMEOUT = 'ride_timeout',
@@ -63,6 +64,7 @@ export enum PaymentMethod {
 }
 
 export enum PaymentStatus {
+  NOT_PAID = 'not_paid',
   PENDING = 'pending',
   COMPLETED = 'completed',
   FAILED = 'failed',

@@ -221,12 +221,12 @@ export class Ride extends AbstractDocument {
   })
   estimatedFare?: number; // in RM
 
-  @ApiProperty()
-  @Prop({
-    type: Number,
-    required: false,
-  })
-  finalFare?: number; // in RM
+  // @ApiProperty()
+  // @Prop({
+  //   type: Number,
+  //   required: false,
+  // })
+  // finalFare?: number; // in RM
 
   @ApiProperty()
   @Prop({
@@ -282,10 +282,23 @@ export class Ride extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: Number,
+    default: 0,
+  })
+  tips?: number;
+
+  @ApiProperty()
+  @Prop({
+    type: Number,
+  })
+  tollAmount?: number;
+
+  @ApiProperty()
+  @Prop({
     type: [String],
     default: [],
   })
-  route?: string[]; // Array of coordinates representing the actual route taken
+  route?: string[];
 
   @ApiProperty()
   @Prop({

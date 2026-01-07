@@ -17,7 +17,7 @@ import * as bcrypt from 'bcryptjs';
 
 import { OAuth2Client } from 'google-auth-library';
 import { Types } from 'mongoose'; // <-- ADD THIS LINE HERE
-import { LoginDto, RegisterUserDto, VerifyOtpDto } from './dto';
+import { LoginDto, RegisterUserDto, VerifyOtpDto, ChangePasswordDto, UpdateProfileDto } from './dto';
 import {
   GenerateOtp,
   generateRandomString,
@@ -309,6 +309,122 @@ export class AuthService {
       });
     } catch (error) {
       throw new UnauthorizedException('User Does Not Exist');
+    }
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get user with password fields
+      const user = await this.userRepository.findOne(
+        { _id: new Types.ObjectId(userId) },
+        [],
+        {
+          select: 'passwordSalt passwordHash email',
+        },
+      );
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Verify current password
+      const currentPasswordHash = await bcrypt.hash(changePasswordDto.currentPassword, user.passwordSalt);
+      if (currentPasswordHash !== user.passwordHash) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      // Check if new password is same as current password
+      const newPasswordHash = await bcrypt.hash(changePasswordDto.newPassword, user.passwordSalt);
+      if (newPasswordHash === user.passwordHash) {
+        throw new BadRequestException('New password must be different from current password');
+      }
+
+      // Generate new salt and hash for new password
+      const newPassSalt = await bcrypt.genSalt();
+      const newPasswordHashWithNewSalt = await bcrypt.hash(changePasswordDto.newPassword, newPassSalt);
+
+      // Update password
+      await this.userRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(userId) },
+        {
+          passwordHash: newPasswordHashWithNewSalt,
+          passwordSalt: newPassSalt,
+        },
+      );
+
+      return {
+        success: true,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to change password');
+    }
+  }
+
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<any> {
+    try {
+      const user = await this.userRepository.findOne({ _id: new Types.ObjectId(userId) });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if email is being updated and if it already exists
+      if (updateProfileDto.email && updateProfileDto.email !== user.email) {
+        const existingUser = await this.userRepository.findOne({ email: updateProfileDto.email });
+        if (existingUser) {
+          throw new ConflictException(`Email "${updateProfileDto.email}" is already in use`);
+        }
+      }
+
+      // Build update data
+      const updateData: any = {};
+
+      if (updateProfileDto.fullName !== undefined) {
+        updateData.fullName = updateProfileDto.fullName;
+      }
+
+      if (updateProfileDto.email !== undefined) {
+        updateData.email = updateProfileDto.email;
+        // If email is changed, mark as unverified
+        if (updateProfileDto.email !== user.email) {
+          updateData.isEmailConfirmed = false;
+        }
+      }
+
+      if (updateProfileDto.photo !== undefined) {
+        updateData.photo = updateProfileDto.photo;
+      }
+
+      // Update user
+      const updatedUser = await this.userRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(userId) },
+        updateData,
+      );
+
+      return {
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          _id: updatedUser._id.toString(),
+          fullName: updatedUser.fullName,
+          email: updatedUser.email,
+          photo: updatedUser.photo,
+          isEmailConfirmed: updatedUser.isEmailConfirmed,
+          updatedAt: updatedUser.updatedAt,
+        },
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to update profile');
     }
   }
 }

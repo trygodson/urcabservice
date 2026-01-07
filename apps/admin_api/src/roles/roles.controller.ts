@@ -9,10 +9,11 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
-import { CreateRoleDto, UpdateRoleDto, RoleResponseDto } from './dto';
+import { CreateRoleDto, UpdateRoleDto, RoleResponseDto, QueryRolesDto } from './dto';
 import { JwtAdminAuthGuard, SetRolesMetaData, Role, CurrentUser, User } from '@urcab-workspace/shared';
 
 @ApiTags('Admin - Roles')
@@ -33,10 +34,16 @@ export class RolesController {
 
   @Get()
   @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Get all active roles' })
+  @ApiOperation({ summary: 'Get all roles (active and inactive). Use isActive query parameter to filter.' })
+  @ApiQuery({
+    name: 'isActive',
+    required: false,
+    type: Boolean,
+    description: 'Filter by active status. If not provided, returns all roles (active and inactive)',
+  })
   @ApiResponse({ status: 200, description: 'List of roles', type: [RoleResponseDto] })
-  async findAll() {
-    return this.rolesService.findAll();
+  async findAll(@Query() query: QueryRolesDto) {
+    return this.rolesService.findAll(query);
   }
 
   @Get(':id')
@@ -53,11 +60,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Update a role (Super Admin only)' })
   @ApiResponse({ status: 200, description: 'Role updated successfully', type: RoleResponseDto })
   @ApiResponse({ status: 404, description: 'Role not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateRoleDto: UpdateRoleDto,
-    @CurrentUser() user: User,
-  ) {
+  async update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto, @CurrentUser() user: User) {
     return this.rolesService.update(id, updateRoleDto, user._id.toString());
   }
 
@@ -71,4 +74,3 @@ export class RolesController {
     await this.rolesService.remove(id);
   }
 }
-
