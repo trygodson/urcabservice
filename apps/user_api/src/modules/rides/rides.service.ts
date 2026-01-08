@@ -8,7 +8,9 @@ import {
   RatingRepository,
   RideNotificationData,
   RideRepository,
+  RideStatus,
   TransactionCategory,
+  TransactionStatus,
   UserRepository,
   VEHICLE_CAPACITY,
   VehicleRepository,
@@ -18,7 +20,7 @@ import {
   WalletTransaction,
 } from '@urcab-workspace/shared';
 import { CreateRideDto, UpdateRideDto, RideResponseDto, VehiclePriceDto } from './dtos';
-import { RideStatus, RideType } from '@urcab-workspace/shared';
+import { RideType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -1357,6 +1359,144 @@ export class RidesService {
         throw error;
       }
       throw new BadRequestException('Failed to get ride transaction');
+    }
+  }
+
+  async confirmPayment(rideId: string, userId: Types.ObjectId): Promise<{ success: boolean; message: string }> {
+    try {
+      // Verify the ride exists and belongs to the user (as passenger)
+      const ride = await this.rideRepository.findById(rideId);
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+
+      // Check if user is the passenger
+      const isPassenger = ride.passengerId && ride.passengerId._id.toString() === userId.toString();
+      if (!isPassenger) {
+        throw new BadRequestException('You do not have access to confirm payment for this ride');
+      }
+
+      // Check if payment is already completed
+      if (ride.paymentStatus === PaymentStatus.COMPLETED) {
+        throw new BadRequestException('Payment has already been confirmed for this ride');
+      }
+
+      // Find transaction by rideId in metadata
+      const transaction = await this.transactionModel.findOne({
+        'metadata.rideId': rideId,
+        category: TransactionCategory.RIDE,
+      });
+
+      if (!transaction) {
+        throw new NotFoundException('Transaction not found for this ride');
+      }
+
+      // Update ride payment status to completed
+      const updateData: any = {
+        paymentStatus: PaymentStatus.COMPLETED,
+        paymentConfirmedAt: new Date(),
+      };
+
+      await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+
+      // Get driver wallet
+      const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+      if (!driverWallet) {
+        throw new NotFoundException('Driver wallet not found');
+      }
+
+      // Calculate final amount: estimatedFare + tips + tollAmount
+      const estimatedFare = ride.estimatedFare || 0;
+      const tips = ride.tips || 0;
+      const tollAmount = ride.tollAmount || 0;
+      const totalAmount = estimatedFare + tips + tollAmount;
+
+      // Update transaction amount if it differs
+      if (transaction.amount !== totalAmount) {
+        transaction.amount = totalAmount;
+      }
+
+      // Handle payment based on payment method
+      if (ride.paymentMethod === PaymentMethod.CARD) {
+        // For card payment, update driver wallet
+        // const newWithdrawableBalance = driverWallet.withdrawableBalance + totalAmount;
+        // const newTotalBalance = driverWallet.totalBalance + totalAmount;
+        // await this.walletRepository.findOneAndUpdate(
+        //   { _id: new Types.ObjectId(transaction.wallet.toString()) },
+        //   {
+        //     withdrawableBalance: newWithdrawableBalance,
+        //     totalBalance: newTotalBalance,
+        //     lastTransactionDate: new Date(),
+        //   },
+        // );
+        // // Update transaction with final balances
+        // transaction.status = TransactionStatus.COMPLETED;
+        // transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        // transaction.withdrawableBalanceAfter = newWithdrawableBalance;
+        // transaction.totalBalanceBefore = driverWallet.totalBalance;
+        // transaction.totalBalanceAfter = newTotalBalance;
+        // transaction.completedAt = new Date();
+        // transaction.description = `Ride payment completed - Card (RM${totalAmount})`;
+      } else if (ride.paymentMethod === PaymentMethod.CASH) {
+        // For cash payment, mark transaction as completed but don't update wallet
+        // (Driver collected cash directly, so wallet balance doesn't change)
+        transaction.status = TransactionStatus.COMPLETED;
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change
+        transaction.completedAt = new Date();
+        transaction.description = `Ride payment completed - Cash (RM${totalAmount}) - Cash collected directly`;
+        await transaction.save();
+
+        // Get passenger and driver details for notifications
+        const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+        const driver = await this.userRepository.findById(ride.driverId?.toString());
+        const vehicle = await this.vehicleRepository.findOne({
+          driverId: ride.driverId?.toString(),
+          isPrimary: true,
+        });
+        const rating = await this.ratingRepository.getAverageRating(ride.driverId?.toString());
+
+        const updatedRide = await this.rideRepository.findById(rideId);
+
+        // Send payment completed notification to passenger
+        if (passenger?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            passenger.fcmToken,
+            'PAYMENT_COMPLETED',
+            rideId,
+            { ...driver, vehicle, rating },
+            updatedRide,
+          );
+        }
+
+        // Send payment completed notification to driver
+        if (driver?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            driver.fcmToken,
+            'PAYMENT_COMPLETED',
+            rideId,
+            { ...passenger },
+            updatedRide,
+          );
+        }
+
+        this.logger.log(
+          `Ride ${rideId} payment confirmed by passenger. Amount: RM${totalAmount}. Payment method: ${ride.paymentMethod}.`,
+        );
+
+        return {
+          success: true,
+          message: 'Payment confirmed successfully',
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Failed to confirm payment for ride ${rideId}:`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to confirm payment');
     }
   }
 }

@@ -324,6 +324,42 @@ export class RidesController {
     return await this.ridesService.getRideTransaction(rideId, userId, body.tip);
   }
 
+  @Post(':id/confirm-payment')
+  @ApiOperation({ summary: 'Confirm payment for a ride (passenger confirms payment completion)' })
+  @ApiParam({
+    name: 'id',
+    description: 'Ride ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment confirmed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Payment confirmed successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Ride or transaction not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Payment already confirmed or access denied',
+  })
+  @SetRolesMetaData(Role.PASSENGER)
+  async confirmPayment(@Param('id') rideId: string, @CurrentUser() user: User) {
+    if (!Types.ObjectId.isValid(rideId)) {
+      throw new BadRequestException('Invalid ride ID format');
+    }
+
+    const userId = new Types.ObjectId(user._id);
+    return await this.ridesService.confirmPayment(rideId, userId);
+  }
+
   @Get(':id/driver-location')
   @ApiOperation({ summary: 'Get ride driver location by ID' })
   @SetRolesMetaData(Role.PASSENGER)
