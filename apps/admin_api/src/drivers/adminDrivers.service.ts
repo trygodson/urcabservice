@@ -1141,148 +1141,148 @@ export class AdminDriversService {
       hasExpiry: true,
     },
   ];
-  // EVP Management Methods
-  async createDriverEvp(createDriverEvpDto: CreateDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
-    const { driverId, certificateNumber, startDate, endDate, documentUrl, notes } = createDriverEvpDto;
+  // // EVP Management Methods
+  // async createDriverEvp(createDriverEvpDto: CreateDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
+  //   const { driverId, certificateNumber, startDate, endDate, documentUrl, notes } = createDriverEvpDto;
 
-    // Check if driver exists
-    const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
-    if (!driver) {
-      throw new NotFoundException(`Driver with ID ${driverId} not found`);
-    }
+  //   // Check if driver exists
+  //   const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
+  //   if (!driver) {
+  //     throw new NotFoundException(`Driver with ID ${driverId} not found`);
+  //   }
 
-    // Get all driver documents
-    const driverDocs = await this.driverDocumentRepository.find({
-      driverId: new Types.ObjectId(driverId),
-      isActive: true,
-    });
+  //   // Get all driver documents
+  //   const driverDocs = await this.driverDocumentRepository.find({
+  //     driverId: new Types.ObjectId(driverId),
+  //     isActive: true,
+  //   });
 
-    // Check if driver has any documents
-    if (driverDocs.length === 0) {
-      throw new BadRequestException('Driver has no documents uploaded');
-    }
+  //   // Check if driver has any documents
+  //   if (driverDocs.length === 0) {
+  //     throw new BadRequestException('Driver has no documents uploaded');
+  //   }
 
-    // Check if all required document types have been uploaded and verified
-    const requiredDocTypes = this.DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired).map((req) => req.documentType);
+  //   // Check if all required document types have been uploaded and verified
+  //   const requiredDocTypes = this.DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired).map((req) => req.documentType);
 
-    // Create a map of document types to their details
-    const driverDocMap = new Map();
-    driverDocs.forEach((doc) => {
-      driverDocMap.set(doc.documentType, {
-        isVerified: doc.status === DocumentStatus.VERIFIED,
-        expiryDate: doc.expiryDate,
-        status: doc.status,
-        document: doc,
-      });
-    });
+  //   // Create a map of document types to their details
+  //   const driverDocMap = new Map();
+  //   driverDocs.forEach((doc) => {
+  //     driverDocMap.set(doc.documentType, {
+  //       isVerified: doc.status === DocumentStatus.VERIFIED,
+  //       expiryDate: doc.expiryDate,
+  //       status: doc.status,
+  //       document: doc,
+  //     });
+  //   });
 
-    // Check for missing documents
-    const missingDocs = requiredDocTypes.filter((docType) => !driverDocMap.has(docType));
-    if (missingDocs.length > 0) {
-      const missingDocNames = missingDocs.map((docType) => {
-        const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
-        return docReq ? docReq.displayName : docType;
-      });
-      throw new BadRequestException(`Required documents are missing: ${missingDocNames.join(', ')}`);
-    }
+  //   // Check for missing documents
+  //   const missingDocs = requiredDocTypes.filter((docType) => !driverDocMap.has(docType));
+  //   if (missingDocs.length > 0) {
+  //     const missingDocNames = missingDocs.map((docType) => {
+  //       const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+  //       return docReq ? docReq.displayName : docType;
+  //     });
+  //     throw new BadRequestException(`Required documents are missing: ${missingDocNames.join(', ')}`);
+  //   }
 
-    // Check for unverified documents
-    const unverifiedDocs = requiredDocTypes.filter(
-      (docType) => driverDocMap.has(docType) && !driverDocMap.get(docType).isVerified,
-    );
+  //   // Check for unverified documents
+  //   const unverifiedDocs = requiredDocTypes.filter(
+  //     (docType) => driverDocMap.has(docType) && !driverDocMap.get(docType).isVerified,
+  //   );
 
-    if (unverifiedDocs.length > 0) {
-      const unverifiedDocNames = unverifiedDocs.map((docType) => {
-        const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
-        return docReq ? docReq.displayName : docType;
-      });
-      throw new BadRequestException(`These documents are not verified: ${unverifiedDocNames.join(', ')}`);
-    }
+  //   if (unverifiedDocs.length > 0) {
+  //     const unverifiedDocNames = unverifiedDocs.map((docType) => {
+  //       const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+  //       return docReq ? docReq.displayName : docType;
+  //     });
+  //     throw new BadRequestException(`These documents are not verified: ${unverifiedDocNames.join(', ')}`);
+  //   }
 
-    // Check for expired documents that have expiry dates
-    // const now = new Date();
-    // const expiredDocs = requiredDocTypes.filter((docType) => {
-    //   const doc = driverDocMap.get(docType);
-    //   const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+  //   // Check for expired documents that have expiry dates
+  //   // const now = new Date();
+  //   // const expiredDocs = requiredDocTypes.filter((docType) => {
+  //   //   const doc = driverDocMap.get(docType);
+  //   //   const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
 
-    //   // Only check documents with expiry dates
-    //   if (docReq && docReq.hasExpiry && doc && doc.expiryDate) {
-    //     return new Date(doc.expiryDate) < now;
-    //   }
-    //   return false;
-    // });
+  //   //   // Only check documents with expiry dates
+  //   //   if (docReq && docReq.hasExpiry && doc && doc.expiryDate) {
+  //   //     return new Date(doc.expiryDate) < now;
+  //   //   }
+  //   //   return false;
+  //   // });
 
-    // if (expiredDocs.length > 0) {
-    //   const expiredDocNames = expiredDocs.map((docType) => {
-    //     const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
-    //     const doc = driverDocMap.get(docType);
-    //     const expiryDate = doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'unknown';
-    //     return `${docReq ? docReq.displayName : docType} (expired on ${expiryDate})`;
-    //   });
-    //   throw new BadRequestException(`These documents are expired: ${expiredDocNames.join(', ')}`);
-    // }
+  //   // if (expiredDocs.length > 0) {
+  //   //   const expiredDocNames = expiredDocs.map((docType) => {
+  //   //     const docReq = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+  //   //     const doc = driverDocMap.get(docType);
+  //   //     const expiryDate = doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'unknown';
+  //   //     return `${docReq ? docReq.displayName : docType} (expired on ${expiryDate})`;
+  //   //   });
+  //   //   throw new BadRequestException(`These documents are expired: ${expiredDocNames.join(', ')}`);
+  //   // }
 
-    // Check if there's already an active EVP
-    const existingActiveEvp = await this.driverEvpRepository.findOne({
-      driverId: new Types.ObjectId(driverId),
-      isActive: true,
-      endDate: { $gt: new Date() },
-      revokedAt: { $exists: false },
-    });
+  //   // Check if there's already an active EVP
+  //   const existingActiveEvp = await this.driverEvpRepository.findOne({
+  //     driverId: new Types.ObjectId(driverId),
+  //     isActive: true,
+  //     endDate: { $gt: new Date() },
+  //     revokedAt: { $exists: false },
+  //   });
 
-    if (existingActiveEvp) {
-      throw new BadRequestException('Driver already has an active EVP');
-    }
+  //   if (existingActiveEvp) {
+  //     throw new BadRequestException('Driver already has an active EVP');
+  //   }
 
-    // Validate dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+  //   // Validate dates
+  //   const start = new Date(startDate);
+  //   const end = new Date(endDate);
 
-    if (start >= end) {
-      throw new BadRequestException('End date must be after start date');
-    }
+  //   if (start >= end) {
+  //     throw new BadRequestException('End date must be after start date');
+  //   }
 
-    if (start < new Date()) {
-      throw new BadRequestException('Start date cannot be in the past');
-    }
+  //   if (start < new Date()) {
+  //     throw new BadRequestException('Start date cannot be in the past');
+  //   }
 
-    // Create new EVP
-    const evp = await this.driverEvpRepository.create({
-      _id: new Types.ObjectId(),
-      driverId: new Types.ObjectId(driverId),
-      certificateNumber,
-      startDate: start,
-      endDate: end,
-      documentUrl,
-      notes,
-      isActive: true,
-      issuedBy: new Types.ObjectId(adminId),
-    });
+  //   // Create new EVP
+  //   const evp = await this.driverEvpRepository.create({
+  //     _id: new Types.ObjectId(),
+  //     driverId: new Types.ObjectId(driverId),
+  //     certificateNumber,
+  //     startDate: start,
+  //     endDate: end,
+  //     documentUrl,
+  //     notes,
+  //     isActive: true,
+  //     issuedBy: new Types.ObjectId(adminId),
+  //   });
 
-    return this.mapToEvpResponseDto(evp);
-  }
+  //   return this.mapToEvpResponseDto(evp);
+  // }
 
-  async getDriverEvps(
-    driverId: string,
-    query: GetDriverEvpsDto,
-  ): Promise<{ evps: DriverEvpResponseDto[]; total: number; page: number; limit: number }> {
-    const { page = 1, limit = 10, activeOnly = false } = query;
+  // async getDriverEvps(
+  //   driverId: string,
+  //   query: GetDriverEvpsDto,
+  // ): Promise<{ evps: DriverEvpResponseDto[]; total: number; page: number; limit: number }> {
+  //   const { page = 1, limit = 10, activeOnly = false } = query;
 
-    // Check if driver exists
-    const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
-    if (!driver) {
-      throw new NotFoundException(`Driver with ID ${driverId} not found`);
-    }
+  //   // Check if driver exists
+  //   const driver = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: Role.DRIVER });
+  //   if (!driver) {
+  //     throw new NotFoundException(`Driver with ID ${driverId} not found`);
+  //   }
 
-    const { evps, total } = await this.driverEvpRepository.findDriverEvps(driverId, page, limit, activeOnly);
+  //   const { evps, total } = await this.driverEvpRepository.findDriverEvps(driverId, page, limit, activeOnly);
 
-    return {
-      evps: evps.map((evp) => this.mapToEvpResponseDto(evp)),
-      total,
-      page,
-      limit,
-    };
-  }
+  //   return {
+  //     evps: evps.map((evp) => this.mapToEvpResponseDto(evp)),
+  //     total,
+  //     page,
+  //     limit,
+  //   };
+  // }
 
   async getEvpById(evpId: string): Promise<DriverEvpResponseDto> {
     const evp = await this.driverEvpRepository.findById(evpId);

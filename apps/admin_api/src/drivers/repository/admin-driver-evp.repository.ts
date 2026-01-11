@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { DriverEvp, DriverEvpDocument } from '@urcab-workspace/shared';
+import { DriverEvp, DriverEvpDocument, VehicleEvp } from '@urcab-workspace/shared';
 
 @Injectable()
 export class AdminDriverEvpRepository {
@@ -12,7 +12,7 @@ export class AdminDriverEvpRepository {
     readonly model: Model<DriverEvpDocument>,
   ) {}
 
-  async create(createDriverEvp: Partial<DriverEvp>): Promise<DriverEvpDocument> {
+  async create(createDriverEvp: Partial<VehicleEvp>): Promise<DriverEvpDocument> {
     const driverEvp = new this.model(createDriverEvp);
     return driverEvp.save();
   }
@@ -40,7 +40,7 @@ export class AdminDriverEvpRepository {
     });
   }
 
-  async findOneAndUpdate(filterQuery: Record<string, any>, update: Partial<DriverEvp>): Promise<DriverEvpDocument> {
+  async findOneAndUpdate(filterQuery: Record<string, any>, update: Partial<VehicleEvp>): Promise<DriverEvpDocument> {
     return this.model.findOneAndUpdate(filterQuery, update, {
       new: true,
     });
