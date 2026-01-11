@@ -1015,6 +1015,7 @@ export class AdminDriversService {
       { _id: driverId },
       {
         hasCompleteDocumentation,
+        isDriverVerified: hasCompleteDocumentation ? true : false,
         lastDocumentVerificationCheck: new Date(),
       },
     );
