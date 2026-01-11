@@ -210,6 +210,7 @@ export class DriverService {
 
   async notificationUrl(paymentData: any) {
     // console.log(paymentData, '---data from notificationUrl=----');
+    // console.log(paymentData, '---data from notificationUrl=----');
     // let paymentData: any = {
     //   nbcb: '2',
     //   tranID: '122551',
@@ -237,10 +238,10 @@ export class DriverService {
     }
 
     // Calculate MD5 hash: md5(Amount+secretKey+domain+tranID+status)
-    const hashString = `${amount}${secretKey}${domain}${tranID}${status}`;
-    const calculatedHash = md5(hashString);
+    // const hashString = `${amount}${skey}${domain}${tranID}${status}`;
+    const calculatedHash = md5(amount + secretKey + domain + tranID + status);
     // console.log(calculatedHash, 'calculatedHash', skey, 'skey');
-    // Verify the hash matches the skey from the response
+    // // Verify the hash matches the skey from the response
     // if (calculatedHash !== skey) {
     //   throw new BadRequestException('Invalid payment signature');
     // }
@@ -1010,7 +1011,7 @@ export class DriverService {
             $match: {
               user: driverObjectId,
               category: TransactionCategory.RIDE,
-              type: TransactionType.CREDIT,
+              type: `${TransactionType.CREDIT}`,
               status: TransactionStatus.COMPLETED,
               createdAt: { $gte: startDate, $lte: endDate },
             },
@@ -1097,7 +1098,7 @@ export class DriverService {
             $match: {
               user: driverObjectId,
               category: TransactionCategory.RIDE,
-              type: TransactionType.CREDIT,
+              type: `${TransactionType.CREDIT}`,
               status: TransactionStatus.COMPLETED,
               createdAt: { $gte: startDate, $lte: endDate },
             },

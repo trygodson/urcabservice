@@ -51,14 +51,16 @@ export class WalletService {
 
       // Calculate balance from transactions
       // Sum of all CREDIT transactions minus all DEBIT transactions
-      // where balanceType is WITHDRAWABLE and status is COMPLETED
+      // where balanceType is DEPOSIT or WITHDRAWABLE and status is COMPLETED
       const walletId = typeof wallet._id === 'string' ? new Types.ObjectId(wallet._id) : wallet._id;
+
+      // console.log(walletId, '=====walletId===', userId);
       const balanceResult = await this.transactionModel.aggregate([
         {
           $match: {
             user: userId,
             wallet: walletId,
-            balanceType: BalanceType.WITHDRAWABLE,
+            balanceType: { $in: [BalanceType.DEPOSIT, BalanceType.WITHDRAWABLE] },
             status: TransactionStatus.COMPLETED,
           },
         },
@@ -67,12 +69,12 @@ export class WalletService {
             _id: null,
             totalCredits: {
               $sum: {
-                $cond: [{ $eq: ['$type', TransactionType.CREDIT] }, '$amount', 0],
+                $cond: [{ $eq: ['$type', `${TransactionType.CREDIT}`] }, '$amount', 0],
               },
             },
             totalDebits: {
               $sum: {
-                $cond: [{ $eq: ['$type', TransactionType.DEBIT] }, '$amount', 0],
+                $cond: [{ $eq: ['$type', `${TransactionType.DEBIT}`] }, '$amount', 0],
               },
             },
           },
@@ -83,7 +85,7 @@ export class WalletService {
           },
         },
       ]);
-
+      console.log(balanceResult, '=====air===');
       const calculatedBalance = balanceResult.length > 0 ? balanceResult[0].balance : 0;
 
       return {
@@ -97,10 +99,7 @@ export class WalletService {
     }
   }
 
-  async createDepositTransaction(
-    userId: Types.ObjectId,
-    createDepositDto: CreateDepositDto,
-  ): Promise<TransactionResponseDto> {
+  async createDepositTransaction(userId: Types.ObjectId, createDepositDto: CreateDepositDto): Promise<any> {
     try {
       // Get or create wallet for user
       let wallet = await this.walletRepository.findOne({ user: userId });
@@ -146,7 +145,7 @@ export class WalletService {
         totalBalanceAfter,
         paymentMethod: PaymentMethod.CARD,
         description: createDepositDto.description || `Wallet deposit - RM${createDepositDto.amount}`,
-        reference: createDepositDto.reference,
+        reference: createDepositDto.reference || transactionRef,
         completedAt: new Date(),
       });
 
@@ -167,8 +166,12 @@ export class WalletService {
       this.logger.log(
         `Created deposit transaction ${transactionRef} for user ${userId}. Amount: RM${createDepositDto.amount}`,
       );
-
-      return this.mapToTransactionResponse(transaction);
+      let ff = this.mapToTransactionResponse(transaction);
+      return {
+        success: true,
+        message: 'Deposit transaction created successfully',
+        data: ff,
+      };
     } catch (error) {
       this.logger.error(`Failed to create deposit transaction for user ${userId}:`, error.stack);
       if (error instanceof BadRequestException) {

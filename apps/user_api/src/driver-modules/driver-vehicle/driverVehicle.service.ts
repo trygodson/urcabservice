@@ -439,7 +439,7 @@ export class VehicleService {
             $match: {
               user: driverId,
               wallet: walletId,
-              balanceType: BalanceType.WITHDRAWABLE,
+              balanceType: { $in: [BalanceType.DEPOSIT, BalanceType.WITHDRAWABLE] },
               status: TransactionStatus.COMPLETED,
             },
           },
@@ -448,12 +448,12 @@ export class VehicleService {
               _id: null,
               totalCredits: {
                 $sum: {
-                  $cond: [{ $eq: ['$type', TransactionType.CREDIT] }, '$amount', 0],
+                  $cond: [{ $eq: ['$type', `${TransactionType.CREDIT}`] }, '$amount', 0],
                 },
               },
               totalDebits: {
                 $sum: {
-                  $cond: [{ $eq: ['$type', TransactionType.DEBIT] }, '$amount', 0],
+                  $cond: [{ $eq: ['$type', `${TransactionType.DEBIT}`] }, '$amount', 0],
                 },
               },
             },

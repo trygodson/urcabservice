@@ -13,7 +13,7 @@ export enum UserRolesEnum {
 export enum BalanceType {
   DEPOSIT = 'DEPOSIT',
   WITHDRAWABLE = 'WITHDRAWABLE',
-  BOTH = 'BOTH', // For transactions affecting both balances
+  // BOTH = 'BOTH', // For transactions affecting both balances
 }
 
 export enum Gender {
