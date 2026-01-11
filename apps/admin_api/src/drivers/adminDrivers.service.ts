@@ -371,8 +371,14 @@ export class AdminDriversService {
       rejectionReason: body.rejectionReason,
       adminNotes: body.adminNotes,
     };
+    let updatedDocument = await this.driverDocumentRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(documentId) },
+      updateData,
+    );
 
-    return this.driverDocumentRepository.findOneAndUpdate({ _id: new Types.ObjectId(documentId) }, updateData);
+    await this.updateDriverDocumentCompletionStatus(updatedDocument.driverId);
+
+    return updatedDocument;
   }
 
   async getPendingDriverDocuments(query: any) {
@@ -961,8 +967,57 @@ export class AdminDriversService {
   }
 
   private async updateDriverDocumentCompletionStatus(driverId: Types.ObjectId) {
-    // Implement logic to check if all required documents are approved
-    // and update driver's hasCompleteDocumentation field
+    // Get all driver documents
+    const driverDocs = await this.driverDocumentRepository.find({
+      driverId,
+      isActive: true,
+    });
+
+    // Get required document types
+    const requiredDocTypes = this.DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired).map((req) => req.documentType);
+
+    // Create a map of document types to their details
+    const driverDocMap = new Map();
+    driverDocs.forEach((doc) => {
+      driverDocMap.set(doc.documentType, {
+        isVerified: doc.status === DocumentStatus.VERIFIED,
+        expiryDate: doc.expiryDate,
+        status: doc.status,
+        document: doc,
+      });
+    });
+
+    // Check for missing documents
+    const missingDocs = requiredDocTypes.filter((docType) => !driverDocMap.has(docType));
+
+    // Check for unverified documents
+    const unverifiedDocs = requiredDocTypes.filter(
+      (docType) => driverDocMap.has(docType) && !driverDocMap.get(docType).isVerified,
+    );
+
+    // Check for expired documents
+    const expiredDocs = requiredDocTypes.filter((docType) => {
+      const requirement = this.DOCUMENT_REQUIREMENTS.find((req) => req.documentType === docType);
+      if (!requirement || !requirement.hasExpiry) return false;
+
+      const doc = driverDocMap.get(docType);
+      if (!doc || !doc.expiryDate) return false;
+
+      return new Date(doc.expiryDate) < new Date();
+    });
+
+    // Determine if all required documents are complete
+    const hasCompleteDocumentation =
+      missingDocs.length === 0 && unverifiedDocs.length === 0 && expiredDocs.length === 0;
+
+    // Update driver's hasCompleteDocumentation field
+    await this.userRepository.findOneAndUpdate(
+      { _id: driverId },
+      {
+        hasCompleteDocumentation,
+        lastDocumentVerificationCheck: new Date(),
+      },
+    );
   }
 
   private async updateVehicleDocumentCompletionStatus(vehicleId: Types.ObjectId) {
