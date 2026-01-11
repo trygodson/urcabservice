@@ -81,6 +81,16 @@ export class RideResponseDto {
     description: 'Estimated fare for the ride',
   })
   estimatedFare: number;
+  @ApiProperty({
+    example: 15.5,
+    description: 'Estimated fare for the ride',
+  })
+  tollAmount?: number;
+  @ApiProperty({
+    example: 15.5,
+    description: 'Estimated fare for the ride',
+  })
+  tips?: number;
 
   @ApiProperty({
     example: 18.75,

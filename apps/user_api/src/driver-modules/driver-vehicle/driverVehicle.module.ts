@@ -14,6 +14,14 @@ import {
   VehicleType,
   VehicleTypeRepository,
   VehicleTypeSchema,
+  Wallet,
+  WalletSchema,
+  WalletTransaction,
+  WalletTransactionSchema,
+  WalletRepository,
+  DriverEvp,
+  DriverEvpSchema,
+  DriverEvpRepository,
 } from '@urcab-workspace/shared';
 import { VehicleRepository } from './repository/vehicle.repository';
 import { VehicleDocumentRepository } from './repository/vehicleDocument.repository';
@@ -39,12 +47,17 @@ import { VehicleDocumentService } from './driverVehicleDocument.service';
       { name: Vehicle.name, schema: VehicleSchema },
       { name: VehicleDocumentRecord.name, schema: VehicleDocumentSchema },
       { name: VehicleType.name, schema: VehicleTypeSchema },
+      { name: Wallet.name, schema: WalletSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: DriverEvp.name, schema: DriverEvpSchema },
     ]),
   ],
   providers: [
     VehicleRepository,
     VehicleDocumentRepository,
     VehicleTypeRepository,
+    WalletRepository,
+    DriverEvpRepository,
     VehicleService,
     VehicleDocumentService,
   ],

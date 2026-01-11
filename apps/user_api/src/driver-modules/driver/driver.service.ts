@@ -5,6 +5,7 @@ import {
   DriverOnlineStatus,
   FirebaseNotificationService,
   generateRandomString,
+  PaymentMethod,
   PaymentStatus,
   RatingRepository,
   RideRepository,
@@ -27,7 +28,7 @@ import {
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Vehicle, DocumentStatus } from '@urcab-workspace/shared';
+import { Vehicle, DocumentStatus, Ride } from '@urcab-workspace/shared';
 import { DocumentVerificationStatusService } from './documentVerification.service';
 import {
   CreateSubscriptionTransactionDto,
@@ -35,6 +36,11 @@ import {
   GetSubscriptionTransactionsDto,
   SubscriptionTransactionsListResponseDto,
   SubscriptionTransactionResponseDto,
+  GetEarningsDto,
+  EarningsResponseDto,
+  EarningsHistogramDataDto,
+  EarningsStatsDto,
+  EarningsPeriod,
 } from './dto';
 import { ConfigService } from '@nestjs/config';
 import * as md5 from 'md5';
@@ -71,6 +77,7 @@ export class DriverService {
     @InjectModel(DriverLocation.name) private readonly driverLocation: Model<DriverLocation>,
     // @InjectModel(Driver.name) private readonly driverLocation: Model<DriverLocation>,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
+    @InjectModel(Ride.name) private readonly rideModel: Model<Ride>,
     private readonly subscriptionPlanRepository: SubscriptionPlanRepository,
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly walletRepository: WalletRepository,
@@ -244,7 +251,7 @@ export class DriverService {
     }
 
     if (transaction.category === TransactionCategory.RIDE) {
-      const ride = await this.rideRepository.findById(transaction.metadata.rideId);
+      const ride = await this.rideRepository.findById2(transaction.metadata.rideId);
       if (!ride) {
         throw new NotFoundException(`Ride with ID ${transaction.metadata.rideId} not found`);
       }
@@ -264,40 +271,42 @@ export class DriverService {
         throw new NotFoundException('Driver wallet not found');
       }
 
+      if (transaction.paymentMethod !== PaymentMethod.CASH) {
+        const newWithdrawableBalance = driverWallet.withdrawableBalance + transaction.amount;
+        const newTotalBalance = driverWallet.totalBalance + transaction.amount;
+
+        await this.walletRepository.findOneAndUpdate(
+          { _id: new Types.ObjectId(transaction.wallet.toString()) },
+          {
+            withdrawableBalance: newWithdrawableBalance,
+            totalBalance: newTotalBalance,
+            lastTransactionDate: new Date(),
+          },
+        );
+
+        // Update transaction with final balances
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = newWithdrawableBalance;
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = newTotalBalance;
+      }
       // Update wallet balances for card payment
-      const newWithdrawableBalance = driverWallet.withdrawableBalance + transaction.amount;
-      const newTotalBalance = driverWallet.totalBalance + transaction.amount;
-
-      await this.walletRepository.findOneAndUpdate(
-        { _id: new Types.ObjectId(transaction.wallet.toString()) },
-        {
-          withdrawableBalance: newWithdrawableBalance,
-          totalBalance: newTotalBalance,
-          lastTransactionDate: new Date(),
-        },
-      );
-
-      // Update transaction with final balances
       transaction.status = TransactionStatus.COMPLETED;
-      transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
-      transaction.withdrawableBalanceAfter = newWithdrawableBalance;
-      transaction.totalBalanceBefore = driverWallet.totalBalance;
-      transaction.totalBalanceAfter = newTotalBalance;
       transaction.completedAt = new Date();
-      transaction.description = `Ride payment completed - Card (RM${transaction.amount})`;
+      transaction.description = `Ride payment completed - ${transaction.paymentMethod} (RM${transaction.amount})`;
 
       await transaction.save();
 
       // Get passenger and driver details for notifications
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
-      const driver = await this.userRepository.findById(ride.driverId?.toString());
+      const driver = await this.userRepository.findById(ride.driverId?._id.toString());
       const vehicle = await this.vehicleRepository.findOne({
-        driverId: ride.driverId?.toString(),
+        driverId: ride.driverId?._id.toString(),
         isPrimary: true,
       });
       const rating = await this.ratingRepository.getAverageRating(ride.driverId?.toString());
 
-      const updatedRide = await this.rideRepository.findById(transaction.metadata.rideId);
+      const updatedRide = await this.rideRepository.findById2(transaction.metadata.rideId);
 
       // Send payment completed notification to passenger
       if (passenger?.fcmToken) {
@@ -318,7 +327,7 @@ export class DriverService {
           // 'PAYMENT_COMPLETED',
           RideStatus.RIDE_REACHED_DESTINATION,
           transaction.metadata.rideId,
-          { ...passenger },
+          { ...driver, vehicle, rating },
           updatedRide,
         );
       }
@@ -362,10 +371,13 @@ export class DriverService {
         autoRenew: false,
         discountPercentage: 0,
         discountReason: '',
-
         ridesCompleted: 0,
         totalEarnings: 0,
       });
+
+      const newWithdrawableBalance = dWallet.withdrawableBalance + transaction.amount;
+      const newTotalBalance = dWallet.totalBalance + transaction.amount;
+
       // console.log(subscription, 'subscription', transaction);
       await this.walletRepository.findOneAndUpdate(
         { _id: new Types.ObjectId(transaction.wallet.toString()) },
@@ -375,6 +387,67 @@ export class DriverService {
           totalDeposited: dWallet.totalDeposited + transaction.amount,
           lastTransactionDate: new Date(),
         },
+      );
+
+      // Update transaction with final balances
+      transaction.withdrawableBalanceBefore = dWallet.withdrawableBalance;
+      transaction.withdrawableBalanceAfter = newWithdrawableBalance;
+      transaction.totalBalanceBefore = dWallet.totalBalance;
+      transaction.totalBalanceAfter = newTotalBalance;
+    } else if (transaction.category === TransactionCategory.DEPOSIT) {
+      const dWallet = await this.walletRepository.findById(transaction.wallet.toString());
+
+      const newWithdrawableBalance = dWallet.withdrawableBalance + transaction.amount;
+      const newTotalBalance = dWallet.totalBalance + transaction.amount;
+
+      await this.walletRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(transaction.wallet.toString()) },
+        {
+          withdrawableBalance: newWithdrawableBalance,
+          totalBalance: newTotalBalance,
+          lastTransactionDate: new Date(),
+        },
+      );
+
+      // Update transaction with final balances
+      transaction.withdrawableBalanceBefore = dWallet.withdrawableBalance;
+      transaction.withdrawableBalanceAfter = newWithdrawableBalance;
+      transaction.totalBalanceBefore = dWallet.totalBalance;
+      transaction.totalBalanceAfter = newTotalBalance;
+      transaction.description = `Deposit completed - ${transaction.paymentMethod} (RM${transaction.amount})`;
+    } else if (transaction.category === TransactionCategory.EVP_PAYMENT) {
+      // Handle EVP payment completion
+      const vehicleId = transaction.metadata?.vehicleId;
+      if (!vehicleId) {
+        throw new BadRequestException('Vehicle ID not found in transaction metadata');
+      }
+
+      const vehicle = await this.vehicleRepository.findById(vehicleId);
+      if (!vehicle) {
+        throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
+      }
+
+      // Update wallet balances (deduct from driver's wallet)
+      const dWallet = await this.walletRepository.findById(transaction.wallet.toString());
+
+      // Update transaction with final balances
+      transaction.withdrawableBalanceBefore = dWallet.withdrawableBalance;
+      transaction.withdrawableBalanceAfter = dWallet.withdrawableBalance;
+      transaction.totalBalanceBefore = dWallet.totalBalance;
+      transaction.totalBalanceAfter = dWallet.totalBalance;
+      transaction.description = `EVP payment completed - ${transaction.paymentMethod} (RM${transaction.amount})`;
+
+      // Payment is completed - evpPaymentPending defaults to false, so no need to update it
+      // Admin can check for completed EVP_PAYMENT transactions to generate EVP
+
+      // Set evpAdminGeneratedPending to true since payment is now completed
+      await this.vehicleRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(vehicleId) },
+        { evpAdminGeneratedPending: true },
+      );
+
+      this.logger.log(
+        `EVP payment completed for vehicle ${vehicleId}. Amount: RM${transaction.amount}. Admin can now generate EVP.`,
       );
     }
 
@@ -835,5 +908,236 @@ export class DriverService {
       }
       throw new BadRequestException(error.message || 'Failed to get subscription transaction history');
     }
+  }
+
+  async getDriverEarnings(driverId: string, queryDto: GetEarningsDto): Promise<EarningsResponseDto> {
+    try {
+      const period = queryDto.period || EarningsPeriod.DAY;
+      const driverObjectId = new Types.ObjectId(driverId);
+
+      // Get date range based on period
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = now;
+      let groupByFormat: string;
+      let useWeekGrouping: boolean = false;
+
+      switch (period) {
+        case EarningsPeriod.DAY:
+          // Last 7 days
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+          startDate.setHours(0, 0, 0, 0);
+          groupByFormat = '%Y-%m-%d';
+          break;
+        case EarningsPeriod.WEEK:
+          // Last 7 weeks
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 49);
+          useWeekGrouping = true;
+          break;
+        case EarningsPeriod.MONTH:
+          // Last 12 months
+          startDate = new Date(now);
+          startDate.setMonth(startDate.getMonth() - 12);
+          startDate.setHours(0, 0, 0, 0);
+          groupByFormat = '%Y-%m';
+          break;
+      }
+
+      // Get histogram data - aggregate earnings by period
+      let histogramData: EarningsHistogramDataDto[] = [];
+      let dataMap: Map<string, { earnings: number; rides: number }> = new Map();
+
+      if (useWeekGrouping) {
+        // For weekly grouping, we need to group by week
+        const weekGroups = await this.transactionModel.aggregate([
+          {
+            $match: {
+              user: driverObjectId,
+              category: TransactionCategory.RIDE,
+              type: TransactionType.CREDIT,
+              status: TransactionStatus.COMPLETED,
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                week: { $week: '$createdAt' },
+              },
+              earnings: { $sum: '$amount' },
+              rides: { $sum: 1 },
+            },
+          },
+        ]);
+
+        // Create map from aggregated data
+        weekGroups.forEach((group) => {
+          const key = `${group._id.year}-${group._id.week}`;
+          dataMap.set(key, {
+            earnings: group.earnings || 0,
+            rides: group.rides || 0,
+          });
+        });
+
+        // Generate all weeks in the range and fill with zeros if missing
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const year = currentDate.getFullYear();
+          const week = this.getWeekNumber(currentDate);
+          const key = `${year}-${week}`;
+          const label = `Week ${week}, ${year}`;
+
+          if (!dataMap.has(key)) {
+            dataMap.set(key, { earnings: 0, rides: 0 });
+          }
+
+          histogramData.push({
+            label,
+            earnings: dataMap.get(key)!.earnings,
+            rides: dataMap.get(key)!.rides,
+          });
+
+          // Move to next week
+          currentDate.setDate(currentDate.getDate() + 7);
+        }
+      } else {
+        // For daily or monthly grouping
+        const dateGroups = await this.transactionModel.aggregate([
+          {
+            $match: {
+              user: driverObjectId,
+              category: TransactionCategory.RIDE,
+              type: TransactionType.CREDIT,
+              status: TransactionStatus.COMPLETED,
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: groupByFormat,
+                  date: '$createdAt',
+                },
+              },
+              earnings: { $sum: '$amount' },
+              rides: { $sum: 1 },
+            },
+          },
+        ]);
+
+        // Create map from aggregated data
+        dateGroups.forEach((group) => {
+          dataMap.set(group._id, {
+            earnings: group.earnings || 0,
+            rides: group.rides || 0,
+          });
+        });
+
+        // Generate all periods in the range and fill with zeros if missing
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          let label: string;
+          let key: string;
+
+          if (period === EarningsPeriod.DAY) {
+            // Daily format: YYYY-MM-DD
+            key = currentDate.toISOString().split('T')[0];
+            label = key;
+            currentDate.setDate(currentDate.getDate() + 1);
+          } else {
+            // Monthly format: YYYY-MM
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            key = `${year}-${month}`;
+            label = key;
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+
+          if (!dataMap.has(key)) {
+            dataMap.set(key, { earnings: 0, rides: 0 });
+          }
+
+          histogramData.push({
+            label,
+            earnings: dataMap.get(key)!.earnings,
+            rides: dataMap.get(key)!.rides,
+          });
+        }
+      }
+
+      // Get stats - count rides by status
+      const [completedRidesCount, cancelledRidesCount, pendingRidesCount, totalEarningsResult] = await Promise.all([
+        // Completed rides count
+        this.rideModel.countDocuments({
+          driverId: driverObjectId,
+          status: RideStatus.RIDE_COMPLETED,
+          createdAt: { $gte: startDate, $lte: endDate },
+        }),
+        // Cancelled rides count
+        this.rideModel.countDocuments({
+          driverId: driverObjectId,
+          status: RideStatus.RIDE_CANCELLED,
+          createdAt: { $gte: startDate, $lte: endDate },
+        }),
+        // Pending rides count (rides that are not completed or cancelled)
+        this.rideModel.countDocuments({
+          driverId: driverObjectId,
+          status: {
+            $nin: [RideStatus.RIDE_COMPLETED, RideStatus.RIDE_CANCELLED],
+          },
+          createdAt: { $gte: startDate, $lte: endDate },
+        }),
+        // Total earnings from completed transactions
+        this.transactionModel.aggregate([
+          {
+            $match: {
+              user: driverObjectId,
+              category: TransactionCategory.RIDE,
+              type: TransactionType.CREDIT,
+              status: TransactionStatus.COMPLETED,
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalEarnings: { $sum: '$amount' },
+            },
+          },
+        ]),
+      ]);
+
+      const totalEarnings = totalEarningsResult.length > 0 ? totalEarningsResult[0].totalEarnings : 0;
+
+      const stats: EarningsStatsDto = {
+        completedRides: completedRidesCount,
+        cancelledRides: cancelledRidesCount,
+        pendingRides: pendingRidesCount,
+        totalEarnings: totalEarnings || 0,
+      };
+
+      return {
+        histogram: histogramData,
+        stats,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get driver earnings for driver ${driverId}:`, error);
+      throw new BadRequestException(error.message || 'Failed to get driver earnings');
+    }
+  }
+
+  /**
+   * Get ISO week number for a date
+   */
+  private getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 }

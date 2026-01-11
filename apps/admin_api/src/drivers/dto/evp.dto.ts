@@ -116,3 +116,85 @@ export class DriverEvpResponseDto {
   @ApiProperty()
   updatedAt: Date;
 }
+
+export class SetVehicleEvpPriceDto {
+  @ApiProperty({ description: 'EVP price in RM', example: 100.0, minimum: 0.01 })
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(0.01)
+  evpPrice: number;
+}
+
+export class CreateVehicleEvpDto {
+  @ApiProperty({ description: 'Vehicle ID' })
+  @IsMongoId()
+  @IsNotEmpty()
+  vehicleId: string;
+
+  @ApiProperty({ description: 'Certificate number for the EVP' })
+  @IsString()
+  @IsNotEmpty()
+  certificateNumber: string;
+
+  @ApiProperty({ description: 'Start date of EVP validity', example: '2025-12-01' })
+  @IsDateString()
+  @IsNotEmpty()
+  startDate: string;
+
+  @ApiProperty({ description: 'End date of EVP validity', example: '2026-12-01' })
+  @IsDateString()
+  @IsNotEmpty()
+  endDate: string;
+
+  @ApiProperty({ description: 'URL to the EVP document' })
+  @IsUrl()
+  @IsNotEmpty()
+  documentUrl: string;
+
+  @ApiProperty({ description: 'Additional notes about the EVP', required: false })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  notes?: string;
+}
+
+export class VehicleEvpResponseDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiProperty()
+  vehicleId: string;
+
+  @ApiProperty()
+  certificateNumber: string;
+
+  @ApiProperty()
+  startDate: Date;
+
+  @ApiProperty()
+  endDate: Date;
+
+  @ApiProperty()
+  documentUrl: string;
+
+  @ApiProperty()
+  isActive: boolean;
+
+  @ApiProperty({ required: false })
+  notes?: string;
+
+  @ApiProperty()
+  issuedBy: string;
+
+  @ApiProperty({ required: false })
+  revokedAt?: Date;
+
+  @ApiProperty({ required: false })
+  revokedBy?: string;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+}

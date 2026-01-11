@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { AbstractRepository } from './abstract.repository';
 import { Vehicle, VehicleDocument } from '@urcab-workspace/shared';
 
@@ -40,6 +40,10 @@ export class AdminVehicleRepository extends AbstractRepository<VehicleDocument> 
     }
 
     return query.exec();
+  }
+
+  async findById(id: string | Types.ObjectId): Promise<VehicleDocument | null> {
+    return this.model.findById(typeof id === 'string' ? new Types.ObjectId(id) : id).exec();
   }
 
   async findOne(

@@ -17,6 +17,7 @@ import { DriverRatingsModule } from './driver-modules/driver-ratings/driverRatin
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { UserVerificationModule } from './modules/user-verification/userVerification.module';
 import { EmergencyContactsModule } from './modules/emergency-contacts/emergency-contacts.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { EmergencyContactsModule } from './modules/emergency-contacts/emergency-
     RatingsModule,
     IssueReportsModule,
     EmergencyContactsModule,
+    WalletModule,
   ],
   // providers: [TransactionService],
 })

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { EmergencyContactRepository } from '@urcab-workspace/shared';
-import { CreateEmergencyContactDto, EmergencyContactResponseDto } from './dto';
+import { CreateEmergencyContactDto, EmergencyContactResponseDto, UpdateEmergencyContactDto } from './dto';
 
 @Injectable()
 export class EmergencyContactsService {
@@ -61,6 +61,24 @@ export class EmergencyContactsService {
     await this.emergencyContactRepository.findOneAndUpdate(
       { _id: new Types.ObjectId(contactId), userId: new Types.ObjectId(userId) },
       { isActive: false },
+    );
+
+    return { success: true };
+  }
+  async update(userId: string, contactId: string, dto: UpdateEmergencyContactDto): Promise<{ success: boolean }> {
+    const contact = await this.emergencyContactRepository.findOneWithDocument({
+      _id: new Types.ObjectId(contactId),
+      userId: new Types.ObjectId(userId),
+      // isActive: true,
+    });
+
+    if (!contact) {
+      throw new NotFoundException('Emergency contact not found');
+    }
+
+    await this.emergencyContactRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(contactId), userId: new Types.ObjectId(userId) },
+      { name: dto.name, phoneNumber: dto.phoneNumber },
     );
 
     return { success: true };

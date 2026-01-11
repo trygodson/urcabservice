@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import {
   DocumentStatus,
   VehicleStatus,
@@ -7,6 +9,9 @@ import {
   Role,
   DocumentType,
   VehicleDocumentType,
+  WalletTransaction,
+  TransactionCategory,
+  TransactionStatus,
 } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
@@ -22,6 +27,9 @@ import {
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
   VehicleRejectionDto,
+  SetVehicleEvpPriceDto,
+  CreateVehicleEvpDto,
+  VehicleEvpResponseDto,
 } from './dto';
 import {
   AdminDriverDocumentRepository,
@@ -43,6 +51,7 @@ export class AdminDriversService {
     private readonly rideRepository: AdminRideRepository,
     private readonly issueReportRepository: AdminIssueReportRepository,
     private readonly driverEvpRepository: AdminDriverEvpRepository,
+    @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
   // Driver Management Methods
@@ -957,8 +966,47 @@ export class AdminDriversService {
   }
 
   private async updateVehicleDocumentCompletionStatus(vehicleId: Types.ObjectId) {
-    // Implement logic to check if all required vehicle documents are approved
-    // and update vehicle's hasCompleteDocumentation field
+    // Get all vehicle documents
+    const vehicleDocs = await this.vehicleDocumentRepository.find({
+      vehicleId,
+      isActive: true,
+    });
+
+    // Get required document types
+    const requiredDocTypes = this.VEHICLE_DOCUMENT_REQUIREMENTS.filter((req) => req.isRequired).map(
+      (req) => req.documentType,
+    );
+
+    // Create a map of document types to their details
+    const vehicleDocMap = new Map();
+    vehicleDocs.forEach((doc) => {
+      vehicleDocMap.set(doc.documentType, {
+        isVerified: doc.status === VehicleDocumentStatus.VERIFIED,
+        expiryDate: doc.expiryDate,
+        status: doc.status,
+        document: doc,
+      });
+    });
+
+    // Check for missing documents
+    const missingDocs = requiredDocTypes.filter((docType) => !vehicleDocMap.has(docType));
+
+    // Check for unverified documents
+    const unverifiedDocs = requiredDocTypes.filter(
+      (docType) => vehicleDocMap.has(docType) && !vehicleDocMap.get(docType).isVerified,
+    );
+
+    // Determine if all required documents are complete
+    const hasCompleteDocumentation = missingDocs.length === 0 && unverifiedDocs.length === 0;
+
+    // Update vehicle's hasCompleteDocumentation field
+    await this.vehicleRepository.findOneAndUpdate(
+      { _id: vehicleId },
+      {
+        hasCompleteDocumentation,
+        lastDocumentVerificationCheck: new Date(),
+      },
+    );
   }
 
   private readonly DOCUMENT_REQUIREMENTS: any[] = [
@@ -1220,6 +1268,139 @@ export class AdminDriversService {
     return {
       _id: evp._id.toString(),
       driverId: evp.driverId.toString(),
+      certificateNumber: evp.certificateNumber,
+      startDate: evp.startDate,
+      endDate: evp.endDate,
+      documentUrl: evp.documentUrl,
+      isActive: evp.isActive,
+      notes: evp.notes,
+      issuedBy: evp.issuedBy.toString(),
+      revokedAt: evp.revokedAt,
+      revokedBy: evp.revokedBy ? evp.revokedBy.toString() : undefined,
+      createdAt: evp.createdAt,
+      updatedAt: evp.updatedAt,
+    };
+  }
+
+  // Vehicle EVP Management Methods
+  async setVehicleEvpPrice(vehicleId: string, setPriceDto: SetVehicleEvpPriceDto): Promise<any> {
+    const vehicle = await this.vehicleRepository.findById(vehicleId);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
+    }
+
+    // Check if all vehicle documents are verified
+    if (!vehicle.hasCompleteDocumentation) {
+      throw new BadRequestException('All vehicle documents must be verified before setting EVP price');
+    }
+
+    // Update vehicle with EVP price
+    const updatedVehicle = await this.vehicleRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(vehicleId) },
+      {
+        evpPrice: setPriceDto.evpPrice,
+        evpPriceSet: true,
+      },
+    );
+
+    return {
+      success: true,
+      message: 'EVP price set successfully',
+      data: {
+        vehicleId: vehicleId,
+        evpPrice: setPriceDto.evpPrice,
+      },
+    };
+  }
+
+  async createVehicleEvp(createVehicleEvpDto: CreateVehicleEvpDto, adminId: string): Promise<VehicleEvpResponseDto> {
+    const { vehicleId, certificateNumber, startDate, endDate, documentUrl, notes } = createVehicleEvpDto;
+
+    // Check if vehicle exists
+    const vehicle = await this.vehicleRepository.findById(vehicleId);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
+    }
+
+    // Check if all vehicle documents are verified
+    if (!vehicle.hasCompleteDocumentation) {
+      throw new BadRequestException('All vehicle documents must be verified before generating EVP');
+    }
+
+    // Check if EVP payment has been completed
+    // Check for a completed EVP_PAYMENT transaction for this vehicle
+    const completedPayment = await this.transactionModel.findOne({
+      category: TransactionCategory.EVP_PAYMENT,
+      status: TransactionStatus.COMPLETED,
+      'metadata.vehicleId': vehicleId,
+    });
+
+    if (!completedPayment) {
+      throw new BadRequestException('EVP payment has not been completed yet. Please wait for payment confirmation.');
+    }
+
+    // Check if there's already an active EVP for this vehicle
+    const existingActiveEvp = await this.driverEvpRepository.findOne({
+      vehicleId: new Types.ObjectId(vehicleId),
+      isActive: true,
+      endDate: { $gt: new Date() },
+      revokedAt: { $exists: false },
+    });
+
+    if (existingActiveEvp) {
+      throw new BadRequestException('Vehicle already has an active EVP');
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start >= end) {
+      throw new BadRequestException('End date must be after start date');
+    }
+
+    if (start < new Date()) {
+      throw new BadRequestException('Start date cannot be in the past');
+    }
+
+    // Create new Vehicle EVP (using the same repository since we updated the schema)
+    const evp = await this.driverEvpRepository.create({
+      _id: new Types.ObjectId(),
+      vehicleId: new Types.ObjectId(vehicleId),
+      certificateNumber,
+      startDate: start,
+      endDate: end,
+      documentUrl,
+      notes,
+      isActive: true,
+      issuedBy: new Types.ObjectId(adminId),
+    });
+
+    await this.vehicleRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(vehicleId) },
+      { evpAdminGeneratedPending: false, evpPriceSet: false },
+    );
+
+    return this.mapToVehicleEvpResponseDto(evp);
+  }
+
+  async getVehicleEvps(vehicleId: string): Promise<VehicleEvpResponseDto[]> {
+    const vehicle = await this.vehicleRepository.findById(vehicleId);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
+    }
+
+    const evps = await this.driverEvpRepository.find({
+      vehicleId: new Types.ObjectId(vehicleId),
+    });
+
+    return evps.map((evp) => this.mapToVehicleEvpResponseDto(evp));
+  }
+
+  private mapToVehicleEvpResponseDto(evp: any): VehicleEvpResponseDto {
+    return {
+      _id: evp._id.toString(),
+      vehicleId: evp.vehicleId.toString(),
       certificateNumber: evp.certificateNumber,
       startDate: evp.startDate,
       endDate: evp.endDate,

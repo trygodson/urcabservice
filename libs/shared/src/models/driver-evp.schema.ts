@@ -3,19 +3,20 @@ import { AbstractDocument } from '../database';
 import { SchemaTypes, Types, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.schema';
+import { Vehicle } from './vehicle.schema';
 
 /**
- * Electronic Verification Permit (EVP) for drivers with verified documents
+ * Electronic Verification Permit (EVP) for vehicles with verified documents
  */
-@Schema({ collection: 'driverEvp', timestamps: true })
-export class DriverEvp extends AbstractDocument {
+@Schema({ collection: 'vehicleEvp', timestamps: true })
+export class VehicleEvp extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: SchemaTypes.ObjectId,
-    ref: User.name,
+    ref: Vehicle.name,
     required: true,
   })
-  driverId: Types.ObjectId;
+  vehicleId: Types.ObjectId;
 
   @ApiProperty()
   @Prop({
@@ -81,5 +82,10 @@ export class DriverEvp extends AbstractDocument {
   revokedBy?: Types.ObjectId;
 }
 
-export const DriverEvpSchema = SchemaFactory.createForClass(DriverEvp);
-export type DriverEvpDocument = DriverEvp & Document;
+export const VehicleEvpSchema = SchemaFactory.createForClass(VehicleEvp);
+export type VehicleEvpDocument = VehicleEvp & Document;
+
+// Keep DriverEvp for backward compatibility (deprecated)
+export const DriverEvp = VehicleEvp;
+export const DriverEvpSchema = VehicleEvpSchema;
+export type DriverEvpDocument = VehicleEvpDocument;

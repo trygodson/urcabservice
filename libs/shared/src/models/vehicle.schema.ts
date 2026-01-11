@@ -225,6 +225,29 @@ export class Vehicle extends AbstractDocument {
     required: false,
   })
   lastDocumentVerificationCheck?: Date; // Last time document status was verified
+
+  @ApiProperty()
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+  })
+  evpPrice?: number; // EVP price set by admin after all documents are approved
+
+  @ApiProperty()
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  evpPriceSet?: boolean; // Whether admin has set the EVP price
+
+  @ApiProperty()
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  evpAdminGeneratedPending?: boolean; // Whether EVP admin generated is pending
+
   createdAt: Date;
   updatedAt: Date;
 }

@@ -13,6 +13,7 @@ import {
   TransactionCategory,
   TransactionStatus,
   TransactionType,
+  User,
   UserRepository,
   VehicleRepository,
   WalletRepository,
@@ -142,6 +143,7 @@ export class DriverRideService {
         driverId.toString(),
         ride.estimatedFare || 0,
         ride.paymentMethod,
+        passenger,
       );
 
       // Update driver availability
@@ -447,6 +449,7 @@ export class DriverRideService {
   ): Promise<RideResponseDto> {
     try {
       const ride = await this.rideRepository.findById(rideId);
+      console.log(ride, '=====ride====');
       if (!ride) {
         throw new NotFoundException('Ride not found');
       }
@@ -475,7 +478,7 @@ export class DriverRideService {
       const finalFare = completeData.finalFare || ride.estimatedFare || 0;
 
       // Determine payment status based on payment method
-      const paymentStatus = ride.paymentMethod === PaymentMethod.CASH ? PaymentStatus.COMPLETED : PaymentStatus.PENDING;
+      const paymentStatus = PaymentStatus.COMPLETED;
 
       // Update ride with completion data
       const updateData = {
@@ -854,6 +857,8 @@ export class DriverRideService {
       rideType: ride.rideType,
       status: ride.status,
       estimatedFare: ride.estimatedFare,
+      tollAmount: ride.tollAmount,
+      tips: ride.tips,
       finalFare: ride.finalFare,
       estimatedDistance: ride.estimatedDistance,
       estimatedDuration: ride.estimatedDuration,
@@ -877,6 +882,7 @@ export class DriverRideService {
     driverId: string,
     amount: number,
     paymentMethod: string,
+    passenger?: User,
   ): Promise<void> {
     try {
       // Get or create driver wallet
@@ -898,33 +904,122 @@ export class DriverRideService {
       // Generate transaction reference
       const transactionRef = this.generateTransactionRef(TransactionType.CREDIT, TransactionCategory.RIDE);
 
-      // Create transaction with PENDING status
-      const transaction = new this.transactionModel({
-        _id: new Types.ObjectId(),
-        transactionRef,
-        user: new Types.ObjectId(driverId),
-        wallet: driverWallet._id,
-        type: TransactionType.CREDIT,
-        status: TransactionStatus.PENDING,
-        category: TransactionCategory.RIDE,
-        balanceType: BalanceType.WITHDRAWABLE,
-        amount,
-        depositBalanceBefore: driverWallet.depositBalance,
-        depositBalanceAfter: driverWallet.depositBalance,
-        withdrawableBalanceBefore: driverWallet.withdrawableBalance,
-        withdrawableBalanceAfter: driverWallet.withdrawableBalance,
-        totalBalanceBefore: driverWallet.totalBalance,
-        totalBalanceAfter: driverWallet.totalBalance,
-        description: `Ride payment - ${paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Card'}`,
-        paymentMethod,
-        metadata: {
-          rideId,
-          passengerId,
-          paymentMethod,
-        },
-      });
+      if (paymentMethod === PaymentMethod.CASH) {
+        const transaction = new this.transactionModel({
+          _id: new Types.ObjectId(),
+          transactionRef,
+          user: new Types.ObjectId(driverId),
+          type: TransactionType.CREDIT,
+          status: TransactionStatus.PENDING,
+          category: TransactionCategory.RIDE,
+          balanceType: paymentMethod === PaymentMethod.CASH ? BalanceType.DEPOSIT : BalanceType.WITHDRAWABLE,
+          amount,
+          depositBalanceBefore: driverWallet.depositBalance,
+          depositBalanceAfter: driverWallet.depositBalance,
+          withdrawableBalanceBefore: driverWallet.withdrawableBalance,
+          withdrawableBalanceAfter: driverWallet.withdrawableBalance,
 
-      await transaction.save();
+          totalBalanceBefore: driverWallet.totalBalance,
+          totalBalanceAfter: driverWallet.totalBalance,
+          description: `Ride payment - ${paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Card'}`,
+          paymentMethod,
+          metadata: {
+            rideId,
+            passengerId,
+            paymentMethod,
+          },
+        });
+
+        await transaction.save();
+      } else if (paymentMethod === PaymentMethod.WALLET) {
+        const passengerWallet = await this.walletRepository.findOne({
+          user: new Types.ObjectId(passenger?._id.toString()),
+        });
+        const dtransaction = new this.transactionModel({
+          _id: new Types.ObjectId(),
+          transactionRef,
+          user: new Types.ObjectId(driverId),
+          wallet: driverWallet._id,
+          type: TransactionType.CREDIT,
+          status: TransactionStatus.PENDING,
+          category: TransactionCategory.RIDE,
+          balanceType: BalanceType.WITHDRAWABLE,
+          amount,
+          depositBalanceBefore: driverWallet.depositBalance,
+          depositBalanceAfter: driverWallet.depositBalance,
+          withdrawableBalanceBefore: driverWallet.withdrawableBalance,
+          withdrawableBalanceAfter: driverWallet.withdrawableBalance,
+
+          totalBalanceBefore: driverWallet.totalBalance,
+          totalBalanceAfter: driverWallet.totalBalance,
+          description: `Ride payment - Wallet`,
+          paymentMethod,
+          metadata: {
+            rideId,
+            passengerId,
+            paymentMethod,
+          },
+        });
+        const passengertransaction = new this.transactionModel({
+          _id: new Types.ObjectId(),
+          transactionRef,
+          user: new Types.ObjectId(passenger?._id.toString()),
+
+          wallet: passengerWallet._id,
+          type: TransactionType.DEBIT,
+          status: TransactionStatus.PENDING,
+          category: TransactionCategory.RIDE,
+          balanceType: BalanceType.WITHDRAWABLE,
+          amount,
+          depositBalanceBefore: driverWallet.depositBalance,
+          depositBalanceAfter: driverWallet.depositBalance,
+          withdrawableBalanceBefore: driverWallet.withdrawableBalance,
+          withdrawableBalanceAfter: driverWallet.withdrawableBalance,
+
+          totalBalanceBefore: driverWallet.totalBalance,
+          totalBalanceAfter: driverWallet.totalBalance,
+          description: `Ride payment - Wallet`,
+          paymentMethod,
+          metadata: {
+            rideId,
+            passengerId,
+            paymentMethod,
+          },
+        });
+
+        await passengertransaction.save();
+        await dtransaction.save();
+      } else if (paymentMethod === PaymentMethod.CARD) {
+        const dtransaction = new this.transactionModel({
+          _id: new Types.ObjectId(),
+          transactionRef,
+          user: new Types.ObjectId(driverId),
+          wallet: driverWallet._id,
+          type: TransactionType.CREDIT,
+          status: TransactionStatus.PENDING,
+          category: TransactionCategory.RIDE,
+          balanceType: BalanceType.WITHDRAWABLE,
+          amount,
+          depositBalanceBefore: driverWallet.depositBalance,
+          depositBalanceAfter: driverWallet.depositBalance,
+          withdrawableBalanceBefore: driverWallet.withdrawableBalance,
+          withdrawableBalanceAfter: driverWallet.withdrawableBalance,
+
+          totalBalanceBefore: driverWallet.totalBalance,
+          totalBalanceAfter: driverWallet.totalBalance,
+          description: `Ride payment - Wallet`,
+          paymentMethod,
+          metadata: {
+            rideId,
+            passengerId,
+            paymentMethod,
+          },
+        });
+
+        await dtransaction.save();
+      }
+      // Create transaction with PENDING status
+
       this.logger.log(`Created ride transaction ${transactionRef} for ride ${rideId} with amount ${amount}`);
     } catch (error) {
       this.logger.error(`Failed to create ride transaction for ride ${rideId}:`, error.stack);
@@ -964,16 +1059,14 @@ export class DriverRideService {
         throw new NotFoundException('Driver wallet not found');
       }
 
-      // If payment is cash, mark transaction as completed but don't update wallet
-      // (Driver collected cash directly, so wallet balance doesn't change)
-      if (paymentMethod === PaymentMethod.CASH && paymentStatus === PaymentStatus.COMPLETED) {
-        // Update transaction status to completed for record-keeping
-        // Wallet balances remain unchanged since driver received cash directly
+      if (paymentMethod === PaymentMethod.CASH) {
         transaction.status = TransactionStatus.COMPLETED;
         transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
-        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance;
+
         transaction.totalBalanceBefore = driverWallet.totalBalance;
-        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change
+        transaction.totalBalanceAfter = driverWallet.totalBalance;
+
         transaction.completedAt = new Date();
         transaction.description = `Ride payment completed - Cash (RM${finalFare}) - Cash collected directly`;
 
@@ -982,19 +1075,18 @@ export class DriverRideService {
           `Ride ${rideId} completed with cash payment of RM${finalFare}. Wallet balance unchanged (cash collected directly).`,
         );
       } else {
-        // For card payments, keep transaction as PENDING
-        // Wallet will be updated when payment is confirmed via payment callback
-        transaction.status = TransactionStatus.PENDING;
         transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
-        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change until payment confirmed
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance + transaction.amount;
         transaction.totalBalanceBefore = driverWallet.totalBalance;
-        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change until payment confirmed
-        transaction.description = `Ride payment pending - Card (RM${finalFare})`;
+        transaction.totalBalanceAfter = driverWallet.totalBalance + transaction.amount;
+        transaction.completedAt = new Date();
+        transaction.description = `Ride payment completed - ${paymentMethod} (RM${finalFare})`;
+
         await transaction.save();
-        this.logger.log(
-          `Ride ${rideId} completed with card payment. Transaction remains pending until payment is confirmed.`,
-        );
+        this.logger.log(`Ride ${rideId} completed with ${paymentMethod} payment of RM${finalFare}.`);
       }
+      // If payment is cash, mark transaction as completed but don't update wallet
+      // (Driver collected cash directly, so wallet balance doesn't change)
     } catch (error) {
       this.logger.error(`Failed to update ride transaction for ride ${rideId}:`, error.stack);
       // Don't throw error - transaction update failure shouldn't block ride completion

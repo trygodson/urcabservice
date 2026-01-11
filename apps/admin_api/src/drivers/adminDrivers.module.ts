@@ -18,6 +18,8 @@ import {
   VehicleDocumentRecord,
   VehicleDocumentSchema,
   VehicleSchema,
+  WalletTransaction,
+  WalletTransactionSchema,
 } from '@urcab-workspace/shared';
 import { AdminDriversController } from './adminDrivers.controller';
 import { AdminDriversService } from './adminDrivers.service';
@@ -41,6 +43,7 @@ import {
       { name: Ride.name, schema: RideSchema },
       { name: IssueReport.name, schema: IssueReportSchema },
       { name: DriverEvp.name, schema: DriverEvpSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
     ]),
     LoggerModule,
 

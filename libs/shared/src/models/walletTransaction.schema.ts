@@ -7,6 +7,7 @@ export enum TransactionCategory {
   WITHDRAWAL = 'WITHDRAWAL',
   REFUND = 'REFUND',
   RIDE = 'RIDE',
+  EVP_PAYMENT = 'EVP_PAYMENT',
   SUBSCRIPTION = 'SUBSCRIPTION',
 }
 

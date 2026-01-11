@@ -15,7 +15,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { Types } from 'mongoose';
 import { VehicleService } from './driverVehicle.service';
-import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto } from './dto/createVehicle.dto';
+import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto, PayEvpDto } from './dto';
 import { JwtAuthGuard, RolesGuard, Role, CurrentUser, User, SetRolesMetaData } from '@urcab-workspace/shared';
 
 @ApiTags('Driver Vehicles')
@@ -207,5 +207,31 @@ export class VehicleController {
   async deleteVehicle(@Param('vehicleId') vehicleId: string, @CurrentUser() user: User): Promise<void> {
     const driverId = new Types.ObjectId(user._id);
     await this.vehicleService.deleteVehicle(vehicleId, driverId);
+  }
+
+  @Post(':vehicleId/evp/pay')
+  @ApiOperation({ summary: 'Pay for EVP (Electronic Verification Permit) for a vehicle' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID', type: 'string' })
+  @ApiBody({ type: PayEvpDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'EVP payment processed successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Vehicle not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment data or insufficient balance',
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async payForEvp(
+    @Param('vehicleId') vehicleId: string,
+    @Body() payEvpDto: PayEvpDto,
+    @CurrentUser() user: User,
+  ): Promise<any> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.vehicleService.payForEvp(vehicleId, driverId, payEvpDto);
   }
 }

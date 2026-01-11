@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtAuthGuard, Role, SetRolesMetaData, User } from '@urcab-workspace/shared';
-import { CreateEmergencyContactDto, EmergencyContactResponseDto } from './dto';
+import { CreateEmergencyContactDto, EmergencyContactResponseDto, UpdateEmergencyContactDto } from './dto';
 import { EmergencyContactsService } from './emergency-contacts.service';
 
 @ApiTags('Emergency Contacts')
@@ -33,5 +33,14 @@ export class EmergencyContactsController {
   @ApiResponse({ status: 200, description: 'Contact removed' })
   async remove(@CurrentUser() user: User, @Param('id') id: string) {
     return this.emergencyContactsService.remove(user._id.toString(), id);
+  }
+
+  @Patch(':id')
+  @SetRolesMetaData(Role.PASSENGER)
+  @ApiOperation({ summary: 'Update an emergency contact by id' })
+  @ApiResponse({ status: 200, description: 'Contact updated' })
+  @ApiResponse({ status: 404, description: 'Contact not found' })
+  async update(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: UpdateEmergencyContactDto) {
+    return this.emergencyContactsService.update(user._id.toString(), id, dto);
   }
 }

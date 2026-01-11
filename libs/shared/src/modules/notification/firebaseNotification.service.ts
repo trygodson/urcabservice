@@ -136,7 +136,26 @@ export class FirebaseNotificationService {
           title = 'Ride Update';
           body = `Your ride status: ${status}`;
       }
-
+      // console.log(
+      //   {
+      //     ...updatedRide,
+      //     rideId,
+      //     driverInfo: driverInfo
+      //       ? {
+      //           driverId: driverInfo.id,
+      //           driverName: driverInfo?.fullName
+      //             ? driverInfo?.fullName
+      //             : `${driverInfo.firstName} ${driverInfo.lastName}`,
+      //           driverPhone: driverInfo.phone,
+      //           driverPhoto: driverInfo.photo || '',
+      //           driverRating: driverInfo.rating || 0,
+      //           driverVehicle: driverInfo.vehicle || null,
+      //           currentLocation: driverInfo?.currentLocation || null,
+      //         }
+      //       : null,
+      //   },
+      //   '=====notificationData====',
+      // );
       const message: admin.messaging.Message = {
         token: passengerFCMToken,
         notification: { title, body },

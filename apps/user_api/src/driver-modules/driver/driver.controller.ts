@@ -30,6 +30,8 @@ import {
   UpdateDriverStatusDto,
   GetSubscriptionTransactionsDto,
   SubscriptionTransactionsListResponseDto,
+  GetEarningsDto,
+  EarningsResponseDto,
 } from './dto';
 
 @ApiTags('Driver')
@@ -130,5 +132,19 @@ export class DriverController {
     @Query() queryDto: GetSubscriptionTransactionsDto,
   ): Promise<SubscriptionTransactionsListResponseDto> {
     return await this.driverService.getSubscriptionTransactionHistory(user._id.toString(), queryDto);
+  }
+
+  @Get('earnings')
+  @SetRolesMetaData(Role.DRIVER)
+  @ApiOperation({ summary: 'Get driver earnings with histogram data and statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Driver earnings retrieved successfully',
+    type: EarningsResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  async getEarnings(@CurrentUser() user: User, @Query() queryDto: GetEarningsDto): Promise<EarningsResponseDto> {
+    return await this.driverService.getDriverEarnings(user._id.toString(), queryDto);
   }
 }

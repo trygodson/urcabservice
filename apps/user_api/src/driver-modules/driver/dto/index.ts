@@ -18,6 +18,8 @@ import { Type } from 'class-transformer';
 import { DocumentType, LicenseClass, LicenseType, DriverOnlineStatus } from '@urcab-workspace/shared';
 
 export * from './subscription-plans-response.dto';
+export * from './get-earnings.dto';
+export * from './earnings-response.dto';
 
 export class UpdateDriverStatusDto {
   @ApiProperty({

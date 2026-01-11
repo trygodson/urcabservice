@@ -60,7 +60,7 @@ export enum RideType {
 export enum PaymentMethod {
   CASH = 'cash',
   CARD = 'card',
-  QR_CODE = 'qr_code',
+  WALLET = 'wallet',
 }
 
 export enum PaymentStatus {

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import {
+  BalanceType,
   DriverEvpRepository,
   FirebaseNotificationService,
   PaymentMethod,
@@ -11,11 +12,13 @@ import {
   RideStatus,
   TransactionCategory,
   TransactionStatus,
+  TransactionType,
   UserRepository,
   VEHICLE_CAPACITY,
   VehicleRepository,
   VehicleType,
   VehicleTypeRepository,
+  Wallet,
   WalletRepository,
   WalletTransaction,
 } from '@urcab-workspace/shared';
@@ -44,6 +47,7 @@ export class RidesService {
     private readonly pricingZoneRepository: PricingZoneRepository,
     private readonly walletRepository: WalletRepository,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
+    @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
   ) {}
 
   async bookRide(passengerId: Types.ObjectId, createRideDto: CreateRideDto): Promise<RideResponseDto> {
@@ -63,6 +67,18 @@ export class RidesService {
       const passenger = await this.userRepository.findOneWithDocument({ _id: passengerId });
       if (!passenger) {
         throw new NotFoundException('Passenger not found');
+      }
+
+      // 3.5. Check wallet balance if payment method is WALLET
+      if (createRideDto.paymentMethod === PaymentMethod.WALLET) {
+        const walletBalance = await this.getWalletBalance(passengerId);
+        if (walletBalance.balance < createRideDto.estimatedPrice) {
+          throw new BadRequestException(
+            `Insufficient wallet balance. Your balance is RM${walletBalance.balance.toFixed(
+              2,
+            )}, but the ride fare is RM${createRideDto.estimatedPrice.toFixed(2)}`,
+          );
+        }
       }
 
       // 4. Validate selected driver if provided
@@ -145,7 +161,10 @@ export class RidesService {
         }
 
         // Check for pending payment (completed ride with pending card payment)
-        if (activeRide.status === RideStatus.RIDE_COMPLETED && activeRide.paymentStatus === PaymentStatus.PENDING) {
+        if (
+          activeRide.status === RideStatus.RIDE_REACHED_DESTINATION &&
+          activeRide.paymentStatus === PaymentStatus.PENDING
+        ) {
           this.logger.warn(`Passenger ${passengerId} has completed ride ${activeRide._id} with pending payment`);
 
           throw new BadRequestException(
@@ -989,6 +1008,8 @@ export class RidesService {
       paymentMethod: ride.paymentMethod,
       estimatedFare: ride.estimatedFare,
       paymentStatus: ride.paymentStatus,
+      tollAmount: ride.tollAmount,
+      tips: ride.tips,
       finalFare: ride.finalFare,
       estimatedDistance: ride.estimatedDistance,
       estimatedDuration: ride.estimatedDuration,
@@ -1287,6 +1308,10 @@ export class RidesService {
         throw new BadRequestException('You do not have access to this ride transaction');
       }
 
+      if (ride.paymentStatus === PaymentStatus.COMPLETED) {
+        throw new BadRequestException('Payment has already been confirmed for this ride');
+      }
+
       // Find transaction by rideId in metadata
       const transaction = await this.transactionModel.findOne({
         'metadata.rideId': rideId,
@@ -1308,6 +1333,36 @@ export class RidesService {
         const estimatedFare = ride.estimatedFare || 0;
         const tollAmount = ride.tollAmount || 0;
         const totalAmount = estimatedFare + tip + tollAmount;
+
+        // Update transaction amount
+        const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+        if (!driverWallet) {
+          throw new NotFoundException('Driver wallet not found');
+        }
+
+        // Update transaction with new amount
+        transaction.amount = totalAmount;
+        transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        transaction.withdrawableBalanceAfter = driverWallet.withdrawableBalance; // No change until payment confirmed
+        transaction.totalBalanceBefore = driverWallet.totalBalance;
+        transaction.totalBalanceAfter = driverWallet.totalBalance; // No change until payment confirmed
+        transaction.description = `Ride payment - ${
+          transaction.paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Card'
+        } (Base: RM${estimatedFare}${tollAmount > 0 ? `, Toll: RM${tollAmount}` : ''}${
+          tip > 0 ? `, Tip: RM${tip}` : ''
+        })`;
+
+        await transaction.save();
+
+        this.logger.log(
+          `Updated ride ${rideId} transaction: Tip: RM${tip}, Total: RM${totalAmount} (Base: RM${estimatedFare}${
+            tollAmount > 0 ? `, Toll: RM${tollAmount}` : ''
+          }${tip > 0 ? `, Tip: RM${tip}` : ''})`,
+        );
+      } else {
+        const estimatedFare = ride.estimatedFare || 0;
+        const tollAmount = ride.tollAmount || 0;
+        const totalAmount = estimatedFare + tollAmount;
 
         // Update transaction amount
         const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
@@ -1497,6 +1552,77 @@ export class RidesService {
         throw error;
       }
       throw new BadRequestException('Failed to confirm payment');
+    }
+  }
+
+  /**
+   * Get wallet balance for a user
+   * Calculates balance from completed transactions with WITHDRAWABLE balance type
+   */
+  private async getWalletBalance(
+    userId: Types.ObjectId,
+  ): Promise<{ balance: number; currencySymbol: string; currency: string }> {
+    try {
+      // Get or create wallet for user
+      let wallet = await this.walletRepository.findOne({ user: userId });
+      if (!wallet) {
+        // Create wallet if it doesn't exist
+        wallet = await this.walletModel.create({
+          _id: new Types.ObjectId(),
+          user: userId,
+          depositBalance: 0,
+          withdrawableBalance: 0,
+          totalBalance: 0,
+          totalDeposited: 0,
+          lastTransactionDate: new Date(),
+        });
+      }
+
+      // Calculate balance from transactions
+      // Sum of all CREDIT transactions minus all DEBIT transactions
+      // where balanceType is WITHDRAWABLE and status is COMPLETED
+      const walletId = typeof wallet._id === 'string' ? new Types.ObjectId(wallet._id) : wallet._id;
+      const balanceResult = await this.transactionModel.aggregate([
+        {
+          $match: {
+            user: userId,
+            wallet: walletId,
+            balanceType: BalanceType.WITHDRAWABLE,
+            status: TransactionStatus.COMPLETED,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalCredits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', TransactionType.CREDIT] }, '$amount', 0],
+              },
+            },
+            totalDebits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', TransactionType.DEBIT] }, '$amount', 0],
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            balance: { $subtract: ['$totalCredits', '$totalDebits'] },
+          },
+        },
+      ]);
+
+      const calculatedBalance = balanceResult.length > 0 ? balanceResult[0].balance : 0;
+
+      return {
+        balance: Math.max(0, calculatedBalance), // Ensure balance is not negative
+        currencySymbol: wallet.currencySymbol || 'RM',
+        currency: wallet.currency || 'MYR',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get wallet balance for user ${userId}:`, error.stack);
+      throw new BadRequestException('Failed to get wallet balance');
     }
   }
 }

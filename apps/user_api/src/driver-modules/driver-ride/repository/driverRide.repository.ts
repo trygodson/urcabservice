@@ -92,6 +92,7 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
               RideStatus.DRIVER_AT_PICKUPLOCATION,
               RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
               RideStatus.RIDE_STARTED,
+              RideStatus.RIDE_REACHED_DESTINATION,
             ],
           },
         })

@@ -12,12 +12,26 @@ export class RideRepository extends AbstractRepository<Ride> {
     super(rideModel);
   }
 
-  async findById(rideId: string | Types.ObjectId): Promise<RideDocument | null> {
+  async findById(rideId: string | Types.ObjectId): Promise<Ride | null> {
     try {
       return await this.model
         .findById(rideId)
-        .populate('passengerId', 'firstName lastName phone photo email')
-        .populate('driverId', 'firstName lastName phone photo email')
+        .populate('passengerId', 'firstName lastName phone photo email _id')
+        .populate('driverId', 'firstName lastName phone photo email _id')
+
+        .exec();
+    } catch (error) {
+      this.logger.error(`Failed to find ride by ID: ${rideId}`, error.stack);
+      throw error;
+    }
+  }
+  async findById2(rideId: string | Types.ObjectId): Promise<Ride | null> {
+    try {
+      return await this.model
+        .findById(rideId)
+        .populate('passengerId', 'firstName lastName phone photo email _id')
+        .populate('driverId', 'firstName lastName phone photo email _id')
+        .lean()
         .exec();
     } catch (error) {
       this.logger.error(`Failed to find ride by ID: ${rideId}`, error.stack);
@@ -119,6 +133,7 @@ export class RideRepository extends AbstractRepository<Ride> {
               RideStatus.DRIVER_AT_PICKUPLOCATION,
               RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
               RideStatus.RIDE_STARTED,
+              RideStatus.RIDE_REACHED_DESTINATION,
             ],
           },
         })

@@ -390,6 +390,26 @@ export class VehicleResponseDto {
   @ApiPropertyOptional()
   lastDocumentVerificationCheck?: Date;
 
+  @ApiPropertyOptional()
+  evpPrice?: number;
+
+  @ApiPropertyOptional()
+  evpPriceSet?: boolean;
+
+  @ApiPropertyOptional()
+  evpAdminGeneratedPending?: boolean;
+
+  @ApiPropertyOptional()
+  evp?: {
+    _id: string;
+    certificateNumber: string;
+    startDate: Date;
+    endDate: Date;
+    documentUrl: string;
+    isActive: boolean;
+    notes?: string;
+  };
+
   @ApiProperty()
   createdAt: Date;
 

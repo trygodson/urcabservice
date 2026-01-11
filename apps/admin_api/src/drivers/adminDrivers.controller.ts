@@ -17,6 +17,9 @@ import {
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
   VehicleRejectionDto,
+  SetVehicleEvpPriceDto,
+  CreateVehicleEvpDto,
+  VehicleEvpResponseDto,
 } from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
@@ -305,35 +308,35 @@ export class AdminDriversController {
   }
 
   // EVP Management APIs
-  @Post(':driverId/evp')
-  @ApiOperation({ summary: 'Generate an EVP (Electronic Verification Permit) for a driver' })
-  @ApiParam({ name: 'driverId', description: 'Driver ID' })
-  @ApiResponse({ status: 201, description: 'EVP created successfully', type: DriverEvpResponseDto })
-  @ApiResponse({ status: 400, description: 'Bad request - Driver documents not verified or already has active EVP' })
-  @ApiResponse({ status: 404, description: 'Driver not found' })
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  async createDriverEvp(
-    @Param('driverId') driverId: string,
-    @Body() createEvpDto: CreateDriverEvpDto,
-    @CurrentUser() user: any,
-  ) {
-    // Override driverId in DTO with path parameter
-    createEvpDto.driverId = driverId;
-    return this.adminDriversService.createDriverEvp(createEvpDto, user.sub);
-  }
+  // @Post(':driverId/evp')
+  // @ApiOperation({ summary: 'Generate an EVP (Electronic Verification Permit) for a driver' })
+  // @ApiParam({ name: 'driverId', description: 'Driver ID' })
+  // @ApiResponse({ status: 201, description: 'EVP created successfully', type: DriverEvpResponseDto })
+  // @ApiResponse({ status: 400, description: 'Bad request - Driver documents not verified or already has active EVP' })
+  // @ApiResponse({ status: 404, description: 'Driver not found' })
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  // async createDriverEvp(
+  //   @Param('driverId') driverId: string,
+  //   @Body() createEvpDto: CreateDriverEvpDto,
+  //   @CurrentUser() user: any,
+  // ) {
+  //   // Override driverId in DTO with path parameter
+  //   createEvpDto.driverId = driverId;
+  //   return this.adminDriversService.createDriverEvp(createEvpDto, user.sub);
+  // }
 
-  @Get(':driverId/evp')
-  @ApiOperation({ summary: 'Get all EVPs for a driver' })
-  @ApiParam({ name: 'driverId', description: 'Driver ID' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
-  @ApiResponse({ status: 200, description: 'EVPs retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Driver not found' })
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  async getDriverEvps(@Param('driverId') driverId: string, @Query() query: GetDriverEvpsDto) {
-    return this.adminDriversService.getDriverEvps(driverId, query);
-  }
+  // @Get(':driverId/evp')
+  // @ApiOperation({ summary: 'Get all EVPs for a driver' })
+  // @ApiParam({ name: 'driverId', description: 'Driver ID' })
+  // @ApiQuery({ name: 'page', required: false, type: Number })
+  // @ApiQuery({ name: 'limit', required: false, type: Number })
+  // @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
+  // @ApiResponse({ status: 200, description: 'EVPs retrieved successfully' })
+  // @ApiResponse({ status: 404, description: 'Driver not found' })
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  // async getDriverEvps(@Param('driverId') driverId: string, @Query() query: GetDriverEvpsDto) {
+  //   return this.adminDriversService.getDriverEvps(driverId, query);
+  // }
 
   @Get('evp/:evpId')
   @ApiOperation({ summary: 'Get EVP details by ID' })
@@ -354,5 +357,44 @@ export class AdminDriversController {
   @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async revokeEvp(@Param('evpId') evpId: string, @Body() revokeDto: RevokeDriverEvpDto, @CurrentUser() user: any) {
     return this.adminDriversService.revokeEvp(evpId, revokeDto, user.sub);
+  }
+
+  // Vehicle EVP Management APIs
+  @Patch('vehicles/:vehicleId/evp/price')
+  @ApiOperation({ summary: 'Set EVP price for a vehicle (after all documents are approved)' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiResponse({ status: 200, description: 'EVP price set successfully' })
+  @ApiResponse({ status: 400, description: 'All vehicle documents must be verified' })
+  @ApiResponse({ status: 404, description: 'Vehicle not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async setVehicleEvpPrice(@Param('vehicleId') vehicleId: string, @Body() setPriceDto: SetVehicleEvpPriceDto) {
+    return this.adminDriversService.setVehicleEvpPrice(vehicleId, setPriceDto);
+  }
+
+  @Post('vehicles/:vehicleId/evp')
+  @ApiOperation({ summary: 'Generate an EVP for a vehicle (after payment is confirmed)' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiResponse({ status: 201, description: 'Vehicle EVP created successfully', type: VehicleEvpResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - Vehicle documents not verified or payment not completed' })
+  @ApiResponse({ status: 404, description: 'Vehicle not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async createVehicleEvp(
+    @Param('vehicleId') vehicleId: string,
+    @Body() createVehicleEvpDto: CreateVehicleEvpDto,
+    @CurrentUser() user: any,
+  ) {
+    // Override vehicleId in DTO with path parameter
+    createVehicleEvpDto.vehicleId = vehicleId;
+    return this.adminDriversService.createVehicleEvp(createVehicleEvpDto, user.sub);
+  }
+
+  @Get('vehicles/:vehicleId/evp')
+  @ApiOperation({ summary: 'Get all EVPs for a vehicle' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiResponse({ status: 200, description: 'Vehicle EVPs retrieved successfully', type: [VehicleEvpResponseDto] })
+  @ApiResponse({ status: 404, description: 'Vehicle not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async getVehicleEvps(@Param('vehicleId') vehicleId: string) {
+    return this.adminDriversService.getVehicleEvps(vehicleId);
   }
 }
