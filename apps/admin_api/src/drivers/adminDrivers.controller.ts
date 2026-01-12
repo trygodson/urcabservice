@@ -20,6 +20,7 @@ import {
   SetVehicleEvpPriceDto,
   CreateVehicleEvpDto,
   VehicleEvpResponseDto,
+  GetEvpEligibleDriversDto,
 } from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
@@ -43,6 +44,20 @@ export class AdminDriversController {
   @ApiResponse({ status: 200, description: 'Drivers retrieved successfully' })
   async getAllDrivers(@Query() query: GetDriversDto) {
     return this.adminDriversService.getAllDrivers(query);
+  }
+
+  @Get('evp-eligible')
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Get all drivers eligible for EVP (verified with complete documentation and at least one vehicle with complete documentation)',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'EVP eligible drivers retrieved successfully' })
+  async getEvpEligibleDrivers(@Query() query: GetEvpEligibleDriversDto) {
+    return this.adminDriversService.getEvpEligibleDrivers(query);
   }
 
   @Get('documents/pending')
@@ -349,9 +364,9 @@ export class AdminDriversController {
   }
 
   @Patch('evp/:evpId/revoke')
-  @ApiOperation({ summary: 'Revoke an EVP' })
+  @ApiOperation({ summary: 'Revoke a vehicle EVP' })
   @ApiParam({ name: 'evpId', description: 'EVP ID' })
-  @ApiResponse({ status: 200, description: 'EVP revoked successfully', type: DriverEvpResponseDto })
+  @ApiResponse({ status: 200, description: 'Vehicle EVP revoked successfully', type: VehicleEvpResponseDto })
   @ApiResponse({ status: 400, description: 'EVP is already inactive or revoked' })
   @ApiResponse({ status: 404, description: 'EVP not found' })
   @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)

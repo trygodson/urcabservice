@@ -30,6 +30,7 @@ import {
   SetVehicleEvpPriceDto,
   CreateVehicleEvpDto,
   VehicleEvpResponseDto,
+  GetEvpEligibleDriversDto,
 } from './dto';
 import {
   AdminDriverDocumentRepository,
@@ -1294,8 +1295,8 @@ export class AdminDriversService {
     return this.mapToEvpResponseDto(evp);
   }
 
-  async revokeEvp(evpId: string, revokeDto: RevokeDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
-    // Find the EVP
+  async revokeEvp(evpId: string, revokeDto: RevokeDriverEvpDto, adminId: string): Promise<VehicleEvpResponseDto> {
+    // Find the EVP (now linked to vehicle)
     const evp = await this.driverEvpRepository.findById(evpId);
 
     if (!evp) {
@@ -1317,7 +1318,7 @@ export class AdminDriversService {
       },
     );
 
-    return this.mapToEvpResponseDto(updatedEvp);
+    return this.mapToVehicleEvpResponseDto(updatedEvp);
   }
 
   private mapToEvpResponseDto(evp: any): DriverEvpResponseDto {
@@ -1468,6 +1469,124 @@ export class AdminDriversService {
       revokedBy: evp.revokedBy ? evp.revokedBy.toString() : undefined,
       createdAt: evp.createdAt,
       updatedAt: evp.updatedAt,
+    };
+  }
+
+  // Get EVP Eligible Drivers
+  async getEvpEligibleDrivers(query: GetEvpEligibleDriversDto) {
+    const { page = 1, limit = 10, search } = query;
+    const skip = (page - 1) * limit;
+
+    // Base filter for drivers: verified and have complete documentation
+    const driverFilter: any = {
+      type: Role.DRIVER,
+      isDriverVerified: true,
+      hasCompleteDocumentation: true,
+    };
+
+    // Add search filter if provided
+    if (search) {
+      driverFilter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Get all eligible drivers first
+    const allEligibleDrivers = await this.userRepository.find(driverFilter);
+
+    // Get driver IDs
+    const driverIds = allEligibleDrivers.map((driver) => driver._id);
+
+    // Find vehicles that belong to these drivers and have complete documentation
+    const eligibleVehicles = await this.vehicleRepository.find(
+      {
+        driverId: { $in: driverIds },
+        hasCompleteDocumentation: true,
+        // isActive: true,
+      },
+      {
+        select: 'driverId',
+      },
+    );
+
+    // Get unique driver IDs that have at least one eligible vehicle
+    const eligibleDriverIds = [...new Set(eligibleVehicles.map((v) => v.driverId.toString()))];
+
+    if (eligibleDriverIds.length === 0) {
+      return {
+        drivers: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0,
+        },
+      };
+    }
+
+    // Filter drivers to only those with eligible vehicles
+    const finalFilter = {
+      ...driverFilter,
+      _id: { $in: eligibleDriverIds.map((id) => new Types.ObjectId(id)) },
+    };
+
+    // Get paginated results - exclude sensitive fields
+    const drivers = await this.userRepository.findWithPagination(finalFilter, skip, limit, {
+      populate: [{ path: 'driverVerifiedByAdminId', select: 'firstName lastName email' }],
+      sort: { createdAt: -1 },
+      select:
+        '-passwordHash -passwordSalt -fcmToken -emailConfirmationCode -phoneConfirmationCode -resetPasswordOtp -resetPasswordOtpExpiry -resetPasswordCount -loginFailedCount -lastLoginDate -isFirstTime',
+    });
+
+    // Get vehicles for each driver
+    const driversWithVehicles = await Promise.all(
+      drivers.map(async (driver) => {
+        const vehicles = await this.vehicleRepository.find(
+          {
+            driverId: driver._id,
+            hasCompleteDocumentation: true,
+            // isActive: true,
+          },
+          {
+            populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
+            sort: { isPrimary: -1, createdAt: -1 },
+          },
+        );
+
+        // Convert to object and remove any remaining sensitive fields
+        const driverObj = driver.toObject();
+        delete driverObj.passwordHash;
+        delete driverObj.passwordSalt;
+        delete driverObj.fcmToken;
+        delete driverObj.emailConfirmationCode;
+        delete driverObj.phoneConfirmationCode;
+        delete driverObj.resetPasswordOtp;
+        delete driverObj.resetPasswordOtpExpiry;
+        delete driverObj.resetPasswordCount;
+        delete driverObj.loginFailedCount;
+        delete driverObj.lastLoginDate;
+        delete driverObj.isFirstTime;
+
+        return {
+          ...driverObj,
+          eligibleVehicles: vehicles,
+        };
+      }),
+    );
+
+    const total = eligibleDriverIds.length;
+
+    return {
+      drivers: driversWithVehicles,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 }
