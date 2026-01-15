@@ -1064,21 +1064,32 @@ export class AdminDriversService {
     };
 
     if (hasCompleteDocumentation) {
-      // Get global EVP price and period from settings
-      try {
-        const settings = await this.settingsModel.findOne().exec();
-        if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
-          updateData.evpPrice = settings.globalVehicleEvpPrice;
-          updateData.evpPriceSet = true;
+      // Check if vehicle already has an active EVP
+      const existingActiveEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicleId,
+        isActive: true,
+        endDate: { $gt: new Date() }, // Not expired
+        revokedAt: { $exists: false }, // Not revoked
+      });
 
-          // Set EVP period if available in settings
-          if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
-            updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+      // Only set EVP price if there's no active EVP
+      if (!existingActiveEvp) {
+        // Get global EVP price and period from settings
+        try {
+          const settings = await this.settingsModel.findOne().exec();
+          if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
+            updateData.evpPrice = settings.globalVehicleEvpPrice;
+            updateData.evpPriceSet = true;
+
+            // Set EVP period if available in settings
+            if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
+              updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+            }
           }
+        } catch (error) {
+          // If settings are not available, skip auto-setting EVP price
+          console.error('Failed to get global EVP price from settings:', error);
         }
-      } catch (error) {
-        // If settings are not available, skip auto-setting EVP price
-        console.error('Failed to get global EVP price from settings:', error);
       }
     }
 
