@@ -1,7 +1,19 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Patch, Delete, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Query,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateAdminUserDto, UpdateAdminUserDto, UserPermissionsResponseDto } from './dto';
+import { CreateAdminUserDto, UpdateAdminUserDto, UserPermissionsResponseDto, QueryUsersDto } from './dto';
 import { JwtAdminAuthGuard, SetRolesMetaData, Role, CurrentUser } from '@urcab-workspace/shared';
 
 @ApiTags('Admin - Users')
@@ -22,10 +34,15 @@ export class UsersController {
 
   @Get()
   @SetRolesMetaData(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get all admin users (Super Admin only)' })
-  @ApiResponse({ status: 200, description: 'List of admin users' })
-  async findAll() {
-    return this.usersService.findAll();
+  @ApiOperation({ summary: 'Get all admin users with pagination (Super Admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'roleId', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'List of admin users with pagination' })
+  async findAll(@Query() query: QueryUsersDto) {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')

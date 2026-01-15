@@ -23,21 +23,20 @@ export class PermissionsController {
     return this.permissionsService.findAll();
   }
 
-  @Get('categories')
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Get all permission categories' })
-  @ApiResponse({ status: 200, description: 'List of permission categories', type: [String] })
-  async getCategories() {
-    return this.permissionsService.getCategories();
-  }
+  // @Get('categories')
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  // @ApiOperation({ summary: 'Get all permission categories' })
+  // @ApiResponse({ status: 200, description: 'List of permission categories', type: [String] })
+  // async getCategories() {
+  //   return this.permissionsService.getCategories();
+  // }
 
-  @Get(':id')
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Get a permission by ID' })
-  @ApiResponse({ status: 200, description: 'Permission details', type: PermissionResponseDto })
-  @ApiResponse({ status: 404, description: 'Permission not found' })
-  async findOne(@Param('id') id: string) {
-    return this.permissionsService.findOne(id);
-  }
+  // @Get(':id')
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  // @ApiOperation({ summary: 'Get a permission by ID' })
+  // @ApiResponse({ status: 200, description: 'Permission details', type: PermissionResponseDto })
+  // @ApiResponse({ status: 404, description: 'Permission not found' })
+  // async findOne(@Param('id') id: string) {
+  //   return this.permissionsService.findOne(id);
+  // }
 }
-

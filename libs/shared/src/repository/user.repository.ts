@@ -18,4 +18,7 @@ export class UserRepository extends AbstractRepository<User> {
   async findDriverByIdWithDriverLocation(userId: string): Promise<User> {
     return this.model.findOne({ _id: userId }).populate('driverLocation').exec();
   }
+  async countDocuments(query: any): Promise<number> {
+    return this.model.countDocuments(query).exec();
+  }
 }

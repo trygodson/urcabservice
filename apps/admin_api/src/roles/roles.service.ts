@@ -48,7 +48,8 @@ export class RolesService {
     }
 
     // If no filter is provided, get all roles (active and inactive)
-    const roles = await this.roleRepository.find(filter);
+    // Populate permissions to get full permission details
+    const roles = await this.roleRepository.find(filter, [{ path: 'permissions' }]);
     return Promise.all(roles.map((role) => this.mapToResponseDto(role)));
   }
 
@@ -124,16 +125,46 @@ export class RolesService {
   }
 
   private async mapToResponseDto(role: any): Promise<RoleResponseDto> {
+    // Handle permissions - they might be populated objects or just ObjectIds
+    let permissions: any[] = [];
+
+    if (role.permissions && role.permissions.length > 0) {
+      // Check if permissions are populated (have name property) or just ObjectIds
+      const firstPermission = role.permissions[0];
+      if (firstPermission && typeof firstPermission === 'object' && firstPermission.name) {
+        // Permissions are already populated
+        permissions = role.permissions.map((p: any) => ({
+          _id: p._id?.toString() || p.toString(),
+          name: p.name || '',
+          description: p.description || '',
+          category: p.category || '',
+        }));
+      } else {
+        // Permissions are just ObjectIds, need to fetch them
+        const permissionIds = role.permissions.map((p: any) => {
+          if (typeof p === 'object' && p._id) {
+            return p._id.toString();
+          }
+          return p.toString();
+        });
+
+        if (permissionIds.length > 0) {
+          const permissionDocs = await this.permissionRepository.findByIds(permissionIds);
+          permissions = permissionDocs.map((p) => ({
+            _id: p._id.toString(),
+            name: p.name,
+            description: p.description,
+            category: p.category,
+          }));
+        }
+      }
+    }
+
     return {
       _id: role._id.toString(),
       name: role.name,
       description: role.description,
-      permissions: (role.permissions || []).map((p: any) => ({
-        _id: p._id?.toString() || p.toString(),
-        name: p.name || '',
-        description: p.description || '',
-        category: p.category || '',
-      })),
+      permissions,
       isActive: role.isActive,
       isSystemRole: role.isSystemRole,
       createdAt: role.createdAt,

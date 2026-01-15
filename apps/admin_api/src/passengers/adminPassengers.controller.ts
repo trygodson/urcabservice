@@ -2,7 +2,13 @@ import { Controller, Get, Param, Query, UseGuards, Patch, Body } from '@nestjs/c
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { AdminPassengersService } from './adminPassengers.service';
 import { JwtAdminAuthGuard } from '@urcab-workspace/shared';
-import { GetPassengersDto, GetPassengerRidesDto, GetPassengerReportsDto, PassengerDetailsResponseDto } from './dto';
+import {
+  GetPassengersDto,
+  GetPassengerRidesDto,
+  GetPassengerReportsDto,
+  PassengerDetailsResponseDto,
+  PassengerDocumentApprovalDto,
+} from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
 @ApiTags('Admin - Passengers Management')
@@ -84,6 +90,34 @@ export class AdminPassengersController {
   @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getPassengerDocuments(@Param('passengerId') passengerId: string) {
     return this.adminPassengersService.getPassengerDocuments(passengerId);
+  }
+
+  @Get('documents/:documentId')
+  @ApiOperation({ summary: 'Get passenger document details' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async getPassengerDocumentDetails(@Param('documentId') documentId: string) {
+    return this.adminPassengersService.getPassengerDocumentDetails(documentId);
+  }
+
+  @Patch('documents/:documentId/approve')
+  @ApiOperation({ summary: 'Approve passenger document' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document approved successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async approvePassengerDocument(@Param('documentId') documentId: string, @Body() body: PassengerDocumentApprovalDto) {
+    return this.adminPassengersService.approvePassengerDocument(documentId, body);
+  }
+
+  @Patch('documents/:documentId/reject')
+  @ApiOperation({ summary: 'Reject passenger document' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @ApiResponse({ status: 200, description: 'Document rejected successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async rejectPassengerDocument(@Param('documentId') documentId: string, @Body() body: PassengerDocumentApprovalDto) {
+    return this.adminPassengersService.rejectPassengerDocument(documentId, body);
   }
 
   @Get(':passengerId/reports')

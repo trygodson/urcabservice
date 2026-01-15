@@ -21,3 +21,4 @@ export * from './role.schema';
 export * from './wallet.schema';
 export * from './walletTransaction.schema';
 export * from './faq.schema';
+export * from './settings.schema';

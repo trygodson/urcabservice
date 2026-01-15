@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -12,6 +12,7 @@ import {
   WalletTransaction,
   TransactionCategory,
   TransactionStatus,
+  Settings,
 } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
@@ -27,7 +28,6 @@ import {
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
   VehicleRejectionDto,
-  SetVehicleEvpPriceDto,
   CreateVehicleEvpDto,
   VehicleEvpResponseDto,
   GetEvpEligibleDriversDto,
@@ -53,6 +53,7 @@ export class AdminDriversService {
     private readonly issueReportRepository: AdminIssueReportRepository,
     private readonly driverEvpRepository: AdminDriverEvpRepository,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
+    @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
   ) {}
 
   // Driver Management Methods
@@ -1336,37 +1337,6 @@ export class AdminDriversService {
       revokedBy: evp.revokedBy ? evp.revokedBy.toString() : undefined,
       createdAt: evp.createdAt,
       updatedAt: evp.updatedAt,
-    };
-  }
-
-  // Vehicle EVP Management Methods
-  async setVehicleEvpPrice(vehicleId: string, setPriceDto: SetVehicleEvpPriceDto): Promise<any> {
-    const vehicle = await this.vehicleRepository.findById(vehicleId);
-    if (!vehicle) {
-      throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
-    }
-
-    // Check if all vehicle documents are verified
-    if (!vehicle.hasCompleteDocumentation) {
-      throw new BadRequestException('All vehicle documents must be verified before setting EVP price');
-    }
-
-    // Update vehicle with EVP price
-    const updatedVehicle = await this.vehicleRepository.findOneAndUpdate(
-      { _id: new Types.ObjectId(vehicleId) },
-      {
-        evpPrice: setPriceDto.evpPrice,
-        evpPriceSet: true,
-      },
-    );
-
-    return {
-      success: true,
-      message: 'EVP price set successfully',
-      data: {
-        vehicleId: vehicleId,
-        evpPrice: setPriceDto.evpPrice,
-      },
     };
   }
 

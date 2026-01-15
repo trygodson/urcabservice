@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import {
@@ -20,6 +20,8 @@ import {
   VehicleSchema,
   WalletTransaction,
   WalletTransactionSchema,
+  Settings,
+  SettingsSchema,
 } from '@urcab-workspace/shared';
 import { AdminDriversController } from './adminDrivers.controller';
 import { AdminDriversService } from './adminDrivers.service';
@@ -44,6 +46,7 @@ import {
       { name: IssueReport.name, schema: IssueReportSchema },
       { name: DriverEvp.name, schema: DriverEvpSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: Settings.name, schema: SettingsSchema },
     ]),
     LoggerModule,
 

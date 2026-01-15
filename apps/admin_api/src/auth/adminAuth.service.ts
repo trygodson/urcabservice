@@ -18,6 +18,7 @@ import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { Types } from 'mongoose'; // <-- ADD THIS LINE HERE
 import { LoginDto, RegisterUserDto, VerifyOtpDto, ChangePasswordDto, UpdateProfileDto } from './dto';
+import { ForgotPasswordDto, ResetPasswordDto } from '@urcab-workspace/shared';
 import {
   GenerateOtp,
   generateRandomString,
@@ -425,6 +426,178 @@ export class AuthService {
         throw error;
       }
       throw new BadRequestException('Failed to update profile');
+    }
+  }
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const user = await this.userRepository.findOne({
+        email,
+        type: { $in: [Role.ADMIN, Role.SUPER_ADMIN] },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User with this email does not exist');
+      }
+
+      const { otp, expiry } = GenerateOtp();
+
+      await this.userRepository.findOneAndUpdate(
+        { email },
+        {
+          resetPasswordOtp: otp,
+          resetPasswordOtpExpiry: expiry,
+        },
+      );
+
+      // Send OTP to email (implement your mail sending logic)
+      // await this.mailService.sendMail({
+      //   to: email,
+      //   subject: 'Your Password Reset OTP',
+      //   text: `Your OTP for password reset is: ${otp}`,
+      // });
+
+      return { success: true, message: 'OTP sent to email' };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to send password reset OTP');
+    }
+  }
+
+  async resetPassword(data: ResetPasswordDto): Promise<{ success: boolean; message: string }> {
+    try {
+      const user = await this.userRepository.findOne({
+        email: data.email,
+        type: { $in: [Role.ADMIN, Role.SUPER_ADMIN] },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User with this email does not exist');
+      }
+
+      if (
+        !user.resetPasswordOtp ||
+        !user.resetPasswordOtpExpiry ||
+        user.resetPasswordOtp !== data.otp ||
+        timeZoneMoment(user.resetPasswordOtpExpiry).toDate() < timeZoneMoment().toDate()
+      ) {
+        throw new BadRequestException('Invalid or expired OTP');
+      }
+
+      const passSalt = await bcrypt.genSalt();
+      const passwordHash = await bcrypt.hash(data.password, passSalt);
+
+      await this.userRepository.findOneAndUpdate(
+        { email: data.email },
+        {
+          passwordHash,
+          passwordSalt: passSalt,
+          resetPasswordOtp: null,
+          resetPasswordOtpExpiry: null,
+        },
+      );
+
+      return { success: true, message: 'Password reset successful' };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to reset password');
+    }
+  }
+
+  async verifyOtp(verifyToken: VerifyOtpDto, ipAddress: string): Promise<any> {
+    try {
+      const decodedToken = JwtAVerify(verifyToken.verificationToken);
+      if (timeZoneMoment(decodedToken.data?.expiry).toDate() < timeZoneMoment().toDate()) {
+        throw new BadRequestException('Verification Token Expired');
+      }
+
+      const res = await this.userRepository.findOne(
+        {
+          email: decodedToken.data?.email,
+          type: { $in: [Role.ADMIN, Role.SUPER_ADMIN] },
+        },
+        [],
+      );
+
+      if (!res) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (res && !res.isEmailConfirmed) {
+        if (res.emailConfirmationCode === verifyToken.otpCode) {
+          if (decodedToken.data?.type === Role.ADMIN || decodedToken.data?.type === Role.SUPER_ADMIN) {
+            const refreshToken = await this.generateRefreshToken(res, ipAddress);
+            const accessToken = await this.generateAccessTokens(res, refreshToken);
+
+            const updatedUser = await this.userRepository.findOneAndUpdate(
+              { email: res.email },
+              { isEmailConfirmed: true },
+            );
+
+            // Get role and permissions for response
+            let permissions: string[] = [];
+            let roleName: string | null = null;
+            const isSuperAdmin = updatedUser.type === Role.SUPER_ADMIN;
+
+            if (updatedUser.roleId && !isSuperAdmin) {
+              const role = await this.roleRepository.findById(updatedUser.roleId.toString());
+              if (role && role.permissions && role.permissions.length > 0) {
+                roleName = role.name;
+                const permissionIds = role.permissions.map((p: any) =>
+                  typeof p === 'object' && p._id ? p._id.toString() : p.toString(),
+                );
+                const permissionDocs = await this.permissionRepository.findByIds(permissionIds);
+                permissions = permissionDocs.map((p) => p.name);
+              }
+            } else if (isSuperAdmin) {
+              roleName = 'Super Admin';
+              permissions = ['*'];
+            }
+
+            return {
+              success: true,
+              data: {
+                refreshToken,
+                accessToken,
+                user: {
+                  _id: updatedUser._id.toString(),
+                  fullName: updatedUser.fullName,
+                  email: updatedUser.email,
+                  type: updatedUser.type,
+                  roleId: updatedUser.roleId?.toString(),
+                  roleName: roleName,
+                  permissions: permissions,
+                  isSuperAdmin: isSuperAdmin,
+                  isProfileUpdated: updatedUser.isProfileUpdated,
+                  isOnboardingComplete: updatedUser.isOnboardingComplete,
+                  isActive: updatedUser.isActive,
+                },
+              },
+            };
+          } else {
+            throw new BadRequestException('Incorrect User Request');
+          }
+        } else {
+          throw new BadRequestException('Incorrect OTP Code.');
+        }
+      } else if (res && res.isEmailConfirmed) {
+        return {
+          success: false,
+          message: 'Email has already been confirmed',
+        };
+      }
+    } catch (err) {
+      if (err.message && err.message.includes('expired')) {
+        throw new UnauthorizedException('Token Has Expired! Please Try Again.');
+      } else if (err instanceof NotFoundException || err instanceof BadRequestException) {
+        throw err;
+      } else {
+        throw new UnauthorizedException(err?.message ?? 'Error Verifying');
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { UserRepository, RoleRepository, Role, PermissionRepository } from '@urcab-workspace/shared';
-import { CreateAdminUserDto, UpdateAdminUserDto, UserPermissionsResponseDto, PermissionDto } from './dto';
+import { CreateAdminUserDto, UpdateAdminUserDto, UserPermissionsResponseDto, PermissionDto, QueryUsersDto } from './dto';
 import { Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 
@@ -53,17 +53,59 @@ export class UsersService {
     };
   }
 
-  async findAll() {
-    const users = await this.userRepository.find({ type: Role.ADMIN }, ['roleId']);
-    return users.map((user) => ({
-      _id: user._id.toString(),
-      fullName: user.fullName,
-      email: user.email,
-      roleId: user.roleId?._id.toString(),
-      role: user.roleId ? (user.roleId as any).name : null,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-    }));
+  async findAll(query: QueryUsersDto) {
+    const { page = 1, limit = 10, search, status, roleId } = query;
+    const skip = (page - 1) * limit;
+
+    // Build filter
+    const filter: any = { type: Role.ADMIN };
+
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    if (status === 'ACTIVE') {
+      filter.isActive = true;
+    } else if (status === 'INACTIVE') {
+      filter.isActive = false;
+    }
+
+    if (roleId) {
+      filter.roleId = new Types.ObjectId(roleId);
+    }
+
+    // Get users with pagination using the model directly
+    const users = await this.userRepository.model
+      .find(filter)
+      .populate('roleId')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    const total = await this.userRepository.countDocuments(filter);
+
+    return {
+      users: users.map((user: any) => ({
+        _id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        roleId: user.roleId?._id?.toString() || user.roleId?.toString() || null,
+        role: user.roleId ? (user.roleId as any).name : null,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {

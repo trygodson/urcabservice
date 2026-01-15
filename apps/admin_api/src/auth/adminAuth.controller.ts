@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './adminAuth.service';
 import { ApiBody, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { LoginDto, RegisterUserDto, ChangePasswordDto, UpdateProfileDto } from './dto';
+import { LoginDto, RegisterUserDto, VerifyOtpDto } from './dto';
 import {
   CurrentUser,
   JwtAuthGuard,
@@ -20,6 +20,8 @@ import {
   User,
   SetRolesMetaData,
   Role,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from '@urcab-workspace/shared';
 
 @ApiTags('Admin Auth')
@@ -40,27 +42,35 @@ export class AuthController {
     return await this.authService.login(user, body);
   }
 
-  @Patch('change-password')
-  @UseGuards(JwtAdminAuthGuard)
-  @ApiBearerAuth()
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Change password' })
-  @ApiResponse({ status: 200, description: 'Password changed successfully' })
-  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
-  @ApiResponse({ status: 400, description: 'New password must be different from current password' })
-  async changePassword(@CurrentUser() user: User, @Body() changePasswordDto: ChangePasswordDto) {
-    return await this.authService.changePassword(user._id.toString(), changePasswordDto);
+  @UseInterceptors(ClassSerializerInterceptor)
+  @ApiBody({ type: ForgotPasswordDto })
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset OTP' })
+  @ApiResponse({ status: 200, description: 'OTP sent to email successfully' })
+  @ApiResponse({ status: 404, description: 'User with this email does not exist' })
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(body.email);
   }
 
-  @Patch('profile')
-  @UseGuards(JwtAdminAuthGuard)
-  @ApiBearerAuth()
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: 'Update profile (full name, email, photo)' })
-  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 409, description: 'Email already in use' })
-  async updateProfile(@CurrentUser() user: User, @Body() updateProfileDto: UpdateProfileDto) {
-    return await this.authService.updateProfile(user._id.toString(), updateProfileDto);
+  @UseInterceptors(ClassSerializerInterceptor)
+  @ApiBody({ type: ResetPasswordDto })
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using OTP' })
+  @ApiResponse({ status: 200, description: 'Password reset successful' })
+  @ApiResponse({ status: 404, description: 'User with this email does not exist' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    return await this.authService.resetPassword(body);
   }
+
+  // @UseInterceptors(ClassSerializerInterceptor)
+  // @ApiBody({ type: VerifyOtpDto })
+  // @Post('verify-otp')
+  // @ApiOperation({ summary: 'Verify OTP for email confirmation' })
+  // @ApiResponse({ status: 200, description: 'OTP verified successfully' })
+  // @ApiResponse({ status: 400, description: 'Invalid OTP or token expired' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // async verifyOtp(@Body() body: VerifyOtpDto, @Ip() ipAddress: string) {
+  //   return await this.authService.verifyOtp(body, ipAddress);
+  // }
 }

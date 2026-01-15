@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { Role } from '@urcab-workspace/shared';
-import { GetPassengersDto, GetPassengerRidesDto, GetPassengerReportsDto } from './dto';
+import { Role, DocumentStatus } from '@urcab-workspace/shared';
+import { GetPassengersDto, GetPassengerRidesDto, GetPassengerReportsDto, PassengerDocumentApprovalDto } from './dto';
 import {
   AdminPassengerUserRepository,
   AdminPassengerRideRepository,
@@ -240,6 +240,29 @@ export class AdminPassengersService {
     return documents;
   }
 
+  async getPassengerDocumentDetails(documentId: string) {
+    // Validate ID format
+    if (!Types.ObjectId.isValid(documentId)) {
+      throw new BadRequestException('Invalid document ID format');
+    }
+
+    const document = await this.passengerDocumentRepository.findOne(
+      { _id: new Types.ObjectId(documentId) },
+      {
+        populate: [
+          { path: 'passengerId', select: 'firstName lastName email phone' },
+          { path: 'verifiedByAdminId', select: 'firstName lastName email' },
+        ],
+      },
+    );
+
+    if (!document) {
+      throw new NotFoundException('Passenger document not found');
+    }
+
+    return document;
+  }
+
   async getPassengerReports(passengerId: string, query: GetPassengerReportsDto) {
     // Validate ID format
     if (!Types.ObjectId.isValid(passengerId)) {
@@ -408,6 +431,62 @@ export class AdminPassengersService {
         resolved: resolvedReports,
         closed: closedReports,
       },
+    };
+  }
+
+  async approvePassengerDocument(documentId: string, body: PassengerDocumentApprovalDto) {
+    const document = await this.passengerDocumentRepository.findOne({
+      _id: new Types.ObjectId(documentId),
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const updateData = {
+      status: DocumentStatus.VERIFIED,
+      verifiedAt: new Date(),
+      verificationNotes: body.verificationNotes,
+      adminNotes: body.adminNotes,
+    };
+
+    const updatedDocument = await this.passengerDocumentRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(documentId) },
+      updateData,
+    );
+
+    return {
+      success: true,
+      message: 'Passenger document approved successfully',
+      data: updatedDocument,
+    };
+  }
+
+  async rejectPassengerDocument(documentId: string, body: PassengerDocumentApprovalDto) {
+    const document = await this.passengerDocumentRepository.findOne({
+      _id: new Types.ObjectId(documentId),
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const updateData = {
+      status: DocumentStatus.REJECTED,
+      rejectedAt: new Date(),
+      rejectionReason: body.rejectionReason,
+      adminNotes: body.adminNotes,
+    };
+
+    const updatedDocument = await this.passengerDocumentRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(documentId) },
+      updateData,
+    );
+
+    return {
+      success: true,
+      message: 'Passenger document rejected successfully',
+      data: updatedDocument,
     };
   }
 }

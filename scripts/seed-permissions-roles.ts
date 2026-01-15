@@ -8,241 +8,93 @@ config({ path: resolve(__dirname, '../.env') });
 // MongoDB connection URI from environment variables
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/urcab';
 
-// Define all permissions
+// Define all permissions - one permission per menu item for dashboard visibility
 const PERMISSIONS = [
-  // DRIVERS Category
-  { name: 'drivers.view', description: 'View list of drivers', category: 'drivers' },
-  { name: 'drivers.view.details', description: 'View detailed driver information', category: 'drivers' },
-  { name: 'drivers.create', description: 'Create new driver accounts', category: 'drivers' },
-  { name: 'drivers.update', description: 'Update driver information', category: 'drivers' },
-  { name: 'drivers.delete', description: 'Delete/deactivate drivers', category: 'drivers' },
-  { name: 'drivers.verify', description: 'Verify driver accounts', category: 'drivers' },
-  { name: 'drivers.documents.view', description: 'View driver documents', category: 'drivers' },
-  { name: 'drivers.documents.approve', description: 'Approve driver documents', category: 'drivers' },
-  { name: 'drivers.documents.reject', description: 'Reject driver documents', category: 'drivers' },
-  { name: 'drivers.vehicles.view', description: 'View driver vehicles', category: 'drivers' },
-  { name: 'drivers.vehicles.approve', description: 'Approve driver vehicles', category: 'drivers' },
-  { name: 'drivers.vehicles.reject', description: 'Reject driver vehicles', category: 'drivers' },
-  { name: 'drivers.vehicles.documents.view', description: 'View vehicle documents', category: 'drivers' },
-  { name: 'drivers.vehicles.documents.approve', description: 'Approve vehicle documents', category: 'drivers' },
-  { name: 'drivers.vehicles.documents.reject', description: 'Reject vehicle documents', category: 'drivers' },
-  { name: 'drivers.evp.create', description: 'Create Electronic Verification Permits', category: 'drivers' },
-  { name: 'drivers.evp.view', description: 'View EVP details', category: 'drivers' },
-  { name: 'drivers.evp.revoke', description: 'Revoke EVPs', category: 'drivers' },
-  { name: 'drivers.rides.view', description: 'View driver ride history', category: 'drivers' },
-  { name: 'drivers.reports.view', description: 'View driver-related issue reports', category: 'drivers' },
-  { name: 'drivers.reports.assign', description: 'Assign reports to admins', category: 'drivers' },
-  { name: 'drivers.reports.resolve', description: 'Resolve issue reports', category: 'drivers' },
-  { name: 'drivers.dashboard.view', description: 'View driver management dashboard stats', category: 'drivers' },
-  { name: 'drivers.pending.view', description: 'View pending driver documents/tasks', category: 'drivers' },
-
-  // PASSENGERS Category
-  { name: 'passengers.view', description: 'View list of passengers', category: 'passengers' },
-  { name: 'passengers.view.details', description: 'View detailed passenger information', category: 'passengers' },
-  { name: 'passengers.update', description: 'Update passenger information', category: 'passengers' },
-  { name: 'passengers.activate', description: 'Activate passenger accounts', category: 'passengers' },
-  { name: 'passengers.deactivate', description: 'Deactivate passenger accounts', category: 'passengers' },
-  { name: 'passengers.documents.view', description: 'View passenger documents', category: 'passengers' },
-  { name: 'passengers.rides.view', description: 'View passenger ride history', category: 'passengers' },
-  { name: 'passengers.reports.view', description: 'View passenger-related issue reports', category: 'passengers' },
-  { name: 'passengers.reports.assign', description: 'Assign reports to admins', category: 'passengers' },
-  { name: 'passengers.reports.resolve', description: 'Resolve issue reports', category: 'passengers' },
-  { name: 'passengers.dashboard.view', description: 'View passenger management dashboard stats', category: 'passengers' },
-
-  // RIDES Category
-  { name: 'rides.view', description: 'View all rides', category: 'rides' },
-  { name: 'rides.view.details', description: 'View detailed ride information', category: 'rides' },
-  { name: 'rides.cancel', description: 'Cancel rides (admin override)', category: 'rides' },
-  { name: 'rides.refund', description: 'Process ride refunds', category: 'rides' },
-  { name: 'rides.analytics.view', description: 'View ride analytics and statistics', category: 'rides' },
-
-  // VEHICLE_TYPES Category
-  { name: 'vehicleTypes.view', description: 'View vehicle types', category: 'vehicleTypes' },
-  { name: 'vehicleTypes.create', description: 'Create new vehicle types', category: 'vehicleTypes' },
-  { name: 'vehicleTypes.update', description: 'Update vehicle types', category: 'vehicleTypes' },
-  { name: 'vehicleTypes.delete', description: 'Delete vehicle types', category: 'vehicleTypes' },
-  { name: 'vehicleTypes.pricing.view', description: 'View pricing configurations', category: 'vehicleTypes' },
-  { name: 'vehicleTypes.pricing.update', description: 'Update pricing periods and rates', category: 'vehicleTypes' },
-
-  // PRICING_ZONES Category
-  { name: 'pricingZones.view', description: 'View pricing zones', category: 'pricingZones' },
-  { name: 'pricingZones.create', description: 'Create new pricing zones', category: 'pricingZones' },
-  { name: 'pricingZones.update', description: 'Update pricing zones', category: 'pricingZones' },
-  { name: 'pricingZones.delete', description: 'Delete pricing zones', category: 'pricingZones' },
-  { name: 'pricingZones.location.search', description: 'Search locations for zone creation', category: 'pricingZones' },
-
-  // REPORTS Category
-  { name: 'reports.view', description: 'View all issue reports', category: 'reports' },
-  { name: 'reports.view.details', description: 'View detailed report information', category: 'reports' },
-  { name: 'reports.assign', description: 'Assign reports to admins', category: 'reports' },
-  { name: 'reports.resolve', description: 'Resolve issue reports', category: 'reports' },
-  { name: 'reports.delete', description: 'Delete issue reports', category: 'reports' },
-  { name: 'reports.analytics.view', description: 'View report analytics', category: 'reports' },
-
-  // USERS Category (Super Admin Only)
-  { name: 'users.view', description: 'View admin users', category: 'users' },
-  { name: 'users.create', description: 'Create new admin users', category: 'users' },
-  { name: 'users.update', description: 'Update admin users', category: 'users' },
-  { name: 'users.delete', description: 'Delete/deactivate admin users', category: 'users' },
-  { name: 'users.roles.assign', description: 'Assign roles to users', category: 'users' },
-
-  // ROLES Category (Super Admin Only)
-  { name: 'roles.view', description: 'View roles and permissions', category: 'roles' },
-  { name: 'roles.create', description: 'Create new roles', category: 'roles' },
-  { name: 'roles.update', description: 'Update roles and permissions', category: 'roles' },
-  { name: 'roles.delete', description: 'Delete roles', category: 'roles' },
-  { name: 'roles.permissions.manage', description: 'Manage permission assignments', category: 'roles' },
-
-  // SETTINGS Category
-  { name: 'settings.view', description: 'View system settings', category: 'settings' },
-  { name: 'settings.update', description: 'Update system settings', category: 'settings' },
-  { name: 'settings.pricing.manage', description: 'Manage global pricing settings', category: 'settings' },
-  { name: 'settings.notifications.manage', description: 'Manage notification settings', category: 'settings' },
-
-  // DASHBOARD Category
-  { name: 'dashboard.view', description: 'View main dashboard', category: 'dashboard' },
-  { name: 'dashboard.stats.view', description: 'View statistics and metrics', category: 'dashboard' },
-  { name: 'dashboard.analytics.view', description: 'View analytics reports', category: 'dashboard' },
-  { name: 'dashboard.export', description: 'Export dashboard data', category: 'dashboard' },
-
-  // SYSTEM Category (Super Admin Only)
-  { name: 'system.settings.manage', description: 'Manage system-wide settings', category: 'system' },
-  { name: 'system.logs.view', description: 'View system logs', category: 'system' },
-  { name: 'system.backup.manage', description: 'Manage system backups', category: 'system' },
-  { name: 'system.maintenance.manage', description: 'Manage system maintenance mode', category: 'system' },
+  { name: 'menu.dashboard', description: 'Access to Dashboard menu', category: 'menu' },
+  { name: 'menu.roles', description: 'Access to Roles Management menu', category: 'menu' },
+  { name: 'menu.portalUsers', description: 'Access to Portal Users menu', category: 'menu' },
+  { name: 'menu.driverManagement', description: 'Access to Driver Management menu', category: 'menu' },
+  { name: 'menu.passengerManagement', description: 'Access to Passenger Management menu', category: 'menu' },
+  { name: 'menu.rideManagement', description: 'Access to Ride Management menu', category: 'menu' },
+  { name: 'menu.evp', description: 'Access to EVP menu', category: 'menu' },
+  { name: 'menu.zones', description: 'Access to Zones menu', category: 'menu' },
+  { name: 'menu.pricing', description: 'Access to Pricing menu', category: 'menu' },
+  {
+    name: 'menu.driverSubscriptionTransactions',
+    description: 'Access to Driver Subscription Transactions menu',
+    category: 'menu',
+  },
+  { name: 'menu.subscriptionPlans', description: 'Access to Subscription Plans menu', category: 'menu' },
+  { name: 'menu.passengerTransactions', description: 'Access to Passenger Transactions menu', category: 'menu' },
+  { name: 'menu.reports', description: 'Access to Reports menu', category: 'menu' },
+  { name: 'menu.faq', description: 'Access to FAQ menu', category: 'menu' },
+  { name: 'menu.privacyPolicy', description: 'Access to Privacy & Policy menu', category: 'menu' },
+  { name: 'menu.termsConditions', description: 'Access to Terms & Conditions menu', category: 'menu' },
+  { name: 'menu.settings', description: 'Access to Settings menu', category: 'menu' },
 ];
 
 // Define default roles with their permissions
 const DEFAULT_ROLES = [
   {
     name: 'Super Admin',
-    description: 'Full system access with all permissions',
+    description: 'Full system access with all menu permissions',
     isSystemRole: true,
     permissions: [], // Will be populated with all permission IDs
   },
   {
     name: 'Fleet Manager',
-    description: 'Manages drivers, vehicles, and rides',
+    description: 'Manages drivers, vehicles, rides, and EVP',
     isSystemRole: false,
-    permissions: [
-      'drivers.view',
-      'drivers.view.details',
-      'drivers.update',
-      'drivers.verify',
-      'drivers.documents.view',
-      'drivers.documents.approve',
-      'drivers.documents.reject',
-      'drivers.vehicles.view',
-      'drivers.vehicles.approve',
-      'drivers.vehicles.reject',
-      'drivers.vehicles.documents.view',
-      'drivers.vehicles.documents.approve',
-      'drivers.vehicles.documents.reject',
-      'drivers.evp.create',
-      'drivers.evp.view',
-      'drivers.evp.revoke',
-      'drivers.rides.view',
-      'drivers.reports.view',
-      'drivers.reports.assign',
-      'drivers.reports.resolve',
-      'drivers.dashboard.view',
-      'drivers.pending.view',
-      'rides.view',
-      'rides.view.details',
-      'rides.analytics.view',
-      'reports.view',
-      'reports.view.details',
-      'reports.assign',
-      'reports.resolve',
-      'dashboard.view',
-      'dashboard.stats.view',
-      'dashboard.analytics.view',
-    ],
+    permissions: ['menu.dashboard', 'menu.driverManagement', 'menu.rideManagement', 'menu.evp', 'menu.reports'],
   },
   {
     name: 'Support Admin',
     description: 'Handles passenger support and issue resolution',
     isSystemRole: false,
-    permissions: [
-      'passengers.view',
-      'passengers.view.details',
-      'passengers.update',
-      'passengers.activate',
-      'passengers.deactivate',
-      'passengers.documents.view',
-      'passengers.rides.view',
-      'passengers.reports.view',
-      'passengers.reports.assign',
-      'passengers.reports.resolve',
-      'passengers.dashboard.view',
-      'drivers.view',
-      'drivers.view.details',
-      'rides.view',
-      'rides.view.details',
-      'reports.view',
-      'reports.view.details',
-      'reports.assign',
-      'reports.resolve',
-      'dashboard.view',
-    ],
+    permissions: ['menu.dashboard', 'menu.passengerManagement', 'menu.rideManagement', 'menu.reports'],
   },
   {
     name: 'Finance Admin',
-    description: 'Manages financial aspects and analytics',
+    description: 'Manages financial aspects, transactions, and analytics',
     isSystemRole: false,
     permissions: [
-      'rides.view',
-      'rides.view.details',
-      'rides.refund',
-      'rides.analytics.view',
-      'passengers.view',
-      'drivers.view',
-      'dashboard.view',
-      'dashboard.stats.view',
-      'dashboard.analytics.view',
-      'dashboard.export',
-      'reports.view',
-      'reports.view.details',
+      'menu.dashboard',
+      'menu.rideManagement',
+      'menu.driverSubscriptionTransactions',
+      'menu.subscriptionPlans',
+      'menu.passengerTransactions',
+      'menu.reports',
     ],
   },
   {
     name: 'Document Verification Specialist',
-    description: 'Specializes in document verification',
+    description: 'Specializes in document verification and EVP management',
     isSystemRole: false,
-    permissions: [
-      'drivers.documents.view',
-      'drivers.documents.approve',
-      'drivers.documents.reject',
-      'drivers.vehicles.documents.view',
-      'drivers.vehicles.documents.approve',
-      'drivers.vehicles.documents.reject',
-      'passengers.documents.view',
-      'drivers.evp.create',
-      'drivers.evp.view',
-      'drivers.evp.revoke',
-      'drivers.pending.view',
-      'drivers.view',
-      'drivers.view.details',
-    ],
+    permissions: ['menu.dashboard', 'menu.driverManagement', 'menu.evp'],
   },
   {
     name: 'Read-Only Analyst',
     description: 'View-only access for analytics and reporting',
     isSystemRole: false,
     permissions: [
-      'drivers.view',
-      'drivers.view.details',
-      'passengers.view',
-      'passengers.view.details',
-      'rides.view',
-      'rides.view.details',
-      'reports.view',
-      'reports.view.details',
-      'dashboard.view',
-      'dashboard.stats.view',
-      'dashboard.analytics.view',
-      'dashboard.export',
+      'menu.dashboard',
+      'menu.driverManagement',
+      'menu.passengerManagement',
+      'menu.rideManagement',
+      'menu.reports',
     ],
+  },
+  {
+    name: 'Pricing Manager',
+    description: 'Manages zones and pricing configurations',
+    isSystemRole: false,
+    permissions: ['menu.dashboard', 'menu.zones', 'menu.pricing'],
+  },
+  {
+    name: 'Content Manager',
+    description: 'Manages FAQ, Privacy Policy, and Terms & Conditions',
+    isSystemRole: false,
+    permissions: ['menu.dashboard', 'menu.faq', 'menu.privacyPolicy', 'menu.termsConditions'],
   },
 ];
 
@@ -264,9 +116,7 @@ async function seedPermissionsAndRoles() {
     const existingRolesCount = await rolesCollection.countDocuments();
 
     if (existingPermissionsCount > 0 || existingRolesCount > 0) {
-      console.log(
-        `${existingPermissionsCount} permissions and ${existingRolesCount} roles already exist in database`,
-      );
+      console.log(`${existingPermissionsCount} permissions and ${existingRolesCount} roles already exist in database`);
       const shouldOverwrite = process.argv.includes('--overwrite');
 
       if (!shouldOverwrite) {
@@ -345,4 +195,3 @@ async function seedPermissionsAndRoles() {
 
 // Run the seed function
 seedPermissionsAndRoles().catch(console.error);
-

@@ -17,7 +17,6 @@ import {
   RevokeDriverEvpDto,
   DriverEvpResponseDto,
   VehicleRejectionDto,
-  SetVehicleEvpPriceDto,
   CreateVehicleEvpDto,
   VehicleEvpResponseDto,
   GetEvpEligibleDriversDto,
@@ -375,16 +374,6 @@ export class AdminDriversController {
   }
 
   // Vehicle EVP Management APIs
-  @Patch('vehicles/:vehicleId/evp/price')
-  @ApiOperation({ summary: 'Set EVP price for a vehicle (after all documents are approved)' })
-  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @ApiResponse({ status: 200, description: 'EVP price set successfully' })
-  @ApiResponse({ status: 400, description: 'All vehicle documents must be verified' })
-  @ApiResponse({ status: 404, description: 'Vehicle not found' })
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  async setVehicleEvpPrice(@Param('vehicleId') vehicleId: string, @Body() setPriceDto: SetVehicleEvpPriceDto) {
-    return this.adminDriversService.setVehicleEvpPrice(vehicleId, setPriceDto);
-  }
 
   @Post('vehicles/:vehicleId/evp')
   @ApiOperation({ summary: 'Generate an EVP for a vehicle (after payment is confirmed)' })

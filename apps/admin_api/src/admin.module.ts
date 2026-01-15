@@ -19,6 +19,7 @@ import { PassengerTransactionsModule } from './passenger-transactions/passenger-
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
 import { FaqsModule } from './faqs/faqs.module';
+import { UserProfileModule } from './user-profile/user-profile.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { FaqsModule } from './faqs/faqs.module';
     DashboardModule,
     ReportsModule,
     FaqsModule,
+    UserProfileModule,
   ],
 
   // providers: [AdminService],
