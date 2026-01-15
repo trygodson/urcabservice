@@ -1057,14 +1057,33 @@ export class AdminDriversService {
     // Determine if all required documents are complete
     const hasCompleteDocumentation = missingDocs.length === 0 && unverifiedDocs.length === 0;
 
-    // Update vehicle's hasCompleteDocumentation field
-    await this.vehicleRepository.findOneAndUpdate(
-      { _id: vehicleId },
-      {
-        hasCompleteDocumentation,
-        lastDocumentVerificationCheck: new Date(),
-      },
-    );
+    // If documentation is complete, automatically set EVP price and period from settings
+    let updateData: any = {
+      hasCompleteDocumentation,
+      lastDocumentVerificationCheck: new Date(),
+    };
+
+    if (hasCompleteDocumentation) {
+      // Get global EVP price and period from settings
+      try {
+        const settings = await this.settingsModel.findOne().exec();
+        if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
+          updateData.evpPrice = settings.globalVehicleEvpPrice;
+          updateData.evpPriceSet = true;
+
+          // Set EVP period if available in settings
+          if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
+            updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+          }
+        }
+      } catch (error) {
+        // If settings are not available, skip auto-setting EVP price
+        console.error('Failed to get global EVP price from settings:', error);
+      }
+    }
+
+    // Update vehicle's hasCompleteDocumentation field and EVP price/period if applicable
+    await this.vehicleRepository.findOneAndUpdate({ _id: vehicleId }, updateData);
   }
 
   private readonly DOCUMENT_REQUIREMENTS: any[] = [

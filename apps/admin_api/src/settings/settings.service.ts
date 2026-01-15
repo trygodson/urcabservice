@@ -22,6 +22,7 @@ export class SettingsService {
         privacyPolicy: '',
         termsAndConditions: '',
         globalVehicleEvpPrice: 0,
+        globalVehicleEvpPeriod: 365, // Default to 1 year
       });
       this.logger.log('Created initial settings document');
     }
@@ -37,6 +38,7 @@ export class SettingsService {
       privacyPolicy: settings.privacyPolicy || '',
       termsAndConditions: settings.termsAndConditions || '',
       globalVehicleEvpPrice: settings.globalVehicleEvpPrice,
+      globalVehicleEvpPeriod: settings.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: settings.privacyPolicyLastUpdated,
       termsAndConditionsLastUpdated: settings.termsAndConditionsLastUpdated,
       evpPriceLastUpdated: settings.evpPriceLastUpdated,
@@ -68,6 +70,7 @@ export class SettingsService {
       privacyPolicy: updated.privacyPolicy,
       termsAndConditions: updated.termsAndConditions,
       globalVehicleEvpPrice: updated.globalVehicleEvpPrice,
+      globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: updated.privacyPolicyLastUpdated,
       termsAndConditionsLastUpdated: updated.termsAndConditionsLastUpdated,
       evpPriceLastUpdated: updated.evpPriceLastUpdated,
@@ -99,6 +102,7 @@ export class SettingsService {
       privacyPolicy: updated.privacyPolicy,
       termsAndConditions: updated.termsAndConditions,
       globalVehicleEvpPrice: updated.globalVehicleEvpPrice,
+      globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: updated.privacyPolicyLastUpdated,
       termsAndConditionsLastUpdated: updated.termsAndConditionsLastUpdated,
       evpPriceLastUpdated: updated.evpPriceLastUpdated,
@@ -114,6 +118,7 @@ export class SettingsService {
       { _id: settings._id },
       {
         globalVehicleEvpPrice: updateDto.globalVehicleEvpPrice,
+        globalVehicleEvpPeriod: updateDto.globalVehicleEvpPeriod,
         evpPriceLastUpdated: new Date(),
       },
       { new: true },
@@ -123,13 +128,16 @@ export class SettingsService {
       throw new NotFoundException('Settings not found');
     }
 
-    this.logger.log(`Global EVP price updated to ${updateDto.globalVehicleEvpPrice}`);
+    this.logger.log(
+      `Global EVP price updated to ${updateDto.globalVehicleEvpPrice} with period of ${updateDto.globalVehicleEvpPeriod} days`,
+    );
 
     return {
       _id: updated._id.toString(),
       privacyPolicy: updated.privacyPolicy,
       termsAndConditions: updated.termsAndConditions,
       globalVehicleEvpPrice: updated.globalVehicleEvpPrice,
+      globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: updated.privacyPolicyLastUpdated,
       termsAndConditionsLastUpdated: updated.termsAndConditionsLastUpdated,
       evpPriceLastUpdated: updated.evpPriceLastUpdated,
@@ -146,4 +154,3 @@ export class SettingsService {
     return settings.globalVehicleEvpPrice || 0;
   }
 }
-

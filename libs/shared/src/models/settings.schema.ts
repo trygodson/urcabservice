@@ -29,6 +29,14 @@ export class Settings extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: Number,
+    required: false,
+    min: 1,
+  })
+  globalVehicleEvpPeriod?: number; // Global EVP period in days (validity period)
+
+  @ApiProperty()
+  @Prop({
     type: Date,
     required: false,
   })

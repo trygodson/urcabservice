@@ -248,6 +248,14 @@ export class Vehicle extends AbstractDocument {
   })
   evpAdminGeneratedPending?: boolean; // Whether EVP admin generated is pending
 
+  @ApiProperty()
+  @Prop({
+    type: Number,
+    required: false,
+    min: 1,
+  })
+  evpPeriod?: number; // EVP validity period in days
+
   createdAt: Date;
   updatedAt: Date;
 }

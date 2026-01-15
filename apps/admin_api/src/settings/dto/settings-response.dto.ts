@@ -14,6 +14,9 @@ export class SettingsResponseDto {
   globalVehicleEvpPrice?: number;
 
   @ApiProperty({ required: false })
+  globalVehicleEvpPeriod?: number;
+
+  @ApiProperty({ required: false })
   privacyPolicyLastUpdated?: Date;
 
   @ApiProperty({ required: false })
