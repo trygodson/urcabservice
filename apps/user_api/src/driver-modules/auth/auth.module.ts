@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthNotificationListener } from './auth-notification.listener';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ConfigModule, ConfigService } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -21,6 +22,7 @@ import {
   Wallet,
   WalletRepository,
   WalletSchema,
+  NotificationsModule,
 } from '@urcab-workspace/shared';
 import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 
@@ -39,6 +41,7 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
     }),
     LoggerModule,
     DatabaseModule,
+    NotificationsModule,
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
@@ -51,7 +54,14 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
     // forwardRef(() => WalletsModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, WalletRepository, UserRepository, DriverLocationRepository, RefreshTokenRepository],
+  providers: [
+    AuthService,
+    AuthNotificationListener,
+    WalletRepository,
+    UserRepository,
+    DriverLocationRepository,
+    RefreshTokenRepository,
+  ],
   exports: [AuthService],
 })
 export class DriverAuthModule {}

@@ -39,13 +39,10 @@ import { UserProfileModule } from './user-profile/user-profile.module';
       },
       inject: [ConfigService],
     }),
-
     DatabaseModule,
     LoggerModule,
-
     HttpModule,
     ScheduleModule.forRoot(),
-
     AdminAuthModule,
     AdminDriversModule,
     VehicleTypesModule,

@@ -57,9 +57,9 @@ export class EmailNotificationService {
         user: smtpUser,
         pass: smtpPassword,
       },
-      tls: {
-        rejectUnauthorized: false, // For development, set to true in production with proper certificates
-      },
+      // tls: {
+      //   rejectUnauthorized: false, // For development, set to true in production with proper certificates
+      // },
     });
 
     // Verify connection

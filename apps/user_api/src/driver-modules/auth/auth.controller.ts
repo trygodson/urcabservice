@@ -71,11 +71,11 @@ export class AuthController {
   //   return await this.authService.selectCountry(user, body.countryId);
   // }
 
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Post('forgotPassword')
-  async forgotPassword(@Body() body: ForgotPasswordDto) {
-    return await this.authService.forgotPassword(body.email);
-  }
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Post('forgotPassword')
+    async forgotPassword(@Body() body: ForgotPasswordDto) {
+      return await this.authService.forgotPassword(body.email);
+    }
 
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('googleSignIn')

@@ -1129,18 +1129,18 @@ export class RidesService {
           }
 
           // Check if driver has a valid EVP
-          const driverEvp = await this.driverEvpRepository.findDriverActiveEvp(driverLocation.driverId);
-          if (!driverEvp) {
-            this.logger.warn(`Driver ${driverLocation.driverId} has no active EVP - skipping notification`);
-            continue;
-          }
+          // const driverEvp = await this.driverEvpRepository.findDriverActiveEvp(driverLocation.driverId);
+          // if (!driverEvp) {
+          //   this.logger.warn(`Driver ${driverLocation.driverId} has no active EVP - skipping notification`);
+          //   continue;
+          // }
 
-          // Check if EVP is valid (not expired)
-          const now = new Date();
-          if (driverEvp.endDate < now) {
-            this.logger.warn(`Driver ${driverLocation.driverId} has an expired EVP - skipping notification`);
-            continue;
-          }
+          // // Check if EVP is valid (not expired)
+          // const now = new Date();
+          // if (driverEvp.endDate < now) {
+          //   this.logger.warn(`Driver ${driverLocation.driverId} has an expired EVP - skipping notification`);
+          //   continue;
+          // }
 
           // Additional validation from original function
           const selectedDriver = await this.validateSelectedDriver(

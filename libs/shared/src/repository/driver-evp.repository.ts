@@ -15,11 +15,11 @@ export class DriverEvpRepository extends AbstractRepository<DriverEvpDocument> {
     super(driverEvpModel);
   }
 
-  async findDriverActiveEvp(driverId: Types.ObjectId | string): Promise<DriverEvpDocument | null> {
-    const objectId = typeof driverId === 'string' ? new Types.ObjectId(driverId) : driverId;
+  async findDriverActiveEvp(vehicleId: Types.ObjectId | string): Promise<DriverEvpDocument | null> {
+    const objectId = typeof vehicleId === 'string' ? new Types.ObjectId(vehicleId) : vehicleId;
 
     return this.findOne({
-      driverId: objectId,
+      vehicleId: objectId,
       isActive: true,
       endDate: { $gt: new Date() }, // Not expired
       revokedAt: { $exists: false }, // Not revoked
@@ -27,16 +27,16 @@ export class DriverEvpRepository extends AbstractRepository<DriverEvpDocument> {
   }
 
   async findDriverEvps(
-    driverId: Types.ObjectId | string,
+    vehicleId: Types.ObjectId | string,
     page: number = 1,
     limit: number = 10,
   ): Promise<{ evps: DriverEvpDocument[]; total: number }> {
-    const objectId = typeof driverId === 'string' ? new Types.ObjectId(driverId) : driverId;
+    const objectId = typeof vehicleId === 'string' ? new Types.ObjectId(vehicleId) : vehicleId;
     const skip = (page - 1) * limit;
 
     const [evps, total] = await Promise.all([
-      this.model.find({ driverId: objectId }).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
-      this.model.countDocuments({ driverId: objectId }).exec(),
+      this.model.find({ vehicleId: objectId }).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.model.countDocuments({ vehicleId: objectId }).exec(),
     ]);
 
     return { evps, total };

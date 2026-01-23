@@ -253,6 +253,35 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           },
           {
             $lookup: {
+              from: 'vehicleEvp',
+              localField: 'vehicle._id',
+              foreignField: 'vehicleId',
+              as: 'vehicleEvp',
+              pipeline: [
+                {
+                  $match: {
+                    isActive: true,
+                    endDate: { $gt: now }, // Not expired
+                    revokedAt: { $exists: false }, // Not revoked
+                  },
+                },
+                {
+                  $limit: 1, // Only need one active EVP
+                },
+                {
+                  $project: {
+                    _id: 1,
+                    certificateNumber: 1,
+                    startDate: 1,
+                    endDate: 1,
+                    isActive: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $lookup: {
               from: 'subscriptions',
               localField: 'driverId',
               foreignField: 'driverId',
@@ -294,10 +323,15 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                 vehicleCount: { $size: '$vehicle' },
                 requestedVehicleType: new Types.ObjectId(vehicleTypeId),
                 hasSubscription: { $gt: [{ $size: '$subscriptions' }, 0] },
+                hasActiveEvp: { $gt: [{ $size: '$vehicleEvp' }, 0] },
               },
               // Get the active subscription (first one from sorted lookup)
               activeSubscription: {
                 $arrayElemAt: ['$subscriptions', 0],
+              },
+              // Get the active EVP (first one from lookup)
+              activeVehicleEvp: {
+                $arrayElemAt: ['$vehicleEvp', 0],
               },
             },
           },
@@ -368,6 +402,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
               'driver.0': { $exists: true }, // Ensure driver exists and is verified
               'vehicle.0': { $exists: true }, // Ensure vehicle exists and is verified
               'vehicleTypeInfo.0': { $exists: true }, // Ensure vehicle type info exists
+              'vehicleEvp.0': { $exists: true }, // Ensure vehicle has an active EVP
               canAcceptRides: true, // Only include drivers who can accept rides based on subscription
             },
           },

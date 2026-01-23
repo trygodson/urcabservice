@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcryptjs';
 
 import { OAuth2Client } from 'google-auth-library';
@@ -51,6 +52,7 @@ export class AuthService {
     // @Inject(forwardRef(() => WalletsService))
     private readonly walletRepository: WalletRepository,
     private readonly configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private async createWallet(user: User) {
@@ -91,7 +93,16 @@ export class AuthService {
         type: dd?.type,
         expiry: dd.emailConfirmationExpiryDate,
       });
-      await this.userRepository.create(dd);
+      const createdUser = await this.userRepository.create(dd);
+
+      // Emit user registered event
+      this.eventEmitter.emit('auth.user_registered', {
+        userId: createdUser._id.toString(),
+        email: dd.email,
+        fullName: dd.fullName || '',
+        userType: 'driver',
+        verificationToken,
+      });
 
       return {
         success: true,
@@ -140,6 +151,16 @@ export class AuthService {
             type: updateRepo.type,
             expiry: updateRepo.emailConfirmationExpiryDate,
           });
+
+          // Emit email verification requested event
+          this.eventEmitter.emit('auth.email_verification_requested', {
+            userId: updateRepo._id.toString(),
+            email: updateRepo.email,
+            fullName: updateRepo.fullName || '',
+            otpCode: otp,
+            verificationToken: verification_token,
+          });
+
           return {
             success: true,
             messsage: 'Account Unverified OTP Sent',
@@ -252,20 +273,23 @@ export class AuthService {
 
     const { otp, expiry } = GenerateOtp();
 
-    await this.userRepository.findOneAndUpdate(
-      { email },
-      {
-        resetPasswordOtp: otp,
-        resetPasswordOtpExpiry: expiry,
-      },
-    );
+  const updatedUser = await this.userRepository.findOneAndUpdate(
+    { email },
+    {
+      resetPasswordOtp: otp,
+      resetPasswordOtpExpiry: expiry,
+    },
+  );
 
-    // Send OTP to email (implement your mail sending logic)
-    // await this.mailService.sendMail({
-    //   to: email,
-    //   subject: 'Your Password Reset OTP',
-    //   text: `Your OTP for password reset is: ${otp}`,
-    // });
+    if (updatedUser) {
+      // Emit password reset requested event
+      this.eventEmitter.emit('auth.password_reset_requested', {
+        userId: updatedUser._id.toString(),
+        email: updatedUser.email,
+        fullName: updatedUser.fullName || '',
+        otpCode: otp,
+      });
+    }
 
     return { success: true, message: 'OTP sent to email' };
   }
@@ -390,6 +414,13 @@ export class AuthService {
             const accessToken = await this.generateAccessTokens(res);
 
             const dd = await this.userRepository.findOneAndUpdate({ email: res.email }, { isEmailConfirmed: true });
+
+            // Emit email verified event
+            this.eventEmitter.emit('auth.email_verified', {
+              userId: dd._id.toString(),
+              email: dd.email,
+              fullName: dd.fullName || '',
+            });
 
             return {
               success: true,

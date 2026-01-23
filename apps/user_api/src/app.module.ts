@@ -34,7 +34,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
             privateKey: configService.getOrThrow('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
             projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
           },
-          databaseURL: configService.getOrThrow('FIREBASE_DATABASE_URL'),
+          // databaseURL: configService.getOrThrow('FIREBASE_DATABASE_URL'),
           projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
         };
       },
