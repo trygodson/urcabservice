@@ -218,6 +218,7 @@ export class RideGateway implements OnGatewayConnection, OnGatewayDisconnect {
           timestamp: Date.now(),
         });
         this.logger.log(`Sent driver location update to passenger ${passengerId}`);
+        // this.logger.log(JSON.stringify(locationData));
         return true;
       } else {
         this.logger.warn(`Passenger ${passengerId} is not connected via WebSocket`);
