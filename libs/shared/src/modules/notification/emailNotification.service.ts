@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { RideStatus } from '@urcab-workspace/shared/enums';
 
 export interface EmailOptions {
@@ -33,74 +34,108 @@ export interface RideEmailData {
 @Injectable()
 export class EmailNotificationService {
   private readonly logger = new Logger(EmailNotificationService.name);
-  private transporter: nodemailer.Transporter;
+  private readonly brevoApiKey: string;
+  private readonly brevoApiUrl = 'https://api.brevo.com/v3/smtp/email';
+  private readonly senderEmail: string;
+  private readonly senderName: string;
 
-  constructor(private readonly configService: ConfigService) {
-    this.initializeTransporter();
-  }
+  constructor(private readonly configService: ConfigService, private readonly httpService: HttpService) {
+    this.brevoApiKey = this.configService.get<string>('BREVO_API_KEY') || '';
+    this.senderEmail =
+      this.configService.get<string>('BREVO_SENDER_EMAIL') || this.configService.get<string>('SMTP_FROM') || '';
+    this.senderName =
+      this.configService.get<string>('BREVO_SENDER_NAME') ||
+      this.configService.get<string>('SMTP_FROM_NAME') ||
+      'UrCab Service';
 
-  private initializeTransporter() {
-    const smtpServer = this.configService.get<string>('SMTP_SERVER');
-    const smtpPort = this.configService.get<number>('SMTP_PORT') || 587;
-    const smtpUser = this.configService.get<string>('SMTP_USER');
-    const smtpPassword = this.configService.get<string>('SMTP_PASSWORD');
-
-    if (!smtpPassword) {
-      this.logger.warn('SMTP_PASSWORD not configured. Email notifications will not work.');
+    if (!this.brevoApiKey) {
+      this.logger.warn('BREVO_API_KEY not configured. Email notifications will not work.');
+    } else {
+      this.logger.log('Brevo email service initialized');
     }
-
-    this.transporter = nodemailer.createTransport({
-      host: smtpServer,
-      port: smtpPort,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-      },
-      // tls: {
-      //   rejectUnauthorized: false, // For development, set to true in production with proper certificates
-      // },
-    });
-
-    // Verify connection
-    this.transporter.verify((error, success) => {
-      if (error) {
-        this.logger.error('SMTP connection verification failed:', error);
-      } else {
-        this.logger.log('SMTP server is ready to send emails');
-      }
-    });
   }
 
   /**
-   * Send a generic email
+   * Send a generic email using Brevo API
    */
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      if (!this.transporter) {
-        this.logger.error('SMTP transporter not initialized');
+      if (!this.brevoApiKey) {
+        this.logger.error('Brevo API key not configured');
         return false;
       }
 
-      const smtpFrom = this.configService.get<string>('SMTP_FROM') || this.configService.get<string>('SMTP_USER');
-      const smtpFromName = this.configService.get<string>('SMTP_FROM_NAME') || 'UrCab Service';
+      // Convert recipients to Brevo format
+      const toRecipients = Array.isArray(options.to)
+        ? options.to.map((email) => ({ email, name: 'John Doe' }))
+        : [{ email: options.to, name: 'John Doe' }];
 
-      const mailOptions = {
-        from: `"${smtpFromName}" <${smtpFrom}>`,
-        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      // // Convert CC recipients if provided
+      // const ccRecipients = options.cc
+      //   ? Array.isArray(options.cc)
+      //     ? options.cc.map((email) => ({ email }))
+      //     : [{ email: options.cc }]
+      //   : undefined;
+
+      // // Convert BCC recipients if provided
+      // const bccRecipients = options.bcc
+      //   ? Array.isArray(options.bcc)
+      //     ? options.bcc.map((email) => ({ email }))
+      //     : [{ email: options.bcc }]
+      //   : undefined;
+
+      // Prepare Brevo API payload
+      const payload: any = {
+        sender: {
+          email: this.senderEmail,
+          name: this.senderName,
+        },
+        to: toRecipients,
         subject: options.subject,
-        text: options.text,
-        html: options.html,
-        cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(', ') : options.cc) : undefined,
-        bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(', ') : options.bcc) : undefined,
-        attachments: options.attachments,
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email sent successfully: ${info.messageId}`);
+      // Add HTML content if provided, otherwise use text
+      if (options.html) {
+        payload.htmlContent = options.html;
+      } else if (options.text) {
+        // Convert plain text to basic HTML
+        // const escapedText = options.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapedText.replace(
+        //   /\n/g,
+        //   '<br>',
+        // )}</pre></body></html>`;
+
+        payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${options.text}</pre></body></html>`;
+      }
+
+      // Add CC if provided
+      // if (ccRecipients && ccRecipients.length > 0) {
+      //   payload.cc = ccRecipients;
+      // }
+
+      // // Add BCC if provided
+      // if (bccRecipients && bccRecipients.length > 0) {
+      //   payload.bcc = bccRecipients;
+      // }
+
+      // console.log(payload, '====email payload====');
+      // Send email via Brevo API
+      const response = await firstValueFrom(
+        this.httpService.post(this.brevoApiUrl, payload, {
+          headers: {
+            'api-key': this.brevoApiKey,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+
+      this.logger.log(`Email sent successfully via Brevo. Message ID: ${response.data?.messageId || 'N/A'}`);
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send email: ${error.message}`, error.stack);
+      this.logger.error(`Failed to send email via Brevo: ${error.message}`, error.stack);
+      if (error.response) {
+        this.logger.error(`Brevo API error response: ${JSON.stringify(error.response.data)}`);
+      }
       return false;
     }
   }

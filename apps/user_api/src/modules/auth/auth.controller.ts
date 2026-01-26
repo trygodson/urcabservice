@@ -84,6 +84,13 @@ export class AuthController {
     return await this.authService.resetPassword(body);
   }
 
+  @UseInterceptors(ClassSerializerInterceptor)
+  @ApiBody({ type: ForgotPasswordDto })
+  @Post('resendOtp')
+  async resendOtp(@Body() body: ForgotPasswordDto) {
+    return await this.authService.resendOtp(body.email);
+  }
+
   // @Get('countries')
   // async getCountries() {
   //   return await this.authService.getCountries();

@@ -78,7 +78,7 @@ export class AuthService {
         email: dd.email,
         fullName: dd.fullName || '',
         userType: 'passenger',
-        verificationToken,
+        verificationToken: otp,
       });
 
       return {
@@ -494,6 +494,63 @@ export class AuthService {
       });
     } catch (error) {
       throw new UnauthorizedException('User Does Not Exist');
+    }
+  }
+
+  async resendOtp(email: string) {
+    try {
+      const user = await this.userRepository.findOne({ email });
+      if (!user) {
+        throw new NotFoundException('User with this email does not exist');
+      }
+
+      // Check if user is already verified
+      if (user.isEmailConfirmed) {
+        throw new BadRequestException('Email is already verified. No need to resend OTP.');
+      }
+
+      // Generate new OTP
+      const { expiry, otp } = GenerateOtp();
+
+      // Update user with new OTP
+      const updatedUser = await this.userRepository.findOneAndUpdate(
+        { email },
+        {
+          emailConfirmationCode: otp,
+          emailConfirmationExpiryDate: expiry,
+        },
+      );
+
+      if (!updatedUser) {
+        throw new NotFoundException('Failed to update user');
+      }
+
+      // Generate new verification token
+      const verificationToken = JwtSign({
+        email: updatedUser.email,
+        type: updatedUser.type,
+        expiry: updatedUser.emailConfirmationExpiryDate,
+      });
+
+      // Emit email verification requested event
+      this.eventEmitter.emit('auth.email_verification_requested', {
+        userId: updatedUser._id.toString(),
+        email: updatedUser.email,
+        fullName: updatedUser.fullName || '',
+        otpCode: otp,
+        verificationToken: verificationToken,
+      });
+
+      return {
+        success: true,
+        message: 'OTP resent successfully',
+        data: { verificationToken },
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to resend OTP');
     }
   }
 }
