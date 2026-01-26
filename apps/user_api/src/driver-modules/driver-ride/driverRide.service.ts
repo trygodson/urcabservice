@@ -518,7 +518,7 @@ export class DriverRideService {
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
 
       // Update wallet transaction and wallets based on payment method
-      await this.updateRideTransaction(rideId, finalFare, ride.paymentMethod, paymentStatus);
+      await this.updateRideTransaction(rideId, finalFare, ride.paymentMethod, paymentStatus, driver?._id);
 
       // Update driver availability - make them available again
       await this.driverLocationRepository.updateDriverStatus(driverId, DriverOnlineStatus.ONLINE, true);
@@ -1058,6 +1058,7 @@ export class DriverRideService {
     finalFare: number,
     paymentMethod: string,
     paymentStatus: PaymentStatus,
+    driverId: string | Types.ObjectId,
   ): Promise<void> {
     try {
       // Find the transaction for this ride
@@ -1077,7 +1078,7 @@ export class DriverRideService {
       }
 
       // Get current wallet state for transaction record
-      const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
+      const driverWallet = await this.walletRepository.findOne({ user: new Types.ObjectId(driverId) });
       if (!driverWallet) {
         throw new NotFoundException('Driver wallet not found');
       }
