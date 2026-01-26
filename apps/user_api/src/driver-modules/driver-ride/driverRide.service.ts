@@ -477,6 +477,26 @@ export class DriverRideService {
       // Use final fare from request or estimated fare
       const finalFare = completeData.finalFare || ride.estimatedFare || 0;
 
+      // For wallet payments, verify that payment has been confirmed by passenger
+      if (ride.paymentMethod === PaymentMethod.WALLET) {
+        // Check if driver has been paid through wallet transaction
+        const driverTransaction = await this.transactionModel.findOne({
+          'metadata.rideId': rideId,
+          category: TransactionCategory.RIDE,
+          type: TransactionType.CREDIT,
+          user: driverId,
+          status: TransactionStatus.COMPLETED,
+        });
+
+        if (!driverTransaction) {
+          throw new BadRequestException(
+            'Cannot complete ride. Payment has not been confirmed by passenger yet. Please wait for payment confirmation.',
+          );
+        }
+
+        this.logger.log(`Wallet payment verified for ride ${rideId}. Driver transaction status: COMPLETED`);
+      }
+
       // Determine payment status based on payment method
       const paymentStatus = PaymentStatus.COMPLETED;
 
@@ -903,6 +923,7 @@ export class DriverRideService {
 
       // Generate transaction reference
       const transactionRef = this.generateTransactionRef(TransactionType.CREDIT, TransactionCategory.RIDE);
+      const transactionRefPassenger = this.generateTransactionRef(TransactionType.DEBIT, TransactionCategory.RIDE);
 
       if (paymentMethod === PaymentMethod.CASH) {
         const transaction = new this.transactionModel({
@@ -935,11 +956,14 @@ export class DriverRideService {
         const passengerWallet = await this.walletRepository.findOne({
           user: new Types.ObjectId(passenger?._id.toString()),
         });
+        if (!passengerWallet) {
+          throw new NotFoundException('Passenger wallet not found');
+        }
         const dtransaction = new this.transactionModel({
           _id: new Types.ObjectId(),
-          transactionRef,
+          transactionRef: transactionRef,
           user: new Types.ObjectId(driverId),
-          wallet: driverWallet._id,
+          wallet: new Types.ObjectId(driverWallet._id.toString()),
           type: TransactionType.CREDIT,
           status: TransactionStatus.PENDING,
           category: TransactionCategory.RIDE,
@@ -952,7 +976,7 @@ export class DriverRideService {
 
           totalBalanceBefore: driverWallet.totalBalance,
           totalBalanceAfter: driverWallet.totalBalance,
-          description: `Ride payment - Wallet`,
+          description: `Ride payment Driver Credit- Wallet`,
           paymentMethod,
           metadata: {
             rideId,
@@ -962,27 +986,26 @@ export class DriverRideService {
         });
         const passengertransaction = new this.transactionModel({
           _id: new Types.ObjectId(),
-          transactionRef,
+          transactionRef: transactionRefPassenger,
           user: new Types.ObjectId(passenger?._id.toString()),
 
-          wallet: passengerWallet._id,
+          wallet: new Types.ObjectId(passengerWallet._id.toString()),
           type: TransactionType.DEBIT,
           status: TransactionStatus.PENDING,
           category: TransactionCategory.RIDE,
           balanceType: BalanceType.WITHDRAWABLE,
           amount,
-          depositBalanceBefore: driverWallet.depositBalance,
-          depositBalanceAfter: driverWallet.depositBalance,
-          withdrawableBalanceBefore: driverWallet.withdrawableBalance,
-          withdrawableBalanceAfter: driverWallet.withdrawableBalance,
-
-          totalBalanceBefore: driverWallet.totalBalance,
-          totalBalanceAfter: driverWallet.totalBalance,
-          description: `Ride payment - Wallet`,
+          depositBalanceBefore: passengerWallet.depositBalance,
+          depositBalanceAfter: passengerWallet.depositBalance,
+          withdrawableBalanceBefore: passengerWallet.withdrawableBalance,
+          withdrawableBalanceAfter: passengerWallet.withdrawableBalance,
+          totalBalanceBefore: passengerWallet.totalBalance,
+          totalBalanceAfter: passengerWallet.totalBalance,
+          description: `Ride payment Passenger Debit- Wallet`,
           paymentMethod,
           metadata: {
             rideId,
-            passengerId,
+            driverId,
             paymentMethod,
           },
         });

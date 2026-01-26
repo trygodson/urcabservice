@@ -1446,14 +1446,6 @@ export class RidesService {
         throw new NotFoundException('Transaction not found for this ride');
       }
 
-      // Update ride payment status to completed
-      const updateData: any = {
-        paymentStatus: PaymentStatus.COMPLETED,
-        paymentConfirmedAt: new Date(),
-      };
-
-      await this.rideRepository.findByIdAndUpdate(rideId, updateData);
-
       // Get driver wallet
       const driverWallet = await this.walletRepository.findById(transaction.wallet.toString());
       if (!driverWallet) {
@@ -1471,28 +1463,7 @@ export class RidesService {
         transaction.amount = totalAmount;
       }
 
-      // Handle payment based on payment method
-      if (ride.paymentMethod === PaymentMethod.CARD) {
-        // For card payment, update driver wallet
-        // const newWithdrawableBalance = driverWallet.withdrawableBalance + totalAmount;
-        // const newTotalBalance = driverWallet.totalBalance + totalAmount;
-        // await this.walletRepository.findOneAndUpdate(
-        //   { _id: new Types.ObjectId(transaction.wallet.toString()) },
-        //   {
-        //     withdrawableBalance: newWithdrawableBalance,
-        //     totalBalance: newTotalBalance,
-        //     lastTransactionDate: new Date(),
-        //   },
-        // );
-        // // Update transaction with final balances
-        // transaction.status = TransactionStatus.COMPLETED;
-        // transaction.withdrawableBalanceBefore = driverWallet.withdrawableBalance;
-        // transaction.withdrawableBalanceAfter = newWithdrawableBalance;
-        // transaction.totalBalanceBefore = driverWallet.totalBalance;
-        // transaction.totalBalanceAfter = newTotalBalance;
-        // transaction.completedAt = new Date();
-        // transaction.description = `Ride payment completed - Card (RM${totalAmount})`;
-      } else if (ride.paymentMethod === PaymentMethod.CASH) {
+      if (ride.paymentMethod === PaymentMethod.CASH) {
         // For cash payment, mark transaction as completed but don't update wallet
         // (Driver collected cash directly, so wallet balance doesn't change)
         transaction.status = TransactionStatus.COMPLETED;
@@ -1506,14 +1477,20 @@ export class RidesService {
 
         // Get passenger and driver details for notifications
         const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
-        const driver = await this.userRepository.findById(ride.driverId?.toString());
+        const driver = await this.userRepository.findById(ride.driverId?._id?.toString());
         const vehicle = await this.vehicleRepository.findOne({
-          driverId: ride.driverId?.toString(),
+          driverId: ride.driverId?._id.toString(),
           isPrimary: true,
         });
-        const rating = await this.ratingRepository.getAverageRating(ride.driverId?.toString());
+        const rating = await this.ratingRepository.getAverageRating(ride.driverId?._id?.toString());
 
-        const updatedRide = await this.rideRepository.findById(rideId);
+        // const updatedRide = await this.rideRepository.findById(rideId);
+        const updateData: any = {
+          paymentStatus: PaymentStatus.COMPLETED,
+          paymentConfirmedAt: new Date(),
+        };
+
+        const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
 
         // Send payment completed notification to passenger
         if (passenger?.fcmToken) {
@@ -1545,9 +1522,163 @@ export class RidesService {
           success: true,
           message: 'Payment confirmed successfully',
         };
+      } else if (ride.paymentMethod === PaymentMethod.WALLET) {
+        // For wallet payment, we need to:
+        // 1. Find passenger DEBIT transaction
+        // 2. Find driver CREDIT transaction
+        // 3. Debit passenger wallet
+        // 4. Credit driver wallet
+        // 5. Update both transactions to COMPLETED
+        // 6. Send notifications
+        // console.log(ride, '=====ride.driverId====');
+        // Find passenger DEBIT transaction
+
+        const passengerTransaction = await this.transactionModel.findOne({
+          'metadata.rideId': rideId,
+          category: TransactionCategory.RIDE,
+          type: TransactionType.DEBIT,
+          user: new Types.ObjectId(userId.toString()),
+        });
+
+        // Find driver CREDIT transaction
+        const driverTransaction = await this.transactionModel.findOne({
+          'metadata.rideId': rideId,
+          category: TransactionCategory.RIDE,
+          type: TransactionType.CREDIT,
+          user: new Types.ObjectId(ride.driverId?._id?.toString()),
+        });
+
+        if (!passengerTransaction) {
+          throw new NotFoundException('Passenger transaction not found for this ride');
+        }
+
+        if (!driverTransaction) {
+          throw new NotFoundException('Driver transaction not found for this ride');
+        }
+
+        // Get passenger wallet
+        const passengerWallet = await this.walletRepository.findOne({ user: userId });
+        if (!passengerWallet) {
+          throw new NotFoundException('Passenger wallet not found');
+        }
+
+        // Get driver wallet
+        const driverWalletIdFromTransaction =
+          typeof driverTransaction.wallet === 'string'
+            ? new Types.ObjectId(driverTransaction.wallet)
+            : driverTransaction.wallet;
+        const driverWallet = await this.walletRepository.findById(driverWalletIdFromTransaction.toString());
+        if (!driverWallet) {
+          throw new NotFoundException('Driver wallet not found');
+        }
+
+        // Calculate new balances for passenger (DEBIT - subtract)
+        const passengerWithdrawableBalanceBefore = passengerWallet.withdrawableBalance;
+        const passengerWithdrawableBalanceAfter = passengerWithdrawableBalanceBefore - totalAmount;
+        const passengerTotalBalanceAfter = passengerWallet.depositBalance + passengerWithdrawableBalanceAfter;
+
+        // Calculate new balances for driver (CREDIT - add)
+        const driverWithdrawableBalanceBefore = driverWallet.withdrawableBalance;
+        const driverWithdrawableBalanceAfter = driverWithdrawableBalanceBefore + totalAmount;
+        const driverTotalBalanceAfter = driverWallet.depositBalance + driverWithdrawableBalanceAfter;
+
+        // Update passenger transaction
+        passengerTransaction.status = TransactionStatus.COMPLETED;
+        passengerTransaction.withdrawableBalanceBefore = passengerWithdrawableBalanceBefore;
+        passengerTransaction.withdrawableBalanceAfter = passengerWithdrawableBalanceAfter;
+        passengerTransaction.totalBalanceBefore = passengerWallet.totalBalance;
+        passengerTransaction.totalBalanceAfter = passengerTotalBalanceAfter;
+        passengerTransaction.completedAt = new Date();
+        passengerTransaction.description = `Ride payment completed - Wallet (RM${totalAmount})`;
+        await passengerTransaction.save();
+
+        // Update driver transaction
+        driverTransaction.status = TransactionStatus.COMPLETED;
+        driverTransaction.withdrawableBalanceBefore = driverWithdrawableBalanceBefore;
+        driverTransaction.withdrawableBalanceAfter = driverWithdrawableBalanceAfter;
+        driverTransaction.totalBalanceBefore = driverWallet.totalBalance;
+        driverTransaction.totalBalanceAfter = driverTotalBalanceAfter;
+        driverTransaction.completedAt = new Date();
+        driverTransaction.description = `Ride payment completed - Wallet (RM${totalAmount})`;
+        await driverTransaction.save();
+
+        // Update passenger wallet
+        const passengerWalletId =
+          typeof passengerWallet._id === 'string' ? new Types.ObjectId(passengerWallet._id) : passengerWallet._id;
+        await this.walletRepository.findOneAndUpdate(
+          { _id: passengerWalletId },
+          {
+            withdrawableBalance: passengerWithdrawableBalanceAfter,
+            totalBalance: passengerTotalBalanceAfter,
+            lastTransactionDate: new Date(),
+          },
+        );
+
+        // Update driver wallet
+        const driverWalletId =
+          typeof driverWallet._id === 'string' ? new Types.ObjectId(driverWallet._id) : driverWallet._id;
+        await this.walletRepository.findOneAndUpdate(
+          { _id: driverWalletId },
+          {
+            withdrawableBalance: driverWithdrawableBalanceAfter,
+            totalBalance: driverTotalBalanceAfter,
+            lastTransactionDate: new Date(),
+          },
+        );
+
+        // Get passenger and driver details for notifications
+        const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
+        const driver = await this.userRepository.findById(ride.driverId?._id?.toString());
+        const vehicle = await this.vehicleRepository.findOne({
+          driverId: ride.driverId?._id?.toString(),
+          isPrimary: true,
+        });
+        const rating = await this.ratingRepository.getAverageRating(ride.driverId?._id?.toString());
+
+        // const updatedRide = await this.rideRepository.findById(rideId);
+
+        // Update ride payment status to completed
+        const updateData: any = {
+          paymentStatus: PaymentStatus.COMPLETED,
+          paymentConfirmedAt: new Date(),
+        };
+
+        const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+
+        // Send payment completed notification to passenger
+        if (passenger?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            passenger.fcmToken,
+            'PAYMENT_COMPLETED',
+            rideId,
+            { ...driver, vehicle, rating },
+            updatedRide,
+          );
+        }
+
+        // Send payment completed notification to driver
+        if (driver?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            driver.fcmToken,
+            'PAYMENT_COMPLETED',
+            rideId,
+            { ...passenger },
+            updatedRide,
+          );
+        }
+
+        this.logger.log(
+          `Ride ${rideId} payment confirmed by passenger. Amount: RM${totalAmount}. Payment method: ${ride.paymentMethod}. Passenger wallet debited, driver wallet credited.`,
+        );
+
+        return {
+          success: true,
+          message: 'Payment confirmed successfully',
+        };
       }
     } catch (error) {
-      this.logger.error(`Failed to confirm payment for ride ${rideId}:`, error.stack);
+      console.log(error, 'confirm payment error');
+      this.logger.error(`Failed to confirm payment for ride ${rideId}:`, error);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
