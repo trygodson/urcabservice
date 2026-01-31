@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   BalanceType,
+  DriverEvpRepository,
   DriverOnlineStatus,
   FirebaseNotificationService,
   generateRandomString,
@@ -77,6 +78,7 @@ export class DriverRideService {
     private readonly firebaseRideService: FirebaseRideService,
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly walletRepository: WalletRepository,
+    private readonly driverEvpRepository: DriverEvpRepository,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
@@ -122,9 +124,16 @@ export class DriverRideService {
 
       const driver = await this.userRepository.findById(driverId.toString());
       const passenger = await this.userRepository.findById(ride.passengerId._id.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        driverId: driverId.toString(),
-        isPrimary: true,
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          driverId: driverId.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
       });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
@@ -158,7 +167,7 @@ export class DriverRideService {
           passenger.fcmToken,
           'DRIVER_ACCEPTED',
           rideId,
-          { ...driver, vehicle, rating, currentLocation },
+          { ...driver, vehicle, rating, currentLocation, vehicleEvp },
           updatedRide,
         );
       }
@@ -299,13 +308,19 @@ export class DriverRideService {
       }
       const passenger = await this.userRepository.findById(ride.passengerId?._id._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        // _id: ride.vehicleId,
-        driverId: driverId.toString(),
-        isPrimary: true,
-      });
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          // _id: ride.vehicleId,
+          driverId: driverId.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
-
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
+      });
       // Update ride status
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, {
         status: RideStatus.DRIVER_AT_PICKUPLOCATION,
@@ -319,7 +334,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.DRIVER_AT_PICKUPLOCATION,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }
@@ -349,9 +364,16 @@ export class DriverRideService {
       // }
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        driverId: driverId.toString(),
-        isPrimary: true,
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          driverId: driverId.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
       });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
@@ -371,7 +393,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.RIDE_STARTED,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }
@@ -406,9 +428,16 @@ export class DriverRideService {
 
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        driverId: driverId.toString(),
-        isPrimary: true,
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          driverId: driverId.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
       });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
@@ -427,7 +456,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.RIDE_REACHED_DESTINATION,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }
@@ -512,7 +541,13 @@ export class DriverRideService {
       };
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({ driverId: driverId.toString(), isPrimary: true });
+      const vehicle = await this.vehicleRepository.findOne({ driverId: driverId.toString(), isPrimary: true }, [
+        'vehicleTypeId',
+      ]);
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
+      });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
@@ -530,7 +565,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.RIDE_COMPLETED,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }
@@ -568,7 +603,13 @@ export class DriverRideService {
       };
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({ driverId: driverId.toString(), isPrimary: true });
+      const vehicle = await this.vehicleRepository.findOne({ driverId: driverId.toString(), isPrimary: true }, [
+        'vehicleTypeId',
+      ]);
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
+      });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
@@ -583,7 +624,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.REJECTED_BY_DRIVER,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }
@@ -742,10 +783,17 @@ export class DriverRideService {
       // In the future, you might want to add an "ARRIVED" status
       const passenger = await this.userRepository.findById(ride.passengerId?._id.toString());
       const driver = await this.userRepository.findById(driverId.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        // _id: ride.vehicleId,
-        driverId: driverId.toString(),
-        isPrimary: true,
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          // _id: ride.vehicleId,
+          driverId: driverId.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
       });
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
@@ -762,7 +810,7 @@ export class DriverRideService {
           passenger.fcmToken,
           RideStatus.DRIVER_HAS_PICKUP_PASSENGER,
           rideId,
-          { ...driver, vehicle, rating },
+          { ...driver, vehicle, rating, vehicleEvp },
           updatedRide,
         );
       }

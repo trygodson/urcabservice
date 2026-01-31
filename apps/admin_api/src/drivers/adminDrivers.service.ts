@@ -1097,6 +1097,60 @@ export class AdminDriversService {
     await this.vehicleRepository.findOneAndUpdate({ _id: vehicleId }, updateData);
   }
 
+  async setVehicleEvpForPayment(vehicleId: Types.ObjectId | string) {
+    try {
+      const vehicle = await this.vehicleRepository.findById(vehicleId);
+      if (!vehicle) {
+        throw new NotFoundException('Vehicle not found');
+      }
+
+      if (!vehicle.hasCompleteDocumentation) {
+        throw new BadRequestException('Vehicle has no complete documentation');
+      }
+      const existingActiveEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicleId,
+        isActive: true,
+        endDate: { $gt: new Date() }, // Not expired
+        revokedAt: { $exists: false }, // Not revoked
+      });
+
+      if (existingActiveEvp) {
+        throw new BadRequestException('Vehicle already has an active EVP');
+      }
+      let updateData: any = {
+        // hasCompleteDocumentation,
+        lastDocumentVerificationCheck: new Date(),
+      };
+      if (!existingActiveEvp) {
+        // Get global EVP price and period from settings
+        try {
+          const settings = await this.settingsModel.findOne().exec();
+          if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
+            updateData.evpPrice = settings.globalVehicleEvpPrice;
+            updateData.evpPriceSet = true;
+
+            // Set EVP period if available in settings
+            if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
+              updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+            }
+          }
+        } catch (error) {
+          // If settings are not available, skip auto-setting EVP price
+          console.error('Failed to get global EVP price from settings:', error);
+        }
+      }
+      await this.vehicleRepository.findOneAndUpdate({ _id: vehicleId }, updateData);
+      return {
+        success: true,
+        message: 'EVP set for payment',
+        // data: dd,
+      };
+    } catch (error) {
+      throw error;
+    }
+    // return this.mapToVehicleEvpResponseDto(dd);
+  }
+
   private readonly DOCUMENT_REQUIREMENTS: any[] = [
     {
       documentType: DocumentType.NRIC,
@@ -1349,6 +1403,23 @@ export class AdminDriversService {
       },
     );
 
+    let updateData: any = {};
+    try {
+      const settings = await this.settingsModel.findOne().exec();
+      if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
+        updateData.evpPrice = settings.globalVehicleEvpPrice;
+        updateData.evpPriceSet = true;
+        // Set EVP period if available in settings
+        if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
+          updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+        }
+      }
+      await this.vehicleRepository.findOneAndUpdate({ _id: evp.vehicleId.toString() }, updateData);
+    } catch (error) {
+      // If settings are not available, skip auto-setting EVP price
+      console.error('Failed to get global EVP price from settings:', error);
+    }
+
     return this.mapToVehicleEvpResponseDto(updatedEvp);
   }
 
@@ -1390,6 +1461,7 @@ export class AdminDriversService {
       category: TransactionCategory.EVP_PAYMENT,
       status: TransactionStatus.COMPLETED,
       'metadata.vehicleId': vehicleId,
+      // No need for any condition here to get the latest, we will just sort below.
     });
 
     if (!completedPayment) {
@@ -1424,6 +1496,8 @@ export class AdminDriversService {
     const evp = await this.driverEvpRepository.create({
       _id: new Types.ObjectId(),
       vehicleId: new Types.ObjectId(vehicleId),
+      price: completedPayment.amount,
+      transactionId: completedPayment._id,
       certificateNumber,
       startDate: start,
       endDate: end,

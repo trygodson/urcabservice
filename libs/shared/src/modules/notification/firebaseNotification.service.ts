@@ -106,19 +106,29 @@ export class FirebaseNotificationService {
       switch (status) {
         case RideStatus.DRIVER_ACCEPTED:
           title = '✅ Driver Accepted';
-          body = `${driverInfo?.firstName} is on the way to pick you up`;
+          body = `${driverInfo?.fullName} is on the way to pick you up`;
           break;
         case RideStatus.DRIVER_AT_PICKUPLOCATION:
           title = '📍 Driver Arrived';
-          body = `${driverInfo?.firstName} has arrived at pickup location`;
+          body = `${driverInfo?.fullName} has arrived at pickup location ${updatedRide?.pickupLocation?.address ?? ''}`;
+          break;
+        case RideStatus.DRIVER_HAS_PICKUP_PASSENGER:
+          title = '📍 Driver Picked Up Passenger';
+          body = `${driverInfo?.fullName} has picked up the passenger`;
           break;
         case RideStatus.RIDE_STARTED:
           title = '🚗 Ride Started';
           body = 'Your ride has started. Enjoy your trip!';
           break;
+        case RideStatus.RIDE_REACHED_DESTINATION:
+          title = '🚗 Ride Reached Destination';
+          body = `You have reached your destination ${
+            updatedRide?.dropoffLocation?.address ?? ''
+          }. Thank you for using UrCab!`;
+          break;
         case RideStatus.RIDE_COMPLETED:
           title = '🎉 Ride Completed';
-          body = 'You have reached your destination. Thank you for using UrCab!';
+          body = 'Your ride has been completed. Thank you for using UrCab!';
           break;
         case RideStatus.REJECTED_BY_DRIVER:
           title = '🎉 Ride Rejected';
@@ -175,6 +185,7 @@ export class FirebaseNotificationService {
                   driverRating: driverInfo.rating || 0,
                   driverVehicle: driverInfo.vehicle || null,
                   currentLocation: driverInfo?.currentLocation || null,
+                  vehicleEvp: driverInfo?.vehicleEvp || null,
                 }
               : null,
           }),

@@ -21,6 +21,7 @@ import {
   SetRolesMetaData,
   UpdateDriverProfileDto,
   updateFCMDto,
+  AcceptConsentDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
@@ -114,5 +115,35 @@ export class UserController {
     };
 
     return this.uploadFileService.uploadFileCloudinary(file.buffer, file.originalname, file.mimetype, options);
+  }
+
+  @Get('privacy-policy')
+  @Public()
+  @ApiOperation({ summary: 'Get privacy policy' })
+  @ApiResponse({ status: 200, description: 'Privacy policy retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Privacy policy not found' })
+  async getPrivacyPolicy() {
+    return await this.userService.getPrivacyPolicy();
+  }
+
+  @Get('terms-and-conditions')
+  @Public()
+  @ApiOperation({ summary: 'Get terms and conditions' })
+  @ApiResponse({ status: 200, description: 'Terms and conditions retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Terms and conditions not found' })
+  async getTermsAndConditions() {
+    return await this.userService.getTermsAndConditions();
+  }
+
+  @Put('accept-consent')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Accept consent for user' })
+  @ApiResponse({ status: 200, description: 'Consent updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async acceptConsent(@CurrentUser() user: User, @Body() acceptConsentDto: AcceptConsentDto) {
+    return await this.userService.acceptConsent(user._id.toString(), acceptConsentDto);
   }
 }

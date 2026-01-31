@@ -4,6 +4,7 @@ import { SchemaTypes, Types, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.schema';
 import { Vehicle } from './vehicle.schema';
+import { WalletTransaction } from './walletTransaction.schema';
 
 /**
  * Electronic Verification Permit (EVP) for vehicles with verified documents
@@ -20,10 +21,25 @@ export class VehicleEvp extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: WalletTransaction.name,
+    // required: true,
+  })
+  transactionId?: Types.ObjectId;
+
+  @ApiProperty()
+  @Prop({
     type: String,
     required: true,
   })
-  certificateNumber: string;
+  price?: number;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  certificateNumber?: string;
 
   @ApiProperty()
   @Prop({

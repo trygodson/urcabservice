@@ -151,6 +151,13 @@ export class User extends AbstractDocument {
 
   @ApiProperty()
   @Prop({
+    type: Boolean,
+    default: false,
+  })
+  acceptConsent?: boolean;
+
+  @ApiProperty()
+  @Prop({
     type: Date,
     required: false,
     select: false,

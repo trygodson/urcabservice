@@ -1,6 +1,14 @@
 import { Length } from 'class-validator';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { UpdateDriverProfileDto, updateFCMDto, User, UserRepository } from '@urcab-workspace/shared';
+import {
+  UpdateDriverProfileDto,
+  updateFCMDto,
+  AcceptConsentDto,
+  User,
+  UserRepository,
+  Settings,
+  SettingsDocument,
+} from '@urcab-workspace/shared';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DocumentVerificationStatusService } from '../user-verification/documentVerificationStatus.service';
@@ -12,6 +20,7 @@ export class UserService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     @InjectModel(User.name) private readonly userRepository2: Model<User>,
+    @InjectModel(Settings.name) private readonly settingsModel: Model<SettingsDocument>,
     private readonly documentVerificationService: DocumentVerificationStatusService,
   ) {}
 
@@ -19,7 +28,7 @@ export class UserService {
     try {
       const user = await this.userRepository.findById(_id, [], {
         select:
-          'fullName email phone photo type gender dob isPhoneConfirmed isEmailConfirmed isActive isPhotoUpload isProfileUpdated',
+          'fullName email phone photo type gender dob isPhoneConfirmed isEmailConfirmed isActive isPhotoUpload isProfileUpdated acceptConsent',
       });
       if (!user) {
         throw new UnauthorizedException('User Does Not Exist');
@@ -135,6 +144,84 @@ export class UserService {
       };
     } catch (error) {
       throw new UnauthorizedException(error.message || 'Failed to update profile');
+    }
+  }
+
+  /**
+   * Get privacy policy from settings
+   */
+  async getPrivacyPolicy(): Promise<{ privacyPolicy: string; lastUpdated?: Date }> {
+    try {
+      const settings = await this.settingsModel.findOne().exec();
+
+      if (!settings) {
+        return {
+          privacyPolicy: '',
+        };
+      }
+
+      return {
+        privacyPolicy: settings.privacyPolicy || '',
+        lastUpdated: settings.privacyPolicyLastUpdated,
+      };
+    } catch (error) {
+      throw new NotFoundException('Failed to retrieve privacy policy');
+    }
+  }
+
+  /**
+   * Get terms and conditions from settings
+   */
+  async getTermsAndConditions(): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
+    try {
+      const settings = await this.settingsModel.findOne().exec();
+
+      if (!settings) {
+        return {
+          termsAndConditions: '',
+        };
+      }
+
+      return {
+        termsAndConditions: settings.termsAndConditions || '',
+        lastUpdated: settings.termsAndConditionsLastUpdated,
+      };
+    } catch (error) {
+      throw new NotFoundException('Failed to retrieve terms and conditions');
+    }
+  }
+
+  /**
+   * Accept consent for user
+   */
+  async acceptConsent(
+    userId: string,
+    acceptConsentDto: AcceptConsentDto,
+  ): Promise<{ success: boolean; message: string; data: any }> {
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User Does Not Exist');
+      }
+
+      // Update the acceptConsent field
+      const updatedUser = await this.userRepository2
+        .findOneAndUpdate({ _id: userId }, { $set: { acceptConsent: acceptConsentDto.acceptConsent } }, { new: true })
+        .select('-fcmToken');
+
+      if (!updatedUser) {
+        throw new Error('Failed to update consent');
+      }
+
+      return {
+        success: true,
+        message: 'Consent updated successfully',
+        data: {
+          acceptConsent: updatedUser.acceptConsent,
+        },
+      };
+    } catch (error) {
+      throw new UnauthorizedException(error.message || 'Failed to update consent');
     }
   }
 }

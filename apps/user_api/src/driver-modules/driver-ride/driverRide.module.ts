@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import {
   DatabaseModule,
+  DriverEvp,
+  DriverEvpRepository,
+  DriverEvpSchema,
   DriverLocation,
   DriverLocationSchema,
   NotificationsModule,
@@ -56,6 +59,7 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Wallet.name, schema: WalletSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: DriverEvp.name, schema: DriverEvpSchema },
     ]),
     NotificationsModule,
   ],
@@ -68,6 +72,7 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
     RideRepository,
     UserRepository,
     RatingRepository,
+    DriverEvpRepository,
     DriverLocationRepository,
     SubscriptionRepository,
     WalletRepository,

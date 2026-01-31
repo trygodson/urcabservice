@@ -18,6 +18,7 @@ import {
   TransactionType,
   UpdateDriverProfileDto,
   updateFCMDto,
+  AcceptConsentDto,
   User,
   UserRepository,
   UserRolesEnum,
@@ -498,7 +499,7 @@ export class DriverService {
     try {
       const user = await this.userRepository.findById(_id, [], {
         select:
-          'fullName email phone photo type gender dob isPhoneConfirmed isEmailConfirmed isActive isPhotoUpload isProfileUpdated',
+          'fullName email phone photo type gender dob isPhoneConfirmed isEmailConfirmed isActive isPhotoUpload isProfileUpdated acceptConsent',
       });
       if (!user) {
         throw new UnauthorizedException('User Does Not Exist');
@@ -1128,6 +1129,40 @@ export class DriverService {
     } catch (error) {
       this.logger.error(`Failed to get driver earnings for driver ${driverId}:`, error);
       throw new BadRequestException(error.message || 'Failed to get driver earnings');
+    }
+  }
+
+  /**
+   * Accept consent for driver
+   */
+  async acceptConsent(
+    userId: string,
+    acceptConsentDto: AcceptConsentDto,
+  ): Promise<{ success: boolean; message: string; data: any }> {
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User Does Not Exist');
+      }
+
+      // Update the acceptConsent field
+      const updatedUser = await this.userRepository2
+        .findOneAndUpdate({ _id: userId }, { $set: { acceptConsent: acceptConsentDto.acceptConsent } }, { new: true })
+        .select('-fcmToken');
+
+      if (!updatedUser) {
+        throw new Error('Failed to update consent');
+      }
+
+      return {
+        success: true,
+        message: 'Consent updated successfully',
+        data: {
+          acceptConsent: updatedUser.acceptConsent,
+        },
+      };
+    } catch (error) {
+      throw new UnauthorizedException(error.message || 'Failed to update consent');
     }
   }
 

@@ -109,7 +109,7 @@ export class RideRepository extends AbstractRepository<Ride> {
     const [rides, total] = await Promise.all([
       this.model
         .find({ driverId })
-        .populate('passengerId', 'firstName lastName phone photo')
+        .populate('passengerId', 'firstName fullName lastName phone photo')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

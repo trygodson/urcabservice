@@ -947,10 +947,17 @@ export class RidesService {
       const currentRide = await this.rideRepository.findPassengerCurrentRide(passengerId);
       const passenger = await this.userRepository.findById(passengerId.toString());
       const driver = await this.userRepository.findById(currentRide?.selectedDriverId?.toString());
-      const vehicle = await this.vehicleRepository.findOne({
-        // _id: ride.vehicleId,
-        driverId: currentRide?.selectedDriverId?.toString(),
-        isPrimary: true,
+      const vehicle = await this.vehicleRepository.findOne(
+        {
+          // _id: ride.vehicleId,
+          driverId: currentRide?.selectedDriverId?.toString(),
+          isPrimary: true,
+        },
+        ['vehicleTypeId'],
+      );
+      const vehicleEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicle._id,
+        isActive: true,
       });
       const rating = await this.ratingRepository.getAverageRating(currentRide?.selectedDriverId?.toString());
 
@@ -958,7 +965,7 @@ export class RidesService {
       return currentRide
         ? {
             ...this.mapToResponseDto(currentRide),
-            driverInfo: { passenger, driver, driverRating: rating, driverVehicle: vehicle },
+            driverInfo: { passenger, driver, driverRating: rating, driverVehicle: vehicle, vehicleEvp },
           }
         : null;
     } catch (error) {
@@ -1578,6 +1585,7 @@ export class RidesService {
         const passengerTotalBalanceAfter = passengerWallet.depositBalance + passengerWithdrawableBalanceAfter;
 
         // Calculate new balances for driver (CREDIT - add)
+
         const driverWithdrawableBalanceBefore = driverWallet.withdrawableBalance;
         const driverWithdrawableBalanceAfter = driverWithdrawableBalanceBefore + totalAmount;
         const driverTotalBalanceAfter = driverWallet.depositBalance + driverWithdrawableBalanceAfter;
@@ -1588,6 +1596,7 @@ export class RidesService {
         passengerTransaction.withdrawableBalanceAfter = passengerWithdrawableBalanceAfter;
         passengerTransaction.totalBalanceBefore = passengerWallet.totalBalance;
         passengerTransaction.totalBalanceAfter = passengerTotalBalanceAfter;
+        passengerTransaction.amount = totalAmount;
         passengerTransaction.completedAt = new Date();
         passengerTransaction.description = `Ride payment completed - Wallet (RM${totalAmount})`;
         await passengerTransaction.save();
@@ -1598,6 +1607,7 @@ export class RidesService {
         driverTransaction.withdrawableBalanceAfter = driverWithdrawableBalanceAfter;
         driverTransaction.totalBalanceBefore = driverWallet.totalBalance;
         driverTransaction.totalBalanceAfter = driverTotalBalanceAfter;
+        driverTransaction.amount = totalAmount;
         driverTransaction.completedAt = new Date();
         driverTransaction.description = `Ride payment completed - Wallet (RM${totalAmount})`;
         await driverTransaction.save();

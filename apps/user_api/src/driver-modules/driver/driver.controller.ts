@@ -20,6 +20,7 @@ import {
   SetRolesMetaData,
   UpdateDriverProfileDto,
   updateFCMDto,
+  AcceptConsentDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
@@ -146,5 +147,15 @@ export class DriverController {
   @ApiResponse({ status: 400, description: 'Bad Request' })
   async getEarnings(@CurrentUser() user: User, @Query() queryDto: GetEarningsDto): Promise<EarningsResponseDto> {
     return await this.driverService.getDriverEarnings(user._id.toString(), queryDto);
+  }
+
+  @Put('accept-consent')
+  @SetRolesMetaData(Role.DRIVER)
+  @ApiOperation({ summary: 'Accept consent for driver' })
+  @ApiResponse({ status: 200, description: 'Consent updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  async acceptConsent(@CurrentUser() user: User, @Body() acceptConsentDto: AcceptConsentDto) {
+    return await this.driverService.acceptConsent(user._id.toString(), acceptConsentDto);
   }
 }

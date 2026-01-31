@@ -392,6 +392,14 @@ export class AdminDriversController {
     return this.adminDriversService.createVehicleEvp(createVehicleEvpDto, user.sub);
   }
 
+  @Patch('vehicles/:vehicleId/setEvpForPayment')
+  @ApiOperation({ summary: 'Set EVP for payment' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async setVehicleEvpForPayment(@Param('vehicleId') vehicleId: string) {
+    return this.adminDriversService.setVehicleEvpForPayment(vehicleId);
+  }
+
   @Get('vehicles/:vehicleId/evp')
   @ApiOperation({ summary: 'Get all EVPs for a vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })

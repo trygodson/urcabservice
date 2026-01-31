@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 // import { AutoMap } from '@automapper/classes';
 import { Type } from 'class-transformer';
-import { IsEmail, IsStrongPassword, IsString, IsDateString, IsOptional, MaxLength } from 'class-validator';
+import { IsEmail, IsStrongPassword, IsString, IsDateString, IsOptional, MaxLength, IsBoolean } from 'class-validator';
 
 export class RegisterUserDto {
   @ApiProperty({
@@ -61,4 +61,10 @@ export class updateFCMDto {
   @ApiProperty({ required: false })
   @IsString()
   fcmToken?: string;
+}
+
+export class AcceptConsentDto {
+  @ApiProperty({ description: 'Accept consent status', example: true })
+  @IsBoolean()
+  acceptConsent: boolean;
 }
