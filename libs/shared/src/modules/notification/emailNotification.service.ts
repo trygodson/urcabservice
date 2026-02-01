@@ -95,9 +95,7 @@ export class EmailNotificationService {
       };
 
       // Add HTML content if provided, otherwise use text
-      if (options.html) {
-        payload.htmlContent = options.html;
-      } else if (options.text) {
+      if (options.text) {
         // Convert plain text to basic HTML
         // const escapedText = options.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         // payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapedText.replace(

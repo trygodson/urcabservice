@@ -71,11 +71,11 @@ export class AuthController {
   //   return await this.authService.selectCountry(user, body.countryId);
   // }
 
-    @UseInterceptors(ClassSerializerInterceptor)
-    @Post('forgotPassword')
-    async forgotPassword(@Body() body: ForgotPasswordDto) {
-      return await this.authService.forgotPassword(body.email);
-    }
+  @UseInterceptors(ClassSerializerInterceptor)
+  @Post('forgotPassword')
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(body.email);
+  }
 
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('googleSignIn')
@@ -93,6 +93,13 @@ export class AuthController {
   @Post('resetPassword')
   async resetPassword(@Body() body: ResetPasswordDto) {
     return await this.authService.resetPassword(body);
+  }
+
+  @UseInterceptors(ClassSerializerInterceptor)
+  @ApiBody({ type: ForgotPasswordDto })
+  @Post('resendOtp')
+  async resendOtp(@Body() body: ForgotPasswordDto) {
+    return await this.authService.resendOtp(body.email);
   }
 
   // @Get('countries')
