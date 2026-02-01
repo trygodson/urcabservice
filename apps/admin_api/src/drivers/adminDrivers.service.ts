@@ -13,6 +13,12 @@ import {
   TransactionCategory,
   TransactionStatus,
   Settings,
+  Rating,
+  RatingDocument,
+  WalletRepository,
+  RideStatus,
+  TransactionType,
+  BalanceType,
 } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
@@ -52,8 +58,10 @@ export class AdminDriversService {
     private readonly rideRepository: AdminRideRepository,
     private readonly issueReportRepository: AdminIssueReportRepository,
     private readonly driverEvpRepository: AdminDriverEvpRepository,
+    private readonly walletRepository: WalletRepository,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
     @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
+    @InjectModel(Rating.name) private readonly ratingModel: Model<RatingDocument>,
   ) {}
 
   // Driver Management Methods
@@ -109,13 +117,31 @@ export class AdminDriversService {
     // Get driver documents with detailed status
     const documentDetails = await this.getDriverDocuments(driverId);
 
-    // Get driver vehicles
-    const vehicles = await this.vehicleRepository.find(
+    // Get driver vehicles with their active EVPs
+    const vehiclesList = await this.vehicleRepository.find(
       { driverId: new Types.ObjectId(driverId) },
       {
         populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
         sort: { createdAt: -1 },
       },
+    );
+
+    // Get active EVP for each vehicle
+    const vehiclesWithEvp = await Promise.all(
+      vehiclesList.map(async (vehicle) => {
+        const vehicleId = typeof vehicle._id === 'string' ? new Types.ObjectId(vehicle._id) : vehicle._id;
+        const activeEvp = await this.driverEvpRepository.findOne({
+          vehicleId: vehicleId,
+          isActive: true,
+          endDate: { $gt: new Date() }, // Not expired
+          revokedAt: { $exists: false }, // Not revoked
+        });
+
+        return {
+          ...vehicle.toObject(),
+          activeEvp: activeEvp ? this.mapToVehicleEvpResponseDto(activeEvp) : null,
+        };
+      }),
     );
 
     // Get recent rides
@@ -131,16 +157,8 @@ export class AdminDriversService {
     // Calculate statistics
     const statistics = await this.calculateDriverStatistics(driverId);
 
-    // Check if driver is EVP eligible based on document status
-    const isEvpEligible = documentDetails.hasCompleteDocumentation;
-
-    // Get active EVP if one exists
-    const activeEvp = await this.driverEvpRepository.findOne({
-      driverId: new Types.ObjectId(driverId),
-      isActive: true,
-      endDate: { $gt: new Date() }, // Not expired
-      revokedAt: { $exists: false }, // Not revoked
-    });
+    // Get wallet balance
+    const walletBalance = await this.getDriverWalletBalance(new Types.ObjectId(driverId));
 
     return {
       driver,
@@ -151,13 +169,10 @@ export class AdminDriversService {
         documentStatuses: documentDetails.documentStatuses,
         hasCompleteDocumentation: documentDetails.hasCompleteDocumentation,
       },
-      vehicles,
+      vehicles: vehiclesWithEvp,
       recentRides,
       statistics,
-      evp: {
-        isEligible: isEvpEligible,
-        activeEvp: activeEvp ? this.mapToEvpResponseDto(activeEvp) : null,
-      },
+      walletBalance,
     };
   }
 
@@ -948,16 +963,69 @@ export class AdminDriversService {
     const totalRides = await this.rideRepository.countDocuments({ driverId: driverObjectId });
     const completedRides = await this.rideRepository.countDocuments({
       driverId: driverObjectId,
-      status: 'COMPLETED',
+      status: RideStatus.RIDE_COMPLETED,
     });
     const cancelledRides = await this.rideRepository.countDocuments({
       driverId: driverObjectId,
-      status: 'CANCELLED',
+      status: RideStatus.RIDE_CANCELLED,
     });
 
-    // You might need to implement rating and earnings calculation based on your schema
-    const averageRating = 0; // Implement based on your rating system
-    const totalEarnings = 0; // Implement based on your earnings system
+    // Calculate average rating
+    const ratingResult = await this.ratingModel.aggregate([
+      {
+        $match: {
+          ratedUserId: driverObjectId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$overallRating' },
+          totalRatings: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const averageRating =
+      ratingResult.length > 0 && ratingResult[0].totalRatings > 0
+        ? Math.round((ratingResult[0].averageRating || 0) * 10) / 10 // Round to 1 decimal place
+        : 0;
+
+    // Calculate total earnings from wallet transactions
+    // Get wallet for driver
+    const wallet = await this.walletRepository.findOne({ user: driverObjectId });
+    if (!wallet) {
+      return {
+        totalRides,
+        completedRides,
+        cancelledRides,
+        averageRating,
+        totalEarnings: 0,
+      };
+    }
+
+    const walletId = typeof wallet._id === 'string' ? new Types.ObjectId(wallet._id) : wallet._id;
+
+    // Calculate total earnings from CREDIT transactions with category RIDE and status COMPLETED
+    const earningsResult = await this.transactionModel.aggregate([
+      {
+        $match: {
+          user: driverObjectId,
+          wallet: walletId,
+          type: TransactionType.CREDIT,
+          category: TransactionCategory.RIDE,
+          status: TransactionStatus.COMPLETED,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: '$amount' },
+        },
+      },
+    ]);
+
+    const totalEarnings = earningsResult.length > 0 ? earningsResult[0].totalEarnings || 0 : 0;
 
     return {
       totalRides,
@@ -966,6 +1034,109 @@ export class AdminDriversService {
       averageRating,
       totalEarnings,
     };
+  }
+
+  private async getDriverWalletBalance(driverId: Types.ObjectId): Promise<{
+    balance: number;
+    availableBalance: number;
+    currencySymbol: string;
+    currency: string;
+  }> {
+    try {
+      // Get wallet for driver
+      const wallet = await this.walletRepository.findOne({ user: driverId });
+      if (!wallet) {
+        return {
+          balance: 0,
+          availableBalance: 0,
+          currencySymbol: 'RM',
+          currency: 'MYR',
+        };
+      }
+
+      const walletId = typeof wallet._id === 'string' ? new Types.ObjectId(wallet._id) : wallet._id;
+
+      // Calculate balance from COMPLETED transactions only
+      const completedBalanceResult = await this.transactionModel.aggregate([
+        {
+          $match: {
+            user: driverId,
+            wallet: walletId,
+            balanceType: { $in: [BalanceType.DEPOSIT, BalanceType.WITHDRAWABLE] },
+            status: TransactionStatus.COMPLETED,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalCredits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', `${TransactionType.CREDIT}`] }, '$amount', 0],
+              },
+            },
+            totalDebits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', `${TransactionType.DEBIT}`] }, '$amount', 0],
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            balance: { $subtract: ['$totalCredits', '$totalDebits'] },
+          },
+        },
+      ]);
+
+      // Calculate balance from both COMPLETED and PENDING transactions
+      const allBalanceResult = await this.transactionModel.aggregate([
+        {
+          $match: {
+            user: driverId,
+            wallet: walletId,
+            balanceType: { $in: [BalanceType.DEPOSIT, BalanceType.WITHDRAWABLE] },
+            status: { $in: [TransactionStatus.COMPLETED, TransactionStatus.PENDING] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalCredits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', `${TransactionType.CREDIT}`] }, '$amount', 0],
+              },
+            },
+            totalDebits: {
+              $sum: {
+                $cond: [{ $eq: ['$type', `${TransactionType.DEBIT}`] }, '$amount', 0],
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            balance: { $subtract: ['$totalCredits', '$totalDebits'] },
+          },
+        },
+      ]);
+
+      const completedBalance = completedBalanceResult.length > 0 ? completedBalanceResult[0].balance : 0;
+      const availableBalance = allBalanceResult.length > 0 ? allBalanceResult[0].balance : 0;
+
+      return {
+        balance: Math.max(0, completedBalance),
+        availableBalance: Math.max(0, availableBalance),
+        currencySymbol: wallet.currencySymbol || 'RM',
+        currency: wallet.currency || 'MYR',
+      };
+    } catch (error) {
+      return {
+        balance: 0,
+        availableBalance: 0,
+        currencySymbol: 'RM',
+        currency: 'MYR',
+      };
+    }
   }
 
   private async updateDriverDocumentCompletionStatus(driverId: Types.ObjectId) {
