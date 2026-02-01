@@ -370,12 +370,14 @@ export class AdminPassengersService {
     }
 
     // Get emergency contacts
-    const emergencyContacts = await this.emergencyContactRepository.find(
-      { userId: passengerObjectId },
-      {
-        sort: { isPrimary: -1, createdAt: -1 },
-      },
-    );
+    const emergencyContacts = await this.emergencyContactRepository.model
+      .find(
+        { userId: passengerObjectId },
+        {
+          sort: { isPrimary: -1, createdAt: -1 },
+        },
+      )
+      .exec();
 
     return {
       passengerId: passengerId,
