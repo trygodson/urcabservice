@@ -20,5 +20,7 @@ export * from './permission.schema';
 export * from './role.schema';
 export * from './wallet.schema';
 export * from './walletTransaction.schema';
+export * from './bankAccount.schema';
+export * from './withdrawalRequest.schema';
 export * from './faq.schema';
 export * from './settings.schema';

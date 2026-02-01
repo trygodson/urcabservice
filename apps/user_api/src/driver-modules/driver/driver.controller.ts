@@ -158,4 +158,13 @@ export class DriverController {
   async acceptConsent(@CurrentUser() user: User, @Body() acceptConsentDto: AcceptConsentDto) {
     return await this.driverService.acceptConsent(user._id.toString(), acceptConsentDto);
   }
+
+  @Get('terms-and-conditions')
+  @Public()
+  @ApiOperation({ summary: 'Get terms and conditions for driver' })
+  @ApiResponse({ status: 200, description: 'Terms and conditions retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Terms and conditions not found' })
+  async getTermsAndConditions() {
+    return await this.driverService.getTermsAndConditions();
+  }
 }

@@ -9,6 +9,10 @@ import {
   WalletSchema,
   WalletTransaction,
   WalletTransactionSchema,
+  BankAccount,
+  BankAccountSchema,
+  WithdrawalRequest,
+  WithdrawalRequestSchema,
 } from '@urcab-workspace/shared';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
@@ -19,6 +23,8 @@ import { WalletService } from './wallet.service';
       { name: Wallet.name, schema: WalletSchema },
       { name: User.name, schema: UserSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: BankAccount.name, schema: BankAccountSchema },
+      { name: WithdrawalRequest.name, schema: WithdrawalRequestSchema },
     ]),
   ],
   controllers: [WalletController],

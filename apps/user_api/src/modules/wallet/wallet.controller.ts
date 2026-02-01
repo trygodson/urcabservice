@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, UseGuards, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Query,
+  Put,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser, JwtAuthGuard, Role, SetRolesMetaData, User } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
@@ -9,6 +21,9 @@ import {
   TransactionResponseDto,
   QueryTransactionsDto,
   TransactionsListResponseDto,
+  CreateBankAccountDto,
+  UpdateBankAccountDto,
+  CreateWithdrawalRequestDto,
 } from './dto';
 
 @ApiTags('Wallet')
@@ -99,5 +114,89 @@ export class WalletController {
   ): Promise<TransactionResponseDto> {
     const userId = new Types.ObjectId(user._id);
     return await this.walletService.createDepositTransaction(userId, createDepositDto);
+  }
+
+  // Bank Account endpoints
+  @Post('bank-accounts')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.PASSENGER, Role.DRIVER)
+  @ApiOperation({ summary: 'Create a bank account' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Bank account created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid bank account data',
+  })
+  async createBankAccount(@CurrentUser() user: User, @Body() createDto: CreateBankAccountDto) {
+    const userId = new Types.ObjectId(user._id);
+    return await this.walletService.createBankAccount(userId, createDto);
+  }
+
+  @Get('bank-accounts')
+  @SetRolesMetaData(Role.PASSENGER, Role.DRIVER)
+  @ApiOperation({ summary: 'Get all bank accounts for user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bank accounts retrieved successfully',
+  })
+  async getBankAccounts(@CurrentUser() user: User) {
+    const userId = new Types.ObjectId(user._id);
+    return await this.walletService.getBankAccounts(userId);
+  }
+
+  @Put('bank-accounts/:accountId')
+  @SetRolesMetaData(Role.PASSENGER, Role.DRIVER)
+  @ApiOperation({ summary: 'Update a bank account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bank account updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Bank account not found',
+  })
+  async updateBankAccount(
+    @CurrentUser() user: User,
+    @Param('accountId') accountId: string,
+    @Body() updateDto: UpdateBankAccountDto,
+  ) {
+    const userId = new Types.ObjectId(user._id);
+    return await this.walletService.updateBankAccount(userId, accountId, updateDto);
+  }
+
+  @Delete('bank-accounts/:accountId')
+  @SetRolesMetaData(Role.PASSENGER, Role.DRIVER)
+  @ApiOperation({ summary: 'Delete a bank account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bank account deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Bank account not found',
+  })
+  async deleteBankAccount(@CurrentUser() user: User, @Param('accountId') accountId: string) {
+    const userId = new Types.ObjectId(user._id);
+    return await this.walletService.deleteBankAccount(userId, accountId);
+  }
+
+  // Withdrawal request endpoint
+  @Post('withdrawal-request')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.PASSENGER, Role.DRIVER)
+  @ApiOperation({ summary: 'Create a withdrawal request' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Withdrawal request created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid withdrawal data or insufficient balance',
+  })
+  async createWithdrawalRequest(@CurrentUser() user: User, @Body() createWithdrawalDto: CreateWithdrawalRequestDto) {
+    const userId = new Types.ObjectId(user._id);
+    return await this.walletService.createWithdrawalRequest(userId, createWithdrawalDto);
   }
 }

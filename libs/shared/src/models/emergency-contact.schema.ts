@@ -89,6 +89,9 @@ export class EmergencyContact extends AbstractDocument {
     max: 120,
   })
   lateArrivalThresholdMinutes: number;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const EmergencyContactSchema = SchemaFactory.createForClass(EmergencyContact);

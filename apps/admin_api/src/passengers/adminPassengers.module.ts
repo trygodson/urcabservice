@@ -14,6 +14,9 @@ import {
   RatingSchema,
   IssueReport,
   IssueReportSchema,
+  EmergencyContact,
+  EmergencyContactSchema,
+  EmergencyContactRepository,
 } from '@urcab-workspace/shared';
 import { AdminPassengersController } from './adminPassengers.controller';
 import { AdminPassengersService } from './adminPassengers.service';
@@ -33,6 +36,7 @@ import {
       { name: PassengerDocument.name, schema: PassengerDocumentSchema },
       { name: Rating.name, schema: RatingSchema },
       { name: IssueReport.name, schema: IssueReportSchema },
+      { name: EmergencyContact.name, schema: EmergencyContactSchema },
     ]),
     LoggerModule,
 
@@ -55,6 +59,7 @@ import {
     AdminPassengerDocumentRepository,
     AdminPassengerRatingRepository,
     AdminPassengerReportRepository,
+    EmergencyContactRepository,
   ],
   controllers: [AdminPassengersController],
 })

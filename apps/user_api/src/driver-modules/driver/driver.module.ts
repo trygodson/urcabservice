@@ -32,6 +32,8 @@ import {
   WalletSchema,
   WalletTransaction,
   WalletTransactionSchema,
+  Settings,
+  SettingsSchema,
 } from '@urcab-workspace/shared';
 import { DriverDocumentRepository } from './repository/driveDocument.repository';
 import { DriverDocumentController } from './driverDocument.controller';
@@ -70,6 +72,7 @@ import { DriverService } from './driver.service';
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Wallet.name, schema: WalletSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: Settings.name, schema: SettingsSchema },
     ]),
     NotificationsModule,
   ],

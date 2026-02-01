@@ -17,7 +17,14 @@ export class Settings extends AbstractDocument {
     type: String,
     default: '',
   })
-  termsAndConditions: string; // HTML string for terms and conditions
+  passengerTermsAndConditions: string; // HTML string for passenger terms and conditions
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    default: '',
+  })
+  driverTermsAndConditions: string; // HTML string for driver terms and conditions
 
   @ApiProperty()
   @Prop({
@@ -47,7 +54,14 @@ export class Settings extends AbstractDocument {
     type: Date,
     required: false,
   })
-  termsAndConditionsLastUpdated?: Date;
+  passengerTermsAndConditionsLastUpdated?: Date;
+
+  @ApiProperty()
+  @Prop({
+    type: Date,
+    required: false,
+  })
+  driverTermsAndConditionsLastUpdated?: Date;
 
   @ApiProperty()
   @Prop({

@@ -172,7 +172,7 @@ export class UserService {
   /**
    * Get terms and conditions from settings
    */
-  async getTermsAndConditions(): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
+  async getTermsAndConditions(userType: 'PASSENGER' | 'DRIVER' = 'PASSENGER'): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
     try {
       const settings = await this.settingsModel.findOne().exec();
 
@@ -182,9 +182,16 @@ export class UserService {
         };
       }
 
+      if (userType === 'DRIVER') {
+        return {
+          termsAndConditions: settings.driverTermsAndConditions || '',
+          lastUpdated: settings.driverTermsAndConditionsLastUpdated,
+        };
+      }
+
       return {
-        termsAndConditions: settings.termsAndConditions || '',
-        lastUpdated: settings.termsAndConditionsLastUpdated,
+        termsAndConditions: settings.passengerTermsAndConditions || '',
+        lastUpdated: settings.passengerTermsAndConditionsLastUpdated,
       };
     } catch (error) {
       throw new NotFoundException('Failed to retrieve terms and conditions');

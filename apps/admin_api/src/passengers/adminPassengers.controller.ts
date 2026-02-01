@@ -141,4 +141,14 @@ export class AdminPassengersController {
   async getPassengerRatings(@Param('passengerId') passengerId: string) {
     return this.adminPassengersService.getPassengerRatings(passengerId);
   }
+
+  @Get(':passengerId/emergency-contacts')
+  @ApiOperation({ summary: 'Get all emergency contacts for a passenger' })
+  @ApiParam({ name: 'passengerId', description: 'Passenger ID' })
+  @ApiResponse({ status: 200, description: 'Emergency contacts retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Passenger not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async getPassengerEmergencyContacts(@Param('passengerId') passengerId: string) {
+    return this.adminPassengersService.getPassengerEmergencyContacts(passengerId);
+  }
 }

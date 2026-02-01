@@ -1,7 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { DatabaseModule, UploadFileService, User, UserSchema, Settings, SettingsSchema } from '@urcab-workspace/shared';
+import {
+  DatabaseModule,
+  UploadFileService,
+  User,
+  UserSchema,
+  Settings,
+  SettingsSchema,
+  WalletTransaction,
+  WalletTransactionSchema,
+} from '@urcab-workspace/shared';
 import { LoggerModule } from 'nestjs-pino';
 import { AdminSettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
@@ -24,6 +33,7 @@ import { SettingsService } from './settings.service';
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Settings.name, schema: SettingsSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
     ]),
   ],
   controllers: [AdminSettingsController],

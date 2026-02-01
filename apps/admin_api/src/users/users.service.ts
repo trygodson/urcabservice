@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { UserRepository, RoleRepository, Role, PermissionRepository } from '@urcab-workspace/shared';
-import { CreateAdminUserDto, UpdateAdminUserDto, UserPermissionsResponseDto, PermissionDto, QueryUsersDto } from './dto';
+import {
+  CreateAdminUserDto,
+  UpdateAdminUserDto,
+  UserPermissionsResponseDto,
+  PermissionDto,
+  QueryUsersDto,
+} from './dto';
 import { Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 
@@ -57,24 +63,23 @@ export class UsersService {
     const { page = 1, limit = 10, search, status, roleId } = query;
     const skip = (page - 1) * limit;
 
-    // Build filter
-    const filter: any = { type: Role.ADMIN };
+    // Build base filter (without status filter for counting)
+    const baseFilter: any = { type: Role.ADMIN };
 
     if (search) {
-      filter.$or = [
-        { fullName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-      ];
+      baseFilter.$or = [{ fullName: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }];
     }
 
+    if (roleId) {
+      baseFilter.roleId = new Types.ObjectId(roleId);
+    }
+
+    // Build filter with status (for pagination)
+    const filter = { ...baseFilter };
     if (status === 'ACTIVE') {
       filter.isActive = true;
     } else if (status === 'INACTIVE') {
       filter.isActive = false;
-    }
-
-    if (roleId) {
-      filter.roleId = new Types.ObjectId(roleId);
     }
 
     // Get users with pagination using the model directly
@@ -88,6 +93,17 @@ export class UsersService {
       .exec();
 
     const total = await this.userRepository.countDocuments(filter);
+
+    // Count active and inactive users (using base filter to respect search and roleId filters)
+    const activeCount = await this.userRepository.countDocuments({
+      ...baseFilter,
+      isActive: true,
+    });
+
+    const inactiveCount = await this.userRepository.countDocuments({
+      ...baseFilter,
+      isActive: false,
+    });
 
     return {
       users: users.map((user: any) => ({
@@ -104,6 +120,10 @@ export class UsersService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      counts: {
+        active: activeCount,
+        inactive: inactiveCount,
       },
     };
   }

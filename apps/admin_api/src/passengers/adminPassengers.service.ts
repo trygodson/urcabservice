@@ -9,6 +9,7 @@ import {
   AdminPassengerRatingRepository,
   AdminPassengerReportRepository,
 } from './repository';
+import { EmergencyContactRepository } from '@urcab-workspace/shared';
 
 @Injectable()
 export class AdminPassengersService {
@@ -18,6 +19,7 @@ export class AdminPassengersService {
     private readonly passengerDocumentRepository: AdminPassengerDocumentRepository,
     private readonly passengerRatingRepository: AdminPassengerRatingRepository,
     private readonly passengerReportRepository: AdminPassengerReportRepository,
+    private readonly emergencyContactRepository: EmergencyContactRepository,
   ) {}
 
   // Passenger Management Methods
@@ -347,6 +349,54 @@ export class AdminPassengersService {
     );
 
     return ratings;
+  }
+
+  async getPassengerEmergencyContacts(passengerId: string) {
+    // Validate ID format
+    if (!Types.ObjectId.isValid(passengerId)) {
+      throw new BadRequestException('Invalid passenger ID format');
+    }
+
+    const passengerObjectId = new Types.ObjectId(passengerId);
+
+    // Check if passenger exists
+    const passenger = await this.passengerUserRepository.findOne({
+      _id: passengerObjectId,
+      type: Role.PASSENGER,
+    });
+
+    if (!passenger) {
+      throw new NotFoundException(`Passenger with ID ${passengerId} not found`);
+    }
+
+    // Get emergency contacts
+    const emergencyContacts = await this.emergencyContactRepository.find(
+      { userId: passengerObjectId },
+      {
+        sort: { isPrimary: -1, createdAt: -1 },
+      },
+    );
+
+    return {
+      passengerId: passengerId,
+      passengerName: passenger.fullName || passenger.email,
+      emergencyContacts: emergencyContacts.map((contact) => ({
+        _id: contact._id.toString(),
+        name: contact.name,
+        phoneNumber: contact.phoneNumber,
+        email: contact.email,
+        relationship: contact.relationship,
+        isPrimary: contact.isPrimary,
+        isActive: contact.isActive,
+        notifyOnRideStart: contact.notifyOnRideStart,
+        notifyOnEmergency: contact.notifyOnEmergency,
+        notifyOnLateArrival: contact.notifyOnLateArrival,
+        lateArrivalThresholdMinutes: contact.lateArrivalThresholdMinutes,
+        createdAt: contact.createdAt,
+        updatedAt: contact.updatedAt,
+      })),
+      totalContacts: emergencyContacts.length,
+    };
   }
 
   async updatePassengerStatus(passengerId: string, isActive: boolean, reason?: string) {

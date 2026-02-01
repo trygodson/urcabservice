@@ -8,7 +8,10 @@ export class SettingsResponseDto {
   privacyPolicy: string;
 
   @ApiProperty()
-  termsAndConditions: string;
+  passengerTermsAndConditions: string;
+
+  @ApiProperty()
+  driverTermsAndConditions: string;
 
   @ApiProperty({ required: false })
   globalVehicleEvpPrice?: number;
@@ -20,7 +23,10 @@ export class SettingsResponseDto {
   privacyPolicyLastUpdated?: Date;
 
   @ApiProperty({ required: false })
-  termsAndConditionsLastUpdated?: Date;
+  passengerTermsAndConditionsLastUpdated?: Date;
+
+  @ApiProperty({ required: false })
+  driverTermsAndConditionsLastUpdated?: Date;
 
   @ApiProperty({ required: false })
   evpPriceLastUpdated?: Date;

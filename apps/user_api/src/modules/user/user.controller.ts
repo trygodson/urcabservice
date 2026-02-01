@@ -128,11 +128,11 @@ export class UserController {
 
   @Get('terms-and-conditions')
   @Public()
-  @ApiOperation({ summary: 'Get terms and conditions' })
+  @ApiOperation({ summary: 'Get terms and conditions for passenger' })
   @ApiResponse({ status: 200, description: 'Terms and conditions retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Terms and conditions not found' })
   async getTermsAndConditions() {
-    return await this.userService.getTermsAndConditions();
+    return await this.userService.getTermsAndConditions('PASSENGER');
   }
 
   @Put('accept-consent')

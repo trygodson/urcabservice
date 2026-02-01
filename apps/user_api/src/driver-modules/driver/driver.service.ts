@@ -25,6 +25,8 @@ import {
   VehicleRepository,
   WalletRepository,
   WalletTransaction,
+  Settings,
+  SettingsDocument,
 } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -79,6 +81,7 @@ export class DriverService {
     // @InjectModel(Driver.name) private readonly driverLocation: Model<DriverLocation>,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
     @InjectModel(Ride.name) private readonly rideModel: Model<Ride>,
+    @InjectModel(Settings.name) private readonly settingsModel: Model<SettingsDocument>,
     private readonly subscriptionPlanRepository: SubscriptionPlanRepository,
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly walletRepository: WalletRepository,
@@ -1163,6 +1166,28 @@ export class DriverService {
       };
     } catch (error) {
       throw new UnauthorizedException(error.message || 'Failed to update consent');
+    }
+  }
+
+  /**
+   * Get terms and conditions from settings for drivers
+   */
+  async getTermsAndConditions(): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
+    try {
+      const settings = await this.settingsModel.findOne().exec();
+
+      if (!settings) {
+        return {
+          termsAndConditions: '',
+        };
+      }
+
+      return {
+        termsAndConditions: settings.driverTermsAndConditions || '',
+        lastUpdated: settings.driverTermsAndConditionsLastUpdated,
+      };
+    } catch (error) {
+      throw new NotFoundException('Failed to retrieve terms and conditions');
     }
   }
 

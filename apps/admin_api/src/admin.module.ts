@@ -20,6 +20,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UserProfileModule } from './user-profile/user-profile.module';
+import { WithdrawalsModule } from './withdrawals/withdrawals.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { UserProfileModule } from './user-profile/user-profile.module';
     ReportsModule,
     FaqsModule,
     UserProfileModule,
+    WithdrawalsModule,
   ],
 
   // providers: [AdminService],
