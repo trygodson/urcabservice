@@ -29,7 +29,7 @@ export class EmergencyContactsService {
       userId: new Types.ObjectId(userId),
       name: dto.name,
       phoneNumber: dto.phoneNumber,
-      relationship: 'emergency',
+      relationship: dto.relationship,
       isPrimary: activeCount === 0, // first contact becomes primary
     } as any);
 
@@ -78,7 +78,7 @@ export class EmergencyContactsService {
 
     await this.emergencyContactRepository.findOneAndUpdate(
       { _id: new Types.ObjectId(contactId), userId: new Types.ObjectId(userId) },
-      { name: dto.name, phoneNumber: dto.phoneNumber },
+      { name: dto.name, phoneNumber: dto.phoneNumber, relationship: dto.relationship },
     );
 
     return { success: true };

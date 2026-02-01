@@ -8,6 +8,12 @@ export class CreateEmergencyContactDto {
   @MaxLength(100)
   name: string;
 
+  @ApiProperty({ description: 'Relationship of the emergency contact', example: 'spouse' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  relationship: string;
+
   @ApiProperty({
     description: 'Phone number of the emergency contact',
     example: '+60123456789',
@@ -24,6 +30,12 @@ export class UpdateEmergencyContactDto {
   @IsNotEmpty()
   @MaxLength(100)
   name: string;
+
+  @ApiProperty({ description: 'Relationship of the emergency contact', example: 'spouse' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  relationship: string;
 
   @ApiProperty({
     description: 'Phone number of the emergency contact',
