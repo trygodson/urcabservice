@@ -530,10 +530,10 @@ export class AdminDriversService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    const documentDetails = await this.getVehicleDocuments(vehicleId);
-    if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
-      throw new BadRequestException('Vehicle documents are complete');
-    }
+    // const documentDetails = await this.getVehicleDocuments(vehicleId);
+    // if (documentDetails.overallStatus === 'complete' || !documentDetails.hasCompleteDocumentation) {
+    //   throw new BadRequestException('Vehicle documents are complete');
+    // }
 
     const updateData = {
       status: VehicleStatus.REJECTED,
