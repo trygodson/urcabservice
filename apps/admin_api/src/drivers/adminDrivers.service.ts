@@ -473,18 +473,50 @@ export class AdminDriversService {
       throw new NotFoundException('Vehicle not found');
     }
 
+    if (vehicle.hasCompleteDocumentation && vehicle.status === VehicleStatus.VERIFIED) {
+      throw new BadRequestException('Vehicle is already verified');
+    }
+
     const documentDetails = await this.getVehicleDocuments(vehicleId);
     if (documentDetails.overallStatus !== 'complete' || !documentDetails.hasCompleteDocumentation) {
       throw new BadRequestException('Vehicle documents are not complete');
     }
 
-    const updateData = {
+    let updateData: any = {
       status: VehicleStatus.VERIFIED,
       verifiedAt: new Date(),
       hasCompleteDocumentation: true,
+
       // verifiedByAdminId: adminId, // Get from JWT
       // verificationNotes: body.verificationNotes,
     };
+
+    const existingActiveEvp = await this.driverEvpRepository.findOne({
+      vehicleId: vehicleId,
+      isActive: true,
+      endDate: { $gt: new Date() }, // Not expired
+      revokedAt: { $exists: false }, // Not revoked
+    });
+
+    // Only set EVP price if there's no active EVP
+    if (!existingActiveEvp) {
+      // Get global EVP price and period from settings
+      try {
+        const settings = await this.settingsModel.findOne().exec();
+        if (settings && settings.globalVehicleEvpPrice && settings.globalVehicleEvpPrice > 0) {
+          updateData.evpPrice = settings.globalVehicleEvpPrice;
+          updateData.evpPriceSet = true;
+
+          // Set EVP period if available in settings
+          if (settings.globalVehicleEvpPeriod && settings.globalVehicleEvpPeriod > 0) {
+            updateData.evpPeriod = settings.globalVehicleEvpPeriod;
+          }
+        }
+      } catch (error) {
+        // If settings are not available, skip auto-setting EVP price
+        console.error('Failed to get global EVP price from settings:', error);
+      }
+    }
 
     return this.vehicleRepository.findOneAndUpdate({ _id: new Types.ObjectId(vehicleId) }, updateData);
   }
@@ -506,6 +538,9 @@ export class AdminDriversService {
     const updateData = {
       status: VehicleStatus.REJECTED,
       hasCompleteDocumentation: false,
+      evpPriceSet: false,
+      // evpPrice: null,
+      // evpPeriod: null,
       rejectionReason: body.rejectionReason,
     };
 
