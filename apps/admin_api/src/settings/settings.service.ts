@@ -133,7 +133,7 @@ export class SettingsService {
       passengerTermsAndConditions: updated.passengerTermsAndConditions || '',
       driverTermsAndConditions: updated.driverTermsAndConditions || '',
       globalVehicleEvpPrice: updated.globalVehicleEvpPrice,
-      globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
+      // globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: updated.privacyPolicyLastUpdated,
       passengerTermsAndConditionsLastUpdated: updated.passengerTermsAndConditionsLastUpdated,
       driverTermsAndConditionsLastUpdated: updated.driverTermsAndConditionsLastUpdated,
@@ -150,7 +150,7 @@ export class SettingsService {
       { _id: settings._id },
       {
         globalVehicleEvpPrice: updateDto.globalVehicleEvpPrice,
-        globalVehicleEvpPeriod: updateDto.globalVehicleEvpPeriod,
+        // globalVehicleEvpPeriod: updateDto.globalVehicleEvpPeriod,
         evpPriceLastUpdated: new Date(),
       },
       { new: true },
@@ -160,9 +160,9 @@ export class SettingsService {
       throw new NotFoundException('Settings not found');
     }
 
-    this.logger.log(
-      `Global EVP price updated to ${updateDto.globalVehicleEvpPrice} with period of ${updateDto.globalVehicleEvpPeriod} days`,
-    );
+    // this.logger.log(
+    //   `Global EVP price updated to ${updateDto.globalVehicleEvpPrice} with period of ${updateDto.globalVehicleEvpPeriod} days`,
+    // );
 
     return {
       _id: updated._id.toString(),
@@ -170,7 +170,7 @@ export class SettingsService {
       passengerTermsAndConditions: updated.passengerTermsAndConditions || '',
       driverTermsAndConditions: updated.driverTermsAndConditions || '',
       globalVehicleEvpPrice: updated.globalVehicleEvpPrice,
-      globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
+      // globalVehicleEvpPeriod: updated.globalVehicleEvpPeriod,
       privacyPolicyLastUpdated: updated.privacyPolicyLastUpdated,
       passengerTermsAndConditionsLastUpdated: updated.passengerTermsAndConditionsLastUpdated,
       driverTermsAndConditionsLastUpdated: updated.driverTermsAndConditionsLastUpdated,

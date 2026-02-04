@@ -131,6 +131,11 @@ export class CreateVehicleEvpDto {
   @IsNotEmpty()
   vehicleId: string;
 
+  @ApiProperty({ description: 'Transaction ID' })
+  @IsMongoId()
+  @IsNotEmpty()
+  transactionId: string;
+
   @ApiProperty({ description: 'Certificate number for the EVP' })
   @IsString()
   @IsNotEmpty()
@@ -164,6 +169,9 @@ export class VehicleEvpResponseDto {
 
   @ApiProperty()
   vehicleId: string;
+
+  @ApiProperty()
+  transactionId: string;
 
   @ApiProperty()
   certificateNumber: string;

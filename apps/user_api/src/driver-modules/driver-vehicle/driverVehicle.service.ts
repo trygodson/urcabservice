@@ -24,6 +24,8 @@ import {
   Wallet,
   DriverEvpRepository,
   DriverEvp,
+  Settings,
+  VehicleStatus,
 } from '@urcab-workspace/shared';
 import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto, PayEvpDto } from './dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -40,6 +42,7 @@ export class VehicleService {
     @InjectModel(User.name) private readonly userRepository: Model<User>,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
+    @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
   ) {}
 
   async createVehicle(driverId: Types.ObjectId, createVehicleDto: CreateVehicleDto): Promise<VehicleResponseDto> {
@@ -184,7 +187,7 @@ export class VehicleService {
         throw new BadRequestException('Vehicle does not belong to this driver');
       }
 
-      return { success: true, data: await this.mapToResponseDto(vehicle) };
+      return { success: true, data: await this.mapToVehicleDetailsResponseDto(vehicle) };
     } catch (error) {
       this.logger.error(`Failed to get vehicle ${vehicleId}`, error.stack);
 
@@ -389,6 +392,80 @@ export class VehicleService {
       updatedAt: vehicle?.updatedAt,
     };
   }
+  private async mapToVehicleDetailsResponseDto(vehicle: Vehicle): Promise<VehicleResponseDto> {
+    // Get active EVP for this vehicle
+    let evp = null;
+    try {
+      const vehicleId = typeof vehicle._id === 'string' ? new Types.ObjectId(vehicle._id) : vehicle._id;
+      const activeEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicleId,
+        isActive: true,
+        endDate: { $gt: new Date() },
+        revokedAt: { $exists: false },
+      });
+      if (activeEvp) {
+        evp = {
+          _id: activeEvp._id.toString(),
+          certificateNumber: activeEvp.certificateNumber,
+          startDate: activeEvp.startDate,
+          endDate: activeEvp.endDate,
+          documentUrl: activeEvp.documentUrl,
+          isActive: activeEvp.isActive,
+          notes: activeEvp.notes,
+        };
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to fetch EVP for vehicle ${vehicle._id}:`, error);
+    }
+    let evpPrice = null;
+    if (!evp) {
+      try {
+        const settings = await this.settingsModel.findOne().exec();
+        evpPrice = settings.globalVehicleEvpPrice;
+      } catch (error) {
+        this.logger.warn(`Failed to fetch EVP price for vehicle ${vehicle._id}:`, error);
+      }
+    }
+
+    return {
+      _id: vehicle._id.toString(),
+      driverId: vehicle.driverId.toString(),
+      name: vehicle.name,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      color: vehicle.color,
+      licensePlate: vehicle.licensePlate,
+      vin: vehicle.vin,
+      status: vehicle.status,
+      seatingCapacity: vehicle.seatingCapacity,
+      vehicleType: vehicle.vehicleTypeId,
+      backPhoto: vehicle.backPhoto,
+      frontPhoto: vehicle.frontPhoto,
+      leftPhoto: vehicle.leftPhoto,
+      rightPhoto: vehicle.rightPhoto,
+      frontRearPhoto: vehicle.frontRearPhoto,
+      backRearPhoto: vehicle.backRearPhoto,
+      lastInspectionDate: vehicle.lastInspectionDate,
+      nextInspectionDue: vehicle.nextInspectionDue,
+      verifiedByAdminId: vehicle.verifiedByAdminId?.toString(),
+      verifiedAt: vehicle.verifiedAt,
+      verificationNotes: vehicle.verificationNotes,
+      rejectionReason: vehicle.rejectionReason,
+      isActive: vehicle.isActive,
+      isPrimary: vehicle.isPrimary,
+      odometer: vehicle.odometer,
+      features: vehicle.features,
+      hasCompleteDocumentation: vehicle.hasCompleteDocumentation,
+      lastDocumentVerificationCheck: vehicle.lastDocumentVerificationCheck,
+      evpPrice: vehicle.status === VehicleStatus.VERIFIED ? (evpPrice ? evpPrice : null) : null,
+      evpPriceSet: vehicle.status === VehicleStatus.VERIFIED ? (evpPrice ? true : false) : false,
+      evpAdminGeneratedPending: vehicle.evpAdminGeneratedPending,
+      evp: evp,
+      createdAt: vehicle?.createdAt,
+      updatedAt: vehicle?.updatedAt,
+    };
+  }
 
   async payForEvp(vehicleId: string, driverId: Types.ObjectId, payEvpDto: PayEvpDto): Promise<any> {
     try {
@@ -411,6 +488,18 @@ export class VehicleService {
       // Check if EVP price is set by admin
       if (!vehicle.evpPriceSet || !vehicle.evpPrice || vehicle.evpPrice <= 0) {
         throw new BadRequestException('EVP price has not been set by admin yet');
+      }
+
+      // Check if there is already an active EVP for this vehicle
+      const existingActiveEvp = await this.driverEvpRepository.findOne({
+        vehicleId: vehicleObjectId,
+        isActive: true,
+        endDate: { $gt: new Date() }, // Not expired
+        revokedAt: { $exists: false }, // Not revoked
+      });
+
+      if (existingActiveEvp) {
+        throw new BadRequestException('Vehicle already has an active EVP');
       }
 
       // Check if there's already a completed payment (admin can generate EVP)
@@ -543,18 +632,18 @@ export class VehicleService {
       } else if (payEvpDto.paymentMethod === PaymentMethod.CARD) {
         // Create pending transaction for card payment
         // Check for the most recent pending transaction
-        const completedTrnx = await this.transactionModel
-          .findOne({
-            category: TransactionCategory.EVP_PAYMENT,
-            status: TransactionStatus.COMPLETED,
-            amount: vehicle.evpPrice,
-            'metadata.vehicleId': vehicleId,
-          })
-          .sort({ createdAt: -1 }) // Get the most recent transaction
-          .exec();
-        if (completedTrnx) {
-          throw new BadRequestException('EVP payment has already been completed');
-        }
+        // const completedTrnx = await this.transactionModel
+        //   .findOne({
+        //     category: TransactionCategory.EVP_PAYMENT,
+        //     status: TransactionStatus.COMPLETED,
+        //     amount: vehicle.evpPrice,
+        //     'metadata.vehicleId': vehicleId,
+        //   })
+        //   .sort({ createdAt: -1 }) // Get the most recent transaction
+        //   .exec();
+        // if (completedTrnx) {
+        //   throw new BadRequestException('EVP payment has already been completed');
+        // }
         const pendingTrnx = await this.transactionModel
           .findOne({
             category: TransactionCategory.EVP_PAYMENT,

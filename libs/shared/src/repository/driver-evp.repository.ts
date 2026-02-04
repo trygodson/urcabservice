@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AbstractRepository } from '../database';
-import { DriverEvp, DriverEvpDocument } from '../models/driver-evp.schema';
+import { DriverEvp, DriverEvpDocument } from '../models/vehicle-evp.schema';
 
 @Injectable()
 export class DriverEvpRepository extends AbstractRepository<DriverEvpDocument> {

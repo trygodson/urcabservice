@@ -113,7 +113,7 @@ export class RolesService {
     }
 
     // Soft delete by setting isActive to false
-    await this.roleRepository.findOneAndUpdate({ _id: id }, { isActive: false });
+    await this.roleRepository.findOneAndDelete({ _id: id });
   }
 
   private async findById(id: string): Promise<RoleResponseDto> {

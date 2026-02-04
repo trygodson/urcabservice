@@ -22,6 +22,8 @@ import {
   DriverEvp,
   DriverEvpSchema,
   DriverEvpRepository,
+  Settings,
+  SettingsSchema,
 } from '@urcab-workspace/shared';
 import { VehicleRepository } from './repository/vehicle.repository';
 import { VehicleDocumentRepository } from './repository/vehicleDocument.repository';
@@ -50,6 +52,7 @@ import { VehicleDocumentService } from './driverVehicleDocument.service';
       { name: Wallet.name, schema: WalletSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
       { name: DriverEvp.name, schema: DriverEvpSchema },
+      { name: Settings.name, schema: SettingsSchema },
     ]),
   ],
   providers: [

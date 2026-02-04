@@ -14,7 +14,7 @@ export * from './vehicle-document.schema';
 export * from './driver-location.schema';
 export * from './passenger-document.schema';
 export * from './vehicleType.schema';
-export * from './driver-evp.schema';
+export * from './vehicle-evp.schema';
 export * from './pricing-zone.schema';
 export * from './permission.schema';
 export * from './role.schema';

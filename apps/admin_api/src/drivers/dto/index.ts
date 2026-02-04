@@ -1,4 +1,5 @@
 export * from './evp.dto';
+export * from './get-vehicle-evp-transactions.dto';
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';

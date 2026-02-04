@@ -19,6 +19,8 @@ import {
   RideStatus,
   TransactionType,
   BalanceType,
+  User,
+  UserDocument,
 } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
@@ -62,6 +64,7 @@ export class AdminDriversService {
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
     @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
     @InjectModel(Rating.name) private readonly ratingModel: Model<RatingDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   // Driver Management Methods
@@ -1648,7 +1651,7 @@ export class AdminDriversService {
   }
 
   async createVehicleEvp(createVehicleEvpDto: CreateVehicleEvpDto, adminId: string): Promise<VehicleEvpResponseDto> {
-    const { vehicleId, certificateNumber, startDate, endDate, documentUrl, notes } = createVehicleEvpDto;
+    const { vehicleId, transactionId, certificateNumber, startDate, endDate, documentUrl, notes } = createVehicleEvpDto;
 
     // Check if vehicle exists
     const vehicle = await this.vehicleRepository.findById(vehicleId);
@@ -1664,14 +1667,18 @@ export class AdminDriversService {
     // Check if EVP payment has been completed
     // Check for a completed EVP_PAYMENT transaction for this vehicle
     const completedPayment = await this.transactionModel.findOne({
+      _id: new Types.ObjectId(transactionId),
       category: TransactionCategory.EVP_PAYMENT,
       status: TransactionStatus.COMPLETED,
       'metadata.vehicleId': vehicleId,
+      'metadata.vehicleEvpId': { $exists: false },
       // No need for any condition here to get the latest, we will just sort below.
     });
 
     if (!completedPayment) {
-      throw new BadRequestException('EVP payment has not been completed yet. Please wait for payment confirmation.');
+      throw new BadRequestException(
+        'EVP Transaction payment has not been completed yet, or already used to generate EVP',
+      );
     }
 
     // Check if there's already an active EVP for this vehicle
@@ -1694,8 +1701,14 @@ export class AdminDriversService {
       throw new BadRequestException('End date must be after start date');
     }
 
-    if (start < new Date()) {
-      throw new BadRequestException('Start date cannot be in the past');
+    // Allow start date from today onwards (compare dates without time)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDateOnly = new Date(start);
+    startDateOnly.setHours(0, 0, 0, 0);
+
+    if (startDateOnly < today) {
+      throw new BadRequestException('Start date cannot be in the past. It must be from today onwards');
     }
 
     // Create new Vehicle EVP (using the same repository since we updated the schema)
@@ -1712,7 +1725,15 @@ export class AdminDriversService {
       isActive: true,
       issuedBy: new Types.ObjectId(adminId),
     });
-
+    await this.transactionModel.findOneAndUpdate(
+      {
+        category: TransactionCategory.EVP_PAYMENT,
+        status: TransactionStatus.COMPLETED,
+        'metadata.vehicleId': vehicleId,
+        // No need for any condition here to get the latest, we will just sort below.
+      },
+      { 'metadata.vehicleEvpId': evp._id.toString() },
+    );
     await this.vehicleRepository.findOneAndUpdate(
       { _id: new Types.ObjectId(vehicleId) },
       { evpAdminGeneratedPending: false, evpPriceSet: false },
@@ -1734,10 +1755,116 @@ export class AdminDriversService {
     return evps.map((evp) => this.mapToVehicleEvpResponseDto(evp));
   }
 
+  async getVehicleEvpTransactions(
+    vehicleId: string,
+    query: { page?: number; limit?: number; startDate?: string; endDate?: string; status?: string },
+  ) {
+    // Check if vehicle exists
+    const vehicle = await this.vehicleRepository.findById(vehicleId);
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
+    }
+
+    const { page = 1, limit = 10, startDate, endDate } = query;
+    const skip = (page - 1) * limit;
+
+    // Build filter for EVP transactions for this specific vehicle
+    const filter: any = {
+      category: TransactionCategory.EVP_PAYMENT,
+      'metadata.vehicleId': vehicleId,
+      status: TransactionStatus.COMPLETED,
+    };
+
+    // Date filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Set end date to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Get total count
+    const total = await this.transactionModel.countDocuments(filter);
+
+    // Get transactions with pagination
+    const transactions = await this.transactionModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    // Get unique driver IDs for batch fetching
+    const driverIds = [...new Set(transactions.map((t) => (t.user ? t.user.toString() : null)).filter(Boolean))];
+
+    // Fetch all drivers in batch
+    const drivers = await this.userModel
+      .find({ _id: { $in: driverIds.map((id) => new Types.ObjectId(id)) } })
+      .select('_id fullName')
+      .lean()
+      .exec();
+
+    // Create map for quick lookup
+    const driverMap = new Map(drivers.map((d) => [d._id.toString(), d.fullName || 'Unknown']));
+
+    // Get all transaction IDs to fetch EVPs in batch
+    const transactionIds = transactions.map((t) => new Types.ObjectId(t._id.toString()));
+
+    // Fetch all EVPs for these transactions in a single query
+    const vehicleEvps = await this.driverEvpRepository.find({
+      transactionId: { $in: transactionIds },
+    });
+
+    // Create map for quick lookup: transactionId -> EVP
+    const evpMap = new Map<string, VehicleEvpResponseDto>();
+    vehicleEvps.forEach((evp) => {
+      if (evp.transactionId) {
+        evpMap.set(evp.transactionId.toString(), this.mapToVehicleEvpResponseDto(evp));
+      }
+    });
+
+    // Enrich transactions with driver names and EVP data
+    const enrichedTransactions = transactions.map((transaction) => {
+      const driverId = transaction.user ? transaction.user.toString() : null;
+      const transactionIdStr = transaction._id.toString();
+      const vehicleEvp = evpMap.get(transactionIdStr) || null;
+
+      return {
+        _id: transactionIdStr,
+        transactionRef: transaction.transactionRef,
+        driverName: driverId ? driverMap.get(driverId) || 'Unknown' : 'Unknown',
+        amount: transaction.amount,
+        paymentMethod: transaction.paymentMethod || 'N/A',
+        status: transaction.status,
+        date: transaction.createdAt,
+        vehicleId: transaction.metadata?.vehicleId?.toString(),
+        vehicleEvp: vehicleEvp,
+      };
+    });
+
+    return {
+      transactions: enrichedTransactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   private mapToVehicleEvpResponseDto(evp: any): VehicleEvpResponseDto {
     return {
       _id: evp._id.toString(),
       vehicleId: evp.vehicleId.toString(),
+      transactionId: evp.transactionId?.toString(),
       certificateNumber: evp.certificateNumber,
       startDate: evp.startDate,
       endDate: evp.endDate,

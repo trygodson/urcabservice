@@ -20,6 +20,7 @@ import {
   CreateVehicleEvpDto,
   VehicleEvpResponseDto,
   GetEvpEligibleDriversDto,
+  GetVehicleEvpTransactionsDto,
 } from './dto';
 import { Role, SetRolesMetaData } from '@urcab-workspace/shared';
 
@@ -392,13 +393,13 @@ export class AdminDriversController {
     return this.adminDriversService.createVehicleEvp(createVehicleEvpDto, user.sub);
   }
 
-  @Patch('vehicles/:vehicleId/setEvpForPayment')
-  @ApiOperation({ summary: 'Set EVP for payment' })
-  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
-  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
-  async setVehicleEvpForPayment(@Param('vehicleId') vehicleId: string) {
-    return this.adminDriversService.setVehicleEvpForPayment(vehicleId);
-  }
+  // @Patch('vehicles/:vehicleId/setEvpForPayment')
+  // @ApiOperation({ summary: 'Set EVP for payment' })
+  // @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  // @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  // async setVehicleEvpForPayment(@Param('vehicleId') vehicleId: string) {
+  //   return this.adminDriversService.setVehicleEvpForPayment(vehicleId);
+  // }
 
   @Get('vehicles/:vehicleId/evp')
   @ApiOperation({ summary: 'Get all EVPs for a vehicle' })
@@ -408,5 +409,17 @@ export class AdminDriversController {
   @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
   async getVehicleEvps(@Param('vehicleId') vehicleId: string) {
     return this.adminDriversService.getVehicleEvps(vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/evp-transactions')
+  @ApiOperation({ summary: 'Get paginated EVP payment transactions for a vehicle' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Vehicle EVP transactions retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Vehicle not found' })
+  @SetRolesMetaData(Role.SUPER_ADMIN, Role.ADMIN)
+  async getVehicleEvpTransactions(@Param('vehicleId') vehicleId: string, @Query() query: GetVehicleEvpTransactionsDto) {
+    return this.adminDriversService.getVehicleEvpTransactions(vehicleId, query);
   }
 }

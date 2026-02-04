@@ -215,7 +215,8 @@ export class UsersService {
     }
 
     // Soft delete by setting isActive to false
-    await this.userRepository.findOneAndUpdate({ _id: new Types.ObjectId(id) }, { isActive: false });
+    // await this.userRepository.findOneAndUpdate({ _id: new Types.ObjectId(id) }, { isActive: false });
+    await this.userRepository.findOneAndDelete({ _id: new Types.ObjectId(id) });
 
     return { message: 'User deleted successfully' };
   }

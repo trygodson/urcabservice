@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 
 export class SettingsResponseDto {
   @ApiProperty()
@@ -17,6 +18,7 @@ export class SettingsResponseDto {
   globalVehicleEvpPrice?: number;
 
   @ApiProperty({ required: false })
+  @IsOptional()
   globalVehicleEvpPeriod?: number;
 
   @ApiProperty({ required: false })
@@ -37,4 +39,3 @@ export class SettingsResponseDto {
   @ApiProperty()
   updatedAt: Date;
 }
-

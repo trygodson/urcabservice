@@ -41,12 +41,8 @@ export class EmailNotificationService {
 
   constructor(private readonly configService: ConfigService, private readonly httpService: HttpService) {
     this.brevoApiKey = this.configService.get<string>('BREVO_API_KEY') || '';
-    this.senderEmail =
-      this.configService.get<string>('BREVO_SENDER_EMAIL') || this.configService.get<string>('SMTP_FROM') || '';
-    this.senderName =
-      this.configService.get<string>('BREVO_SENDER_NAME') ||
-      this.configService.get<string>('SMTP_FROM_NAME') ||
-      'UrCab Service';
+    this.senderEmail = 'godson0477@gmail.com';
+    this.senderName = 'UrCab Service';
 
     if (!this.brevoApiKey) {
       this.logger.warn('BREVO_API_KEY not configured. Email notifications will not work.');
@@ -95,15 +91,15 @@ export class EmailNotificationService {
       };
 
       // Add HTML content if provided, otherwise use text
-      if (options.text) {
+      if (options.html) {
+        payload.htmlContent = options.html;
+      } else if (options.text) {
         // Convert plain text to basic HTML
-        // const escapedText = options.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        // payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapedText.replace(
-        //   /\n/g,
-        //   '<br>',
-        // )}</pre></body></html>`;
-
-        payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${options.text}</pre></body></html>`;
+        const escapedText = options.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        payload.htmlContent = `<html><head></head><body><pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapedText.replace(
+          /\n/g,
+          '<br>',
+        )}</pre></body></html>`;
       }
 
       // Add CC if provided
