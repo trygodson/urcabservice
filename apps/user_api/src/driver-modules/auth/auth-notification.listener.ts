@@ -98,12 +98,7 @@ export class AuthNotificationListener {
       const otpHtml = this.getPasswordResetOtpTemplate(fullName, otpCode);
       const otpText = `Hello ${fullName},\n\nYour password reset code is: ${otpCode}\n\nThis code will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`;
 
-      await this.emailNotificationService.sendEmail({
-        to: email,
-        subject: otpSubject,
-        html: otpHtml,
-        text: otpText,
-      });
+      await this.emailNotificationService.sendOtpEmail(email, fullName, otpCode, 'password_reset', 4);
 
       this.logger.log(`Password reset email sent to ${email} for user ${payload.userId}`);
     } catch (error) {
