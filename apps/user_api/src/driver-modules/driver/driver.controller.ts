@@ -21,6 +21,7 @@ import {
   UpdateDriverProfileDto,
   updateFCMDto,
   AcceptConsentDto,
+  ChangePasswordDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
@@ -166,5 +167,16 @@ export class DriverController {
   @ApiResponse({ status: 404, description: 'Terms and conditions not found' })
   async getTermsAndConditions() {
     return await this.driverService.getTermsAndConditions();
+  }
+
+  @Put('change-password')
+  @SetRolesMetaData(Role.DRIVER)
+  @ApiOperation({ summary: 'Change password for driver' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Current password is incorrect' })
+  @ApiResponse({ status: 400, description: 'Bad Request - New password must be different from current password' })
+  @ApiResponse({ status: 404, description: 'Driver not found' })
+  async changePassword(@CurrentUser() user: User, @Body() changePasswordDto: ChangePasswordDto) {
+    return await this.driverService.changePassword(user._id.toString(), changePasswordDto);
   }
 }

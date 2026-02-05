@@ -3,7 +3,7 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseModule, UploadFileService, User, UserRepository, UserSchema, Settings, SettingsSchema } from '@urcab-workspace/shared';
+import { DatabaseModule, UploadFileService, User, UserRepository, UserSchema, Settings, SettingsSchema, Faq, FaqSchema } from '@urcab-workspace/shared';
 import { HttpModule } from '@nestjs/axios';
 import { UserVerificationModule } from '../user-verification/userVerification.module';
 
@@ -12,6 +12,7 @@ import { UserVerificationModule } from '../user-verification/userVerification.mo
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Settings.name, schema: SettingsSchema },
+      { name: Faq.name, schema: FaqSchema },
     ]),
     HttpModule,
     UserVerificationModule,

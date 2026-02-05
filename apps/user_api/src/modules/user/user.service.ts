@@ -4,15 +4,19 @@ import {
   UpdateDriverProfileDto,
   updateFCMDto,
   AcceptConsentDto,
+  ChangePasswordDto,
   User,
   UserRepository,
   Settings,
   SettingsDocument,
+  Faq,
+  FaqDocument,
 } from '@urcab-workspace/shared';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DocumentVerificationStatusService } from '../user-verification/documentVerificationStatus.service';
 import * as md5 from 'md5';
+import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class UserService {
@@ -21,6 +25,7 @@ export class UserService {
     private readonly userRepository: UserRepository,
     @InjectModel(User.name) private readonly userRepository2: Model<User>,
     @InjectModel(Settings.name) private readonly settingsModel: Model<SettingsDocument>,
+    @InjectModel(Faq.name) private readonly faqModel: Model<FaqDocument>,
     private readonly documentVerificationService: DocumentVerificationStatusService,
   ) {}
 
@@ -172,7 +177,9 @@ export class UserService {
   /**
    * Get terms and conditions from settings
    */
-  async getTermsAndConditions(userType: 'PASSENGER' | 'DRIVER' = 'PASSENGER'): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
+  async getTermsAndConditions(
+    userType: 'PASSENGER' | 'DRIVER' = 'PASSENGER',
+  ): Promise<{ termsAndConditions: string; lastUpdated?: Date }> {
     try {
       const settings = await this.settingsModel.findOne().exec();
 
@@ -229,6 +236,122 @@ export class UserService {
       };
     } catch (error) {
       throw new UnauthorizedException(error.message || 'Failed to update consent');
+    }
+  }
+
+  /**
+   * Change password for user
+   */
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get user with password fields
+      const user = await this.userRepository.findOne({ _id: new Types.ObjectId(userId) }, [], {
+        select: 'passwordSalt passwordHash email',
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Verify current password
+      const currentPasswordHash = await bcrypt.hash(changePasswordDto.currentPassword, user.passwordSalt);
+      if (currentPasswordHash !== user.passwordHash) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      // Check if new password is same as current password
+      const newPasswordHash = await bcrypt.hash(changePasswordDto.newPassword, user.passwordSalt);
+      if (newPasswordHash === user.passwordHash) {
+        throw new BadRequestException('New password must be different from current password');
+      }
+
+      // Generate new salt and hash for new password
+      const newPassSalt = await bcrypt.genSalt();
+      const newPasswordHashWithNewSalt = await bcrypt.hash(changePasswordDto.newPassword, newPassSalt);
+
+      // Update password
+      await this.userRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(userId) },
+        {
+          passwordHash: newPasswordHashWithNewSalt,
+          passwordSalt: newPassSalt,
+        },
+      );
+
+      return {
+        success: true,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to change password');
+    }
+  }
+
+  /**
+   * Get paginated FAQs (only active ones)
+   */
+  async getFaqs(query: { page?: number; limit?: number; search?: string; category?: string }) {
+    try {
+      const { page = 1, limit = 10, search, category } = query;
+      const skip = (page - 1) * limit;
+
+      // Build filter - only active FAQs
+      const filter: any = {
+        isActive: true,
+      };
+
+      if (search) {
+        filter.$or = [{ question: { $regex: search, $options: 'i' } }, { answer: { $regex: search, $options: 'i' } }];
+      }
+
+      if (category) {
+        filter.category = category;
+      }
+
+      // Get FAQs with pagination, sorted by order then createdAt
+      const faqs = await this.faqModel
+        .find(filter)
+        .sort({ order: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec();
+
+      const total = await this.faqModel.countDocuments(filter);
+
+      return {
+        success: true,
+        data: {
+          faqs: faqs.map((faq: any) => ({
+            _id: faq._id,
+            question: faq.question,
+            answer: faq.answer,
+            category: faq.category,
+            order: faq.order,
+            viewCount: faq.viewCount,
+            createdAt: faq.createdAt,
+            updatedAt: faq.updatedAt,
+          })),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException('Failed to retrieve FAQs');
     }
   }
 }

@@ -9,10 +9,11 @@ import {
   UploadedFile,
   BadRequestException,
   Put,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import {
   CurrentUser,
   JwtAuthGuard,
@@ -22,10 +23,12 @@ import {
   UpdateDriverProfileDto,
   updateFCMDto,
   AcceptConsentDto,
+  ChangePasswordDto,
   UploadFileService,
   User,
 } from '@urcab-workspace/shared';
 import { FileUploadOptions } from '@urcab-workspace/shared';
+import { GetFaqsDto, FaqsListResponseDto } from './dto';
 
 @ApiTags('User')
 @Controller('user')
@@ -135,6 +138,28 @@ export class UserController {
     return await this.userService.getTermsAndConditions('PASSENGER');
   }
 
+  @Get('faqs')
+  @Public()
+  @ApiOperation({ summary: 'Get paginated FAQs (only active ones)' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Search in question or answer' })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    type: String,
+    description: 'Filter by category (e.g., Driver, Passenger, Booking)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'FAQs retrieved successfully',
+    type: FaqsListResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  async getFaqs(@Query() query: GetFaqsDto) {
+    return await this.userService.getFaqs(query);
+  }
+
   @Put('accept-consent')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -145,5 +170,18 @@ export class UserController {
   @SetRolesMetaData(Role.PASSENGER)
   async acceptConsent(@CurrentUser() user: User, @Body() acceptConsentDto: AcceptConsentDto) {
     return await this.userService.acceptConsent(user._id.toString(), acceptConsentDto);
+  }
+
+  @Put('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password for user' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Current password is incorrect' })
+  @ApiResponse({ status: 400, description: 'Bad Request - New password must be different from current password' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async changePassword(@CurrentUser() user: User, @Body() changePasswordDto: ChangePasswordDto) {
+    return await this.userService.changePassword(user._id.toString(), changePasswordDto);
   }
 }

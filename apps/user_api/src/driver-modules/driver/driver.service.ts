@@ -19,6 +19,7 @@ import {
   UpdateDriverProfileDto,
   updateFCMDto,
   AcceptConsentDto,
+  ChangePasswordDto,
   User,
   UserRepository,
   UserRolesEnum,
@@ -47,6 +48,7 @@ import {
 } from './dto';
 import { ConfigService } from '@nestjs/config';
 import * as md5 from 'md5';
+import * as bcrypt from 'bcryptjs';
 interface CreateTransactionData {
   userId: string;
   walletId: string;
@@ -1188,6 +1190,65 @@ export class DriverService {
       };
     } catch (error) {
       throw new NotFoundException('Failed to retrieve terms and conditions');
+    }
+  }
+
+  /**
+   * Change password for driver
+   */
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get user with password fields
+      const user = await this.userRepository.findOne(
+        { _id: new Types.ObjectId(userId) },
+        [],
+        {
+          select: 'passwordSalt passwordHash email',
+        },
+      );
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Verify current password
+      const currentPasswordHash = await bcrypt.hash(changePasswordDto.currentPassword, user.passwordSalt);
+      if (currentPasswordHash !== user.passwordHash) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      // Check if new password is same as current password
+      const newPasswordHash = await bcrypt.hash(changePasswordDto.newPassword, user.passwordSalt);
+      if (newPasswordHash === user.passwordHash) {
+        throw new BadRequestException('New password must be different from current password');
+      }
+
+      // Generate new salt and hash for new password
+      const newPassSalt = await bcrypt.genSalt();
+      const newPasswordHashWithNewSalt = await bcrypt.hash(changePasswordDto.newPassword, newPassSalt);
+
+      // Update password
+      await this.userRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(userId) },
+        {
+          passwordHash: newPasswordHashWithNewSalt,
+          passwordSalt: newPassSalt,
+        },
+      );
+
+      return {
+        success: true,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to change password for driver ${userId}:`, error);
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to change password');
     }
   }
 
