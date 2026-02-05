@@ -101,7 +101,7 @@ export class AuthService {
         email: dd.email,
         fullName: dd.fullName || '',
         userType: 'driver',
-        verificationToken,
+        verificationToken: otp,
       });
 
       return {

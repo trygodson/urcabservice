@@ -46,7 +46,7 @@ export class AuthNotificationListener {
       // Send verification email if verification token is provided
       if (verificationToken) {
         const verificationUrl = this.getVerificationUrl(verificationToken);
-        await this.emailNotificationService.sendVerificationEmail(email, fullName, verificationToken, verificationUrl);
+        await this.emailNotificationService.sendOtpEmail(email, fullName, verificationToken, 'verification', 4);
       }
 
       this.logger.log(`Welcome and verification emails sent to ${email} for user ${payload.userId}`);

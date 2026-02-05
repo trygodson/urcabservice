@@ -211,6 +211,40 @@ export class EmailNotificationService {
     }
   }
 
+  /**
+   * Send OTP email
+   */
+  async sendOtpEmail(
+    userEmail: string,
+    userName: string,
+    otpCode: string,
+    purpose: 'verification' | 'password_reset' | 'login' = 'verification',
+    expiryMinutes: number = 10,
+  ): Promise<boolean> {
+    try {
+      const subject =
+        purpose === 'password_reset'
+          ? 'Your UrCab Password Reset Code'
+          : purpose === 'login'
+          ? 'Your UrCab Login Code'
+          : 'Your UrCab Verification Code';
+      const html = this.getOtpEmailTemplate(userName, otpCode, purpose, expiryMinutes);
+      const text = `Hello ${userName},\n\nYour ${
+        purpose === 'password_reset' ? 'password reset' : purpose === 'login' ? 'login' : 'verification'
+      } code is: ${otpCode}\n\nThis code will expire in ${expiryMinutes} minutes.\n\nIf you didn't request this code, please ignore this email.`;
+
+      return await this.sendEmail({
+        to: userEmail,
+        subject,
+        html,
+        text,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send OTP email to ${userEmail}`, error.stack);
+      return false;
+    }
+  }
+
   private getWelcomeEmailTemplate(userName: string, userType: 'passenger' | 'driver'): string {
     const roleText = userType === 'driver' ? 'driver' : 'passenger';
     return `
@@ -313,6 +347,54 @@ export class EmailNotificationService {
             <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #4F46E5;">${verificationUrl}</p>
             <p>Thank you for joining UrCab!</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} UrCab. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private getOtpEmailTemplate(
+    userName: string,
+    otpCode: string,
+    purpose: 'verification' | 'password_reset' | 'login' = 'verification',
+    expiryMinutes: number = 10,
+  ): string {
+    const purposeText =
+      purpose === 'password_reset' ? 'Password Reset' : purpose === 'login' ? 'Login' : 'Email Verification';
+    const purposeDescription =
+      purpose === 'password_reset' ? 'password reset code' : purpose === 'login' ? 'login code' : 'verification code';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f9fafb; }
+          .otp-box { background-color: #fff; border: 2px solid #4F46E5; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+          .otp-code { font-size: 32px; font-weight: bold; color: #4F46E5; letter-spacing: 5px; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${purposeText} Code</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your ${purposeDescription} is:</p>
+            <div class="otp-box">
+              <div class="otp-code">${otpCode}</div>
+            </div>
+            <p><strong>This code will expire in ${expiryMinutes} minutes.</strong></p>
+            <p>If you didn't request this code, please ignore this email.</p>
           </div>
           <div class="footer">
             <p>© ${new Date().getFullYear()} UrCab. All rights reserved.</p>
