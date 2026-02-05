@@ -61,10 +61,10 @@ export class AuthNotificationListener {
       const { email, fullName, otpCode, verificationToken } = payload;
 
       // Send verification email with OTP
-      if (verificationToken) {
-        const verificationUrl = this.getVerificationUrl(verificationToken);
-        await this.emailNotificationService.sendVerificationEmail(email, fullName, verificationToken, verificationUrl);
-      }
+      // if (verificationToken) {
+      //   const verificationUrl = this.getVerificationUrl(verificationToken);
+      //   await this.emailNotificationService.sendVerificationEmail(email, fullName, verificationToken, verificationUrl);
+      // }
 
       // Also send OTP via email (you might want to create a separate method for OTP emails)
       const otpSubject = 'Your UrCab Verification Code';
@@ -90,20 +90,12 @@ export class AuthNotificationListener {
       const { email, fullName, otpCode } = payload;
 
       // Send password reset email with OTP
-      const resetUrl = this.getPasswordResetUrl(otpCode);
-      await this.emailNotificationService.sendPasswordResetEmail(email, fullName, otpCode, resetUrl);
+      // const resetUrl = this.getPasswordResetUrl(otpCode);
+      // await this.emailNotificationService.sendPasswordResetEmail(email, fullName, otpCode, resetUrl);
 
       // Also send OTP via email
-      const otpSubject = 'Your UrCab Password Reset Code';
-      const otpHtml = this.getPasswordResetOtpTemplate(fullName, otpCode);
-      const otpText = `Hello ${fullName},\n\nYour password reset code is: ${otpCode}\n\nThis code will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`;
 
-      await this.emailNotificationService.sendEmail({
-        to: email,
-        subject: otpSubject,
-        html: otpHtml,
-        text: otpText,
-      });
+      await this.emailNotificationService.sendOtpEmail(email, fullName, otpCode, 'password_reset', 4);
 
       this.logger.log(`Password reset email sent to ${email} for user ${payload.userId}`);
     } catch (error) {
@@ -131,16 +123,6 @@ export class AuthNotificationListener {
     } catch (error) {
       this.logger.error(`Failed to send email verification confirmation to ${payload.email}`, error.stack);
     }
-  }
-
-  private getVerificationUrl(token: string): string {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://app.urcab.com';
-    return `${frontendUrl}/verify-email?token=${token}`;
-  }
-
-  private getPasswordResetUrl(otp: string): string {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://app.urcab.com';
-    return `${frontendUrl}/reset-password?otp=${otp}`;
   }
 
   private getOtpEmailTemplate(userName: string, otpCode: string): string {
