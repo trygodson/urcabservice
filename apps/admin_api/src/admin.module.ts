@@ -22,6 +22,7 @@ import { ReportsModule } from './reports/reports.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UserProfileModule } from './user-profile/user-profile.module';
 import { WithdrawalsModule } from './withdrawals/withdrawals.module';
+import { FirebaseModule } from 'nestjs-firebase';
 
 @Module({
   imports: [
@@ -37,6 +38,20 @@ import { WithdrawalsModule } from './withdrawals/withdrawals.module';
           signOptions: {
             expiresIn: `${configService.getOrThrow('JWT_EXPIRATION')}s`,
           },
+        };
+      },
+      inject: [ConfigService],
+    }),
+    FirebaseModule.forRootAsync({
+      useFactory: (configService: ConfigService) => {
+        return {
+          googleApplicationCredential: {
+            clientEmail: configService.getOrThrow('FIREBASE_CLIENT_EMAIL'),
+            privateKey: configService.getOrThrow('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+            projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
+          },
+          // databaseURL: configService.getOrThrow('FIREBASE_DATABASE_URL'),
+          projectId: configService.getOrThrow('FIREBASE_PROJECT_ID'),
         };
       },
       inject: [ConfigService],
