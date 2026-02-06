@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { AdminNotificationListener } from './admin-notification.listener';
 import {
   DatabaseModule,
   User,
@@ -12,6 +13,7 @@ import {
   Permission,
   PermissionSchema,
   PermissionRepository,
+  NotificationsModule,
 } from '@urcab-workspace/shared';
 
 @Module({
@@ -21,9 +23,10 @@ import {
       { name: AdminRole.name, schema: RoleSchema },
       { name: Permission.name, schema: PermissionSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, UserRepository, RoleRepository, PermissionRepository],
+  providers: [UsersService, UserRepository, RoleRepository, PermissionRepository, AdminNotificationListener],
   exports: [UsersService],
 })
 export class UsersModule {}

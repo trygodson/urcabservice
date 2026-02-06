@@ -4,6 +4,7 @@ import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AdminAuthModule } from './auth';
 import { AdminDriversModule } from './drivers/adminDrivers.module';
 import { VehicleTypesModule } from './vehicleTypes/vehicleTypes.module';
@@ -44,6 +45,7 @@ import { WithdrawalsModule } from './withdrawals/withdrawals.module';
     LoggerModule,
     HttpModule,
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     AdminAuthModule,
     AdminDriversModule,
     VehicleTypesModule,

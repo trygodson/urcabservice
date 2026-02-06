@@ -9,6 +9,7 @@ import {
 } from './dto';
 import { Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,7 @@ export class UsersService {
     private readonly userRepository: UserRepository,
     private readonly roleRepository: RoleRepository,
     private readonly permissionRepository: PermissionRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createAdminUser(createUserDto: CreateAdminUserDto, createdBy: string) {
@@ -37,6 +39,9 @@ export class UsersService {
     const passSalt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(createUserDto.password, passSalt);
 
+    // Store plain password temporarily for email
+    const plainPassword = createUserDto.password;
+
     // Create user
     const user = await this.userRepository.create({
       fullName: createUserDto.fullName,
@@ -47,6 +52,16 @@ export class UsersService {
       roleId: new Types.ObjectId(createUserDto.roleId),
       isEmailConfirmed: true, // Admin users are pre-verified
       isActive: createUserDto.isActive ?? true,
+    });
+
+    // Emit admin user created event to send credentials email
+    this.eventEmitter.emit('admin.user_created', {
+      userId: user._id.toString(),
+      email: user.email,
+      fullName: user.fullName,
+      password: plainPassword,
+      roleId: user.roleId?.toString(),
+      createdBy,
     });
 
     return {

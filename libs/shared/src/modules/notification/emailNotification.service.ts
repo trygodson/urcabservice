@@ -245,6 +245,32 @@ export class EmailNotificationService {
     }
   }
 
+  /**
+   * Send admin credentials email
+   */
+  async sendAdminCredentialsEmail(
+    userEmail: string,
+    userName: string,
+    password: string,
+    roleId?: string,
+  ): Promise<boolean> {
+    try {
+      const subject = 'Your UrCab Admin Account Credentials';
+      const html = this.getAdminCredentialsEmailTemplate(userEmail, userName, password, roleId);
+      const text = `Hello ${userName},\n\nYour admin account has been created successfully.\n\nEmail: ${userEmail}\nPassword: ${password}\n\nPlease log in and change your password immediately for security purposes.\n\nIf you didn't request this account, please contact support immediately.`;
+
+      return await this.sendEmail({
+        to: userEmail,
+        subject,
+        html,
+        text,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send admin credentials email to ${userEmail}`, error.stack);
+      return false;
+    }
+  }
+
   private getWelcomeEmailTemplate(userName: string, userType: 'passenger' | 'driver'): string {
     const roleText = userType === 'driver' ? 'driver' : 'passenger';
     return `
@@ -395,6 +421,58 @@ export class EmailNotificationService {
             </div>
             <p><strong>This code will expire in ${expiryMinutes} minutes.</strong></p>
             <p>If you didn't request this code, please ignore this email.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} UrCab. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private getAdminCredentialsEmailTemplate(userEmail: string, userName: string, password: string, roleId?: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f9fafb; }
+          .credentials-box { background-color: #fff; border: 2px solid #4F46E5; border-radius: 8px; padding: 20px; margin: 20px 0; }
+          .credential-row { margin: 10px 0; padding: 10px; background-color: #f3f4f6; border-radius: 4px; }
+          .credential-label { font-weight: bold; color: #4F46E5; display: inline-block; min-width: 100px; }
+          .credential-value { color: #333; font-family: monospace; }
+          .warning-box { background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome to UrCab Admin Portal</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your admin account has been created successfully. Below are your login credentials:</p>
+            <div class="credentials-box">
+              <div class="credential-row">
+                <span class="credential-label">Email:</span>
+                <span class="credential-value">${userEmail}</span>
+              </div>
+              <div class="credential-row">
+                <span class="credential-label">Password:</span>
+                <span class="credential-value">${password}</span>
+              </div>
+            </div>
+            <div class="warning-box">
+              <p><strong>⚠️ Security Notice:</strong></p>
+              <p>For your security, please log in and change your password immediately after your first login.</p>
+            </div>
+            <p>You can now access the admin portal using these credentials.</p>
+            <p>If you didn't request this account, please contact support immediately.</p>
           </div>
           <div class="footer">
             <p>© ${new Date().getFullYear()} UrCab. All rights reserved.</p>
