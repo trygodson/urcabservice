@@ -112,9 +112,6 @@ export class RideWebSocketService {
       this.logger.log(`Ride request ${rideRequest.rideId} sent to driver ${rideRequest.driverId}`);
 
       // Set up auto-expiry (60 seconds for real-time response)
-      setTimeout(async () => {
-        await this.handleRideRequestExpiry(rideRequest.rideId);
-      }, 58000);
     } catch (error) {
       this.logger.error(`Failed to send ride request: ${error.message}`);
       throw new BadRequestException(`Failed to send ride request: ${error.message}`);

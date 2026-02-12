@@ -227,7 +227,7 @@ export class AuthService {
       throw new NotFoundException('User with this email does not exist');
     }
 
-    const { otp, expiry } = GenerateOtp();
+    const { otp, expiry } = GenerateOtp(6);
 
     const updatedUser = await this.userRepository.findOneAndUpdate(
       { email },

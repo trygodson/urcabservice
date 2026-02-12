@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import {
@@ -35,6 +35,8 @@ import { DriverLocationRepository } from './repository/driver-location.repositor
 import { DriverRideController } from './driverRide.controller';
 import { DriverRideRepository } from './repository/driverRide.repository';
 import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
+import { RedisService } from '../../modules/rides/redis.service';
+import { RidesModule } from '../../modules/rides/rides.modules';
 
 @Module({
   imports: [
@@ -62,11 +64,13 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
       { name: DriverEvp.name, schema: DriverEvpSchema },
     ]),
     NotificationsModule,
+    forwardRef(() => RidesModule),
   ],
   controllers: [DriverRideController],
   providers: [
     DriverRideService,
     FirebaseRideService,
+    RedisService,
     VehicleRepository,
     DriverRideRepository,
     RideRepository,
@@ -77,5 +81,6 @@ import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
     SubscriptionRepository,
     WalletRepository,
   ],
+  exports: [DriverRideService],
 })
 export class DriverRideModule {}

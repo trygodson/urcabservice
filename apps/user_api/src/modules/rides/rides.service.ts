@@ -29,6 +29,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { RideWebSocketService } from './ride-websocket.service';
+import { RedisService } from './redis.service';
 
 @Injectable()
 export class RidesService {
@@ -46,6 +47,7 @@ export class RidesService {
     private readonly driverEvpRepository: DriverEvpRepository,
     private readonly pricingZoneRepository: PricingZoneRepository,
     private readonly walletRepository: WalletRepository,
+    private readonly redisService: RedisService,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
   ) {}
@@ -492,6 +494,11 @@ export class RidesService {
         throw new BadRequestException('Driver is not available for notifications');
       }
 
+      // Update ride with current driver being notified (optional, for tracking)
+      await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
+        selectedDriverId: new Types.ObjectId(driver._id.toString()),
+      });
+
       // Create ride request object for Firebase
       const rideRequest = {
         rideId: ride._id.toString(),
@@ -516,19 +523,17 @@ export class RidesService {
         estimatedDistance: ride.estimatedDistance,
         estimatedDuration: ride.estimatedDuration,
         requestTime: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 30000).toISOString(), // 30 seconds
+        expiresAt: new Date(Date.now() + 60000).toISOString(), // 60 seconds
       };
 
       // Use Firebase service for real-time ride requests
-
       await this.rideWebSocketService.sendRideRequestToDriver(rideRequest, driver.fcmToken);
 
       this.logger.log(`Real-time ride request sent to selected driver ${driver._id} for ride ${ride._id}`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send ride request to selected driver`, error.stack);
-      // Fall back to finding nearby drivers
-      // await this.findAndNotifyDrivers(ride, passenger);
+      throw error;
     }
   }
 
@@ -1074,7 +1079,6 @@ export class RidesService {
   }
 
   private async findAndNotifyDrivers(ride: any, passenger: any, vehicleType: string): Promise<boolean | void> {
-    // console.log(ride, '=====ride====', passenger, '=====passenger====', vehicleType, '=====vehicleType====');
     try {
       // Get pickup location coordinates
       const pickupCoords = ride.pickupLocation.coordinates;
@@ -1082,7 +1086,7 @@ export class RidesService {
 
       // Find nearby available drivers within expanding radius
       let nearbyDrivers = [];
-      const searchRadiuses = [2, 3, 4, 5, 6, 7, 8]; // km
+      const searchRadiuses = [2, 3, 4, 5]; // km
 
       for (const radius of searchRadiuses) {
         nearbyDrivers = await this.driverLocationRepository.findNearbyDriversWithVehicles(
@@ -1100,107 +1104,151 @@ export class RidesService {
         }
       }
 
-      // console.log(nearbyDrivers, '=====nearbyDrivers====');
       if (nearbyDrivers.length === 0) {
         this.logger.warn(`No drivers found near pickup location for ride ${ride._id}`);
-        // Update ride status to indicate no drivers available
-        const updatedRide = await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
+        await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
           status: RideStatus.RIDE_CANCELLED,
           cancelledAt: new Date(),
           cancellationReason: 'No drivers available in the area',
         });
-
-        // if (passenger?.fcmToken) {
-        //   await this.firebaseNotificationService.sendRideStatusUpdate(
-        //     passenger.fcmToken,
-        //     RideStatus.RIDE_CANCELLED,
-        //     ride._id.toString(),
-        //     null,
-        //     updatedRide,
-        //     'No drivers available in the area',
-        //   );
-        // }
         return false;
       }
 
-      // Send notifications to nearby drivers (max 5 at a time)
-      const driversToNotify = nearbyDrivers.slice(0, 5);
-      let notificationsSent = 0;
+      // Filter out drivers who have cancelled rides for this passenger recently
+      const passengerId = ride.passengerId._id.toString();
+      const eligibleDrivers = [];
 
-      for (const driverLocation of driversToNotify) {
-        try {
-          // Get driver details
-          const driver = await this.userRepository.findById(driverLocation.driverId.toString());
-          if (!driver || !driver.fcmToken) {
-            continue;
-          }
+      for (const driver of nearbyDrivers.slice(0, 10)) {
+        const driverId = driver.driverId.toString();
+        const isExcluded = await this.redisService.isDriverExcluded(driverId, passengerId);
 
-          // Check if driver has a valid EVP
-          // const driverEvp = await this.driverEvpRepository.findDriverActiveEvp(driverLocation.driverId);
-          // if (!driverEvp) {
-          //   this.logger.warn(`Driver ${driverLocation.driverId} has no active EVP - skipping notification`);
-          //   continue;
-          // }
-
-          // // Check if EVP is valid (not expired)
-          // const now = new Date();
-          // if (driverEvp.endDate < now) {
-          //   this.logger.warn(`Driver ${driverLocation.driverId} has an expired EVP - skipping notification`);
-          //   continue;
-          // }
-
-          // Additional validation from original function
-          const selectedDriver = await this.validateSelectedDriver(
-            driverLocation.driverId.toString(),
-            ride.pickupLocation.coordinates,
-          );
-
-          let sent = await this.sendRideRequestToSelectedDriver(ride, selectedDriver, passenger);
-
-          // const sent = await this.firebaseNotificationService.sendRideRequestToDriver(
-          //   driver.fcmToken,
-          //   driver._id,
-          //   notificationData,
-          // );
-
-          if (sent) {
-            notificationsSent++;
-          }
-        } catch (notificationError) {
-          this.logger.error(
-            `Failed to send notification to driver ${driverLocation.driverId}`,
-            notificationError.stack,
+        if (!isExcluded) {
+          eligibleDrivers.push(driver);
+        } else {
+          const expiry = await this.redisService.getDriverExclusionExpiry(driverId, passengerId);
+          const remainingMinutes = expiry ? Math.ceil((expiry - Date.now()) / (1000 * 60)) : 0;
+          this.logger.log(
+            `Driver ${driverId} excluded from ride ${ride._id} for passenger ${passengerId}. Exclusion expires in ${remainingMinutes} minutes.`,
           );
         }
       }
 
-      if (notificationsSent === 0) {
-        this.logger.error(`Failed to send notifications to any drivers for ride ${ride._id}`);
-        // Update ride status to indicate notification failure
-        // await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
-        //   status: RideStatus.CANCELLED,
-        //   cancelledAt: new Date(),
-        //   cancellationReason: 'Unable to notify drivers',
-        // });
-      } else {
-        this.logger.log(`Sent ${notificationsSent} ride request notifications for ride ${ride._id}`);
+      if (eligibleDrivers.length === 0) {
+        this.logger.warn(`No eligible drivers found after filtering exclusions for ride ${ride._id}`);
+        await this.rideRepository.findByIdAndUpdate(ride._id.toString(), {
+          status: RideStatus.RIDE_CANCELLED,
+          cancelledAt: new Date(),
+          cancellationReason: 'No available drivers in the area',
+        });
+        return false;
       }
+
+      // Extract driver IDs and store queue in Redis
+      const driverIds = eligibleDrivers.map((d) => d.driverId.toString()).filter(Boolean);
+
+      if (driverIds.length === 0) {
+        return false;
+      }
+
+      // Store driver queue in Redis
+      await this.redisService.storeDriverQueue(ride._id.toString(), driverIds);
+
+      // Start sequential notification with first driver
+      await this.notifyNextDriver(ride, passenger);
+
+      return true;
     } catch (error) {
       this.logger.error(`Failed to find and notify drivers for ride ${ride._id}`, error.stack);
       throw error;
     }
   }
 
-  // async getNearbyDrivers(longitude: number, latitude: number, radius: number = 10): Promise<any[]> {
-  //   // console.log(longitude, latitude, radius, '=====radius===');
-  //   return await this.driverLocationRepository.findNearbyDriversWithVehicles(longitude, latitude, radius, 20);
-  //   // return await this.driverLocationRepository.findNearbyDriversWithVehiclesUsingGeoWithin(
-  //   //   longitude,
-  //   //   latitude,
-  //   //   radius,
-  //   //   20,
-  //   // );
-  // }
+  async notifyNextDriver(ride: any, passenger: any): Promise<void> {
+    try {
+      const rideId = ride._id.toString();
+
+      // Get next driver from queue
+      const nextDriverId = await this.redisService.moveToNextDriver(rideId);
+
+      if (!nextDriverId) {
+        // No more drivers, cancel ride
+        this.logger.warn(`No more drivers available for ride ${rideId}`);
+        let dd = await this.rideRepository.findByIdAndUpdate(rideId, {
+          status: RideStatus.RIDE_CANCELLED,
+          cancelledAt: new Date(),
+          cancellationReason: 'All drivers declined or timed out',
+        });
+
+        // Notify passenger
+        const passengerUser = await this.userRepository.findById(ride.passengerId._id.toString());
+        if (passengerUser?.fcmToken) {
+          await this.firebaseNotificationService.sendRideStatusUpdate(
+            passengerUser.fcmToken,
+            RideStatus.RIDE_CANCELLED,
+            rideId,
+            {},
+            dd,
+          );
+        }
+        return;
+      }
+
+      // Check if ride was already accepted or cancelled
+      const currentRide = await this.rideRepository.findById(rideId);
+      if (
+        currentRide.status === RideStatus.DRIVER_ACCEPTED ||
+        currentRide.status === RideStatus.RIDE_CANCELLED ||
+        currentRide.status === RideStatus.RIDE_COMPLETED
+      ) {
+        this.logger.log(`Ride ${rideId} already ${currentRide.status}, stopping notification`);
+        return;
+      }
+
+      // Get driver details
+      const driver = await this.userRepository.findById(nextDriverId);
+      if (!driver || !driver.fcmToken) {
+        this.logger.warn(`Driver ${nextDriverId} not found or has no FCM token, moving to next`);
+        // Retry with next driver after short delay
+        setTimeout(() => this.notifyNextDriver(ride, passenger), 1000);
+        return;
+      }
+
+      // Validate driver is still available
+      try {
+        const selectedDriver = await this.validateSelectedDriver(nextDriverId, ride.pickupLocation.coordinates);
+
+        // Set current driver in Redis (60 second timeout)
+        await this.redisService.setCurrentNotifiedDriver(rideId, nextDriverId, 60);
+        await this.redisService.markDriverNotified(rideId, nextDriverId);
+
+        // Send notification to driver
+        await this.sendRideRequestToSelectedDriver(ride, selectedDriver, passenger);
+
+        // Set timeout to move to next driver if no response
+        setTimeout(async () => {
+          const currentDriver = await this.redisService.getCurrentNotifiedDriver(rideId);
+          if (currentDriver === nextDriverId) {
+            // Still waiting for this driver, check ride status
+            const rideStatus = await this.rideRepository.findById(rideId);
+            if (rideStatus.status === RideStatus.PENDING_DRIVER_ACCEPTANCE) {
+              this.logger.log(`Driver ${nextDriverId} timeout for ride ${rideId}, moving to next`);
+              await this.notifyNextDriver(ride, passenger);
+            }
+          }
+        }, 27000); // 27 second timeout
+
+        this.logger.log(`Notified driver ${nextDriverId} for ride ${rideId}`);
+      } catch (validationError) {
+        this.logger.warn(`Driver ${nextDriverId} validation failed: ${validationError.message}, moving to next`);
+        // Move to next driver immediately
+        setTimeout(() => this.notifyNextDriver(ride, passenger), 500);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to notify next driver for ride ${ride._id}`, error.stack);
+      // Try next driver on error
+      setTimeout(() => this.notifyNextDriver(ride, passenger), 1000);
+    }
+  }
 
   async findNearbyDrivers(
     longitude: number,

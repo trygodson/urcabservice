@@ -21,6 +21,8 @@ import {
   BalanceType,
   User,
   UserDocument,
+  VehicleType,
+  VehicleTypeDocument,
 } from '@urcab-workspace/shared';
 import {
   GetDriversDto,
@@ -65,6 +67,7 @@ export class AdminDriversService {
     @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
     @InjectModel(Rating.name) private readonly ratingModel: Model<RatingDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(VehicleType.name) private readonly vehicleTypeModel: Model<VehicleTypeDocument>,
   ) {}
 
   // Driver Management Methods
@@ -1765,6 +1768,16 @@ export class AdminDriversService {
       throw new NotFoundException(`Vehicle with ID ${vehicleId} not found`);
     }
 
+    // Fetch vehicle type
+    let vehicleType = null;
+    if (vehicle.vehicleTypeId) {
+      vehicleType = await this.vehicleTypeModel
+        .findById(vehicle.vehicleTypeId)
+        .select('_id name description capacity iconUrl')
+        .lean()
+        .exec();
+    }
+
     const { page = 1, limit = 10, startDate, endDate } = query;
     const skip = (page - 1) * limit;
 
@@ -1845,6 +1858,15 @@ export class AdminDriversService {
         status: transaction.status,
         date: transaction.createdAt,
         vehicleId: transaction.metadata?.vehicleId?.toString(),
+        vehicleType: vehicleType
+          ? {
+              _id: vehicleType._id.toString(),
+              name: vehicleType.name,
+              description: vehicleType.description,
+              capacity: vehicleType.capacity,
+              iconUrl: vehicleType.iconUrl,
+            }
+          : null,
         vehicleEvp: vehicleEvp,
       };
     });

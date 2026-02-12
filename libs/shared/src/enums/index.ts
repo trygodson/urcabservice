@@ -148,6 +148,13 @@ export enum VehicleDocumentStatus {
   RESUBMITTED = 'resubmitted',
 }
 
+export enum VehicleEvpStatus {
+  ACTIVE = 'active',
+  EXPIRED = 'expired',
+  REVOKED = 'revoked',
+  PENDING = 'pending',
+}
+
 export enum LicenseClass {
   A = 'A',
   A1 = 'A1',

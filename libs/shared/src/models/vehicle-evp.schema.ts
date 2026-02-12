@@ -5,6 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.schema';
 import { Vehicle } from './vehicle.schema';
 import { WalletTransaction } from './walletTransaction.schema';
+import { VehicleEvpStatus } from '../enums';
 
 /**
  * Electronic Verification Permit (EVP) for vehicles with verified documents
@@ -68,6 +69,14 @@ export class VehicleEvp extends AbstractDocument {
     default: true,
   })
   isActive: boolean;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    enum: ['active', 'expired', 'revoked'],
+    default: 'active',
+  })
+  status: string;
 
   @ApiProperty()
   @Prop({

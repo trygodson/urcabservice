@@ -18,6 +18,7 @@ const PERMISSIONS = [
   { name: 'menu.rideManagement', description: 'Access to Ride Management menu', category: 'menu' },
   { name: 'menu.vehicleManagement', description: 'Access to Vehicle Management menu', category: 'menu' },
   { name: 'menu.evp', description: 'Access to EVP menu', category: 'menu' },
+  { name: 'menu.evpTransactions', description: 'Access to EVP Transactions menu', category: 'menu' },
   { name: 'menu.zones', description: 'Access to Zones menu', category: 'menu' },
   { name: 'menu.pricing', description: 'Access to Pricing menu', category: 'menu' },
   {

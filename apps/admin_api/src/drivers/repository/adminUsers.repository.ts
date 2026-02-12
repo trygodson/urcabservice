@@ -10,6 +10,10 @@ export class AdminUserRepository extends AbstractRepository<UserDocument> {
     super(userModel);
   }
 
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.model.findById(id).exec();
+  }
+
   async findWithPagination(
     filter: any,
     skip: number,

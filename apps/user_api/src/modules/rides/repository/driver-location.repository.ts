@@ -113,17 +113,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       const now = new Date();
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
 
-      // Get free plan daily limit from config (default to 3)
-      const freePlanDailyLimit = parseInt(this.configService.get<string>('FREE_PLAN_DAILY_LIMIT') || '3', 10);
-      // if (!vehicleType || !Object.values(VehicleType).includes(vehicleType)) {
-      //   this.logger.warn(`Invalid vehicle type requested: ${vehicleType}`);
-      //   throw new Error('Invalid vehicle type');
-      // }
-
-      // console.log(vehicleTypeId, '=====vehicleTypeId====');
       const res = await this.model
         .aggregate([
           // Use $geoNear as the first stage instead of $near in $match
@@ -337,63 +327,9 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           },
           {
             $addFields: {
-              // Check if driver can accept rides based on subscription
+              // Driver can accept rides if they have at least one active subscription
               canAcceptRides: {
-                $cond: {
-                  if: { $gt: [{ $size: '$subscriptions' }, 0] },
-                  then: {
-                    $cond: {
-                      // If paid subscription (not free), always allow
-                      if: { $ne: [{ $arrayElemAt: ['$subscriptions.type', 0] }, 'free'] },
-                      then: true,
-                      else: {
-                        // For free plan, check daily limit
-                        $let: {
-                          vars: {
-                            lastRequestDate: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] },
-                            dailyRideRequests: {
-                              $ifNull: [{ $arrayElemAt: ['$subscriptions.dailyRideRequests', 0] }, 0],
-                            },
-                            lastRequestDay: {
-                              $cond: {
-                                if: { $ne: [{ $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] }, null] },
-                                then: {
-                                  $dateFromParts: {
-                                    year: { $year: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
-                                    month: { $month: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
-                                    day: { $dayOfMonth: { $arrayElemAt: ['$subscriptions.lastRideRequestDate', 0] } },
-                                  },
-                                },
-                                else: null,
-                              },
-                            },
-                            todayDate: {
-                              $dateFromParts: {
-                                year: { $year: now },
-                                month: { $month: now },
-                                day: { $dayOfMonth: now },
-                              },
-                            },
-                          },
-                          in: {
-                            $cond: {
-                              // If last request was today, check count against limit
-                              if: {
-                                $and: [
-                                  { $ne: ['$$lastRequestDate', null] },
-                                  { $eq: ['$$lastRequestDay', '$$todayDate'] },
-                                ],
-                              },
-                              then: { $lt: ['$$dailyRideRequests', freePlanDailyLimit] },
-                              else: true, // New day, reset count, allow
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                  else: false, // No subscription means can't accept
-                },
+                $gt: [{ $size: '$subscriptions' }, 0],
               },
             },
           },

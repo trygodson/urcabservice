@@ -14,6 +14,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { OAuth2Client } from 'google-auth-library';
 import { Types } from 'mongoose'; // <-- ADD THIS LINE HERE
@@ -48,6 +49,7 @@ export class AuthService {
     // @Inject(forwardRef(() => WalletsService))
     private readonly walletRepository: WalletRepository,
     private readonly configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async register(body: RegisterUserDto) {
@@ -186,59 +188,6 @@ export class AuthService {
     }
   }
 
-  // async verifyUserOtp(verifyToken: VerifyOtpDto, ipAddress: string) {
-  //   try {
-  //     const decodedToken = JwtAVerify(verifyToken.verificationToken);
-  //     if (timeZoneMoment(decodedToken.data?.expiry).toDate() < timeZoneMoment().toDate())
-  //       throw new BadRequestException('Verification Token Expired');
-
-  //     const res = await this.userRepository.findOne(
-  //       {
-  //         email: decodedToken.data?.email,
-  //         isEmailConfirmed: false,
-  //       },
-  //       [],
-  //     );
-
-  //     if (res && !res.isEmailConfirmed) {
-  //       if (res.emailConfirmationCode === verifyToken.otpCode) {
-  //         if (decodedToken.data?.type === Role.ADMIN) {
-  //           const refreshToken = await this.generateRefreshToken(res, ipAddress);
-  //           const accessToken = await this.generateAccessTokens(res);
-
-  //           const dd = await this.userRepository.findOneAndUpdate({ email: res.email }, { isEmailConfirmed: true });
-
-  //           return {
-  //             success: true,
-  //             data: {
-  //               refreshToken,
-  //               accessToken,
-  //               type: dd.type,
-  //               isProfileUpdated: dd.isProfileUpdated,
-  //               needsOnboarding: true,
-  //             },
-  //           };
-  //         } else {
-  //           throw new BadRequestException('Incorrect User Request');
-  //         }
-  //       } else {
-  //         throw new BadRequestException('Incorrect OTP Code.');
-  //       }
-  //     } else if (res && res.isEmailConfirmed) {
-  //       return {
-  //         success: false,
-  //         message: 'Email has Already been confirmed',
-  //       };
-  //     }
-  //   } catch (err) {
-  //     if (err.message.includes('expired')) {
-  //       throw new UnauthorizedException('Token Has Expired! Please Try Again.');
-  //     } else {
-  //       throw new UnauthorizedException(err?.message ?? 'Error Verifying');
-  //     }
-  //   }
-  // }
-
   async generateRefreshToken(user: User, ipAddress: string) {
     try {
       const prevRefresh = await this.refreshTokenReposiotry.findOne({
@@ -313,16 +262,15 @@ export class AuthService {
     }
   }
 
-  async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{ success: boolean; message: string }> {
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       // Get user with password fields
-      const user = await this.userRepository.findOne(
-        { _id: new Types.ObjectId(userId) },
-        [],
-        {
-          select: 'passwordSalt passwordHash email',
-        },
-      );
+      const user = await this.userRepository.findOne({ _id: new Types.ObjectId(userId) }, [], {
+        select: 'passwordSalt passwordHash email',
+      });
 
       if (!user) {
         throw new NotFoundException('User not found');
@@ -358,7 +306,11 @@ export class AuthService {
         message: 'Password changed successfully',
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof UnauthorizedException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to change password');
@@ -400,10 +352,7 @@ export class AuthService {
       }
 
       // Update user
-      const updatedUser = await this.userRepository.findOneAndUpdate(
-        { _id: new Types.ObjectId(userId) },
-        updateData,
-      );
+      const updatedUser = await this.userRepository.findOneAndUpdate({ _id: new Types.ObjectId(userId) }, updateData);
 
       return {
         success: true,
@@ -450,12 +399,14 @@ export class AuthService {
         },
       );
 
-      // Send OTP to email (implement your mail sending logic)
-      // await this.mailService.sendMail({
-      //   to: email,
-      //   subject: 'Your Password Reset OTP',
-      //   text: `Your OTP for password reset is: ${otp}`,
-      // });
+      // Emit forgot password event to send OTP email
+      this.eventEmitter.emit('admin.password_reset_requested', {
+        userId: user._id.toString(),
+        email: user.email,
+        fullName: user.fullName || '',
+        otpCode: otp,
+        expiryMinutes: 10, // OTP expires in 10 minutes (matching GenerateOtp expiry)
+      });
 
       return { success: true, message: 'OTP sent to email' };
     } catch (error) {

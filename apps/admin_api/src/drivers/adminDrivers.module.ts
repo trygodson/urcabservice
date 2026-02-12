@@ -27,6 +27,9 @@ import {
   WalletRepository,
   Wallet,
   WalletSchema,
+  VehicleType,
+  VehicleTypeSchema,
+  NotificationsModule,
 } from '@urcab-workspace/shared';
 import { AdminDriversController } from './adminDrivers.controller';
 import { AdminDriversService } from './adminDrivers.service';
@@ -39,6 +42,8 @@ import {
   AdminVehicleRepository,
   AdminDriverEvpRepository,
 } from './repository';
+import { EvpExpirationJob } from './evp-expiration.job';
+import { EvpExpirationListener } from './evp-expiration.listener';
 
 @Module({
   imports: [
@@ -54,9 +59,10 @@ import {
       { name: DriverEvp.name, schema: DriverEvpSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },
       { name: Settings.name, schema: SettingsSchema },
-      { name: Rating.name, schema: RatingSchema },
+      { name: VehicleType.name, schema: VehicleTypeSchema },
     ]),
     LoggerModule,
+    NotificationsModule,
 
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
@@ -80,6 +86,8 @@ import {
     AdminIssueReportRepository,
     AdminDriverEvpRepository,
     WalletRepository,
+    EvpExpirationJob,
+    EvpExpirationListener,
   ],
   controllers: [AdminDriversController],
 })

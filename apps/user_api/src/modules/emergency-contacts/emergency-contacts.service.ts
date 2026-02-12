@@ -58,9 +58,9 @@ export class EmergencyContactsService {
       throw new NotFoundException('Emergency contact not found');
     }
 
-    await this.emergencyContactRepository.findOneAndUpdate(
+    await this.emergencyContactRepository.findOneAndDelete(
       { _id: new Types.ObjectId(contactId), userId: new Types.ObjectId(userId) },
-      { isActive: false },
+      // { isActive: false },
     );
 
     return { success: true };

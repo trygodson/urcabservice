@@ -25,7 +25,10 @@ import {
   Wallet,
   WalletSchema,
   WalletRepository,
+  EmailNotificationService,
 } from '@urcab-workspace/shared';
+import { AdminAuthNotificationListener } from './adminauth-notification.listener';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -42,6 +45,7 @@ import {
     }),
     LoggerModule,
     DatabaseModule,
+    HttpModule,
     DatabaseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
@@ -53,6 +57,7 @@ import {
   controllers: [AuthController],
   providers: [
     AuthService,
+    AdminAuthNotificationListener,
     JwtAStrategy,
     LocalStrategy,
     UserRepository,
@@ -60,6 +65,7 @@ import {
     RoleRepository,
     PermissionRepository,
     WalletRepository,
+    EmailNotificationService,
   ],
   exports: [AuthService],
 })

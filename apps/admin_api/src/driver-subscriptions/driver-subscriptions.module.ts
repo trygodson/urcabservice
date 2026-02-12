@@ -12,7 +12,10 @@ import {
   User,
   UserSchema,
   UserRepository,
+  NotificationsModule,
 } from '@urcab-workspace/shared';
+import { SubscriptionExpirationJob } from './subscription-expiration.job';
+import { SubscriptionExpirationListener } from './subscription-expiration.listener';
 
 @Module({
   imports: [
@@ -21,9 +24,17 @@ import {
       { name: SubscriptionPlan.name, schema: SubscriptionPlanSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [DriverSubscriptionsController],
-  providers: [DriverSubscriptionsService, SubscriptionRepository, SubscriptionPlanRepository, UserRepository],
+  providers: [
+    DriverSubscriptionsService,
+    SubscriptionRepository,
+    SubscriptionPlanRepository,
+    UserRepository,
+    SubscriptionExpirationJob,
+    SubscriptionExpirationListener,
+  ],
   exports: [DriverSubscriptionsService],
 })
 export class DriverSubscriptionsModule {}

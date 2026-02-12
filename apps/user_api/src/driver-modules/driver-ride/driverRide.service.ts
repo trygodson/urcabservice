@@ -27,6 +27,9 @@ import { Model } from 'mongoose';
 import { DriverLocationRepository } from './repository/driver-location.repository';
 import { DriverRideRepository } from './repository/driverRide.repository';
 import { FirebaseRideService } from '../../modules/rides/firebase-ride.service';
+import { RedisService } from '../../modules/rides/redis.service';
+import { Inject, forwardRef } from '@nestjs/common';
+import { RidesService } from '../../modules/rides/rides.service';
 
 export interface NearbyRideRequestDto {
   _id: string;
@@ -79,6 +82,8 @@ export class DriverRideService {
     private readonly subscriptionRepository: SubscriptionRepository,
     private readonly walletRepository: WalletRepository,
     private readonly driverEvpRepository: DriverEvpRepository,
+    private readonly redisService: RedisService,
+    @Inject(forwardRef(() => RidesService)) private readonly ridesService: RidesService,
     @InjectModel(WalletTransaction.name) private readonly transactionModel: Model<WalletTransaction>,
   ) {}
 
@@ -107,20 +112,11 @@ export class DriverRideService {
         throw new BadRequestException('You Are no longer available');
       }
 
-      // Check subscription and ride request limits (for free plan)
-      // Ensure driver has a free subscription
-      await this.subscriptionRepository.getOrCreateFreeSubscription(driverId.toString());
-
-      // Check if driver can accept more ride requests
-      const canAccept = await this.subscriptionRepository.canAcceptRideRequest(driverId.toString());
-      if (!canAccept.canAccept) {
-        throw new BadRequestException(
-          `You have reached your daily limit of 3 ride requests. ${canAccept.remaining} requests remaining. Please upgrade your subscription for unlimited rides.`,
-        );
+      // Ensure driver has an active (paid) subscription before accepting rides
+      const hasActiveSubscription = await this.subscriptionRepository.hasActiveSubscription(driverId.toString());
+      if (!hasActiveSubscription) {
+        throw new BadRequestException('You need an active subscription to accept ride requests.');
       }
-
-      // Increment daily ride requests count
-      await this.subscriptionRepository.incrementDailyRideRequests(driverId.toString());
 
       const driver = await this.userRepository.findById(driverId.toString());
       const passenger = await this.userRepository.findById(ride.passengerId._id.toString());
@@ -144,6 +140,9 @@ export class DriverRideService {
         selectedVehicleId: vehicle._id,
         driverAssignedAt: new Date(),
       });
+
+      // Clear driver queue since ride is accepted
+      await this.redisService.clearDriverQueue(rideId);
 
       // Create wallet transaction for the ride (status: PENDING)
       await this.createRideTransaction(
@@ -613,6 +612,22 @@ export class DriverRideService {
       const rating = await this.ratingRepository.getAverageRating(driverId.toString());
 
       const updatedRide = await this.rideRepository.findByIdAndUpdate(rideId, updateData);
+
+      // Track driver cancellation for this passenger (exclude driver for 30 minutes)
+      // Only track if driver had accepted the ride (status was DRIVER_ACCEPTED or later)
+      if (
+        ride.status === RideStatus.DRIVER_ACCEPTED ||
+        ride.status === RideStatus.DRIVER_AT_PICKUPLOCATION ||
+        ride.status === RideStatus.DRIVER_HAS_PICKUP_PASSENGER ||
+        ride.status === RideStatus.RIDE_STARTED
+      ) {
+        const passengerId = ride.passengerId._id.toString();
+        const exclusionPeriodSeconds = 3 * 60; // 30 minutes
+        await this.redisService.trackDriverCancellation(driverId.toString(), passengerId, exclusionPeriodSeconds);
+        this.logger.log(
+          `Driver ${driverId} cancelled ride ${rideId} for passenger ${passengerId}. Excluded for ${exclusionPeriodSeconds} seconds.`,
+        );
+      }
 
       // Update driver availability - make them available again
       await this.driverLocationRepository.updateDriverStatus(driverId, DriverOnlineStatus.ONLINE, true);
@@ -1175,5 +1190,82 @@ export class DriverRideService {
     const random = generateRandomString(4).toUpperCase();
 
     return `${prefix}${categoryCode}${timestamp}${random}`;
+  }
+
+  async rejectRide(
+    rideId: string,
+    driverId: Types.ObjectId,
+    reason?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const ride = await this.rideRepository.findById(rideId);
+
+      if (!ride) {
+        throw new NotFoundException('Ride not found');
+      }
+
+      // Check if this driver is the current notified driver
+      const currentDriver = await this.redisService.getCurrentNotifiedDriver(rideId);
+      if (currentDriver !== driverId.toString()) {
+        throw new BadRequestException('You are not the current driver for this ride request');
+      }
+
+      // Check if ride is still pending
+      if (ride.status !== RideStatus.PENDING_DRIVER_ACCEPTANCE) {
+        throw new BadRequestException('Ride is no longer available for rejection');
+      }
+
+      // Update ride with rejection info (optional, for tracking)
+      await this.rideRepository.findByIdAndUpdate(rideId, {
+        rejectedBy: driverId,
+        rejectedAt: new Date(),
+      });
+
+      // Remove current driver from Redis
+      await this.redisService.setCurrentNotifiedDriver(rideId, '', 0); // Clear immediately
+
+      // Get passenger for notification
+      const passenger = await this.userRepository.findById(ride.passengerId._id.toString());
+
+      // Notify passenger that driver declined
+      if (passenger?.fcmToken) {
+        await this.firebaseNotificationService.sendRideStatusUpdate(
+          passenger.fcmToken,
+          RideStatus.REJECTED_BY_DRIVER,
+          rideId,
+          null,
+          ride,
+        );
+      }
+
+      // Trigger next driver notification - use a small delay to ensure rejection is processed
+      setTimeout(async () => {
+        try {
+          const rideData = await this.rideRepository.findById(rideId);
+          if (rideData && rideData.status === RideStatus.PENDING_DRIVER_ACCEPTANCE) {
+            // Get passenger data for notification
+            const passengerData = await this.userRepository.findById(rideData.passengerId._id.toString());
+            // Trigger next driver notification
+            await this.ridesService.notifyNextDriver(rideData, passengerData);
+            this.logger.log(`Driver ${driverId} rejected ride ${rideId}, next driver notification triggered`);
+          }
+        } catch (error) {
+          this.logger.error(`Failed to trigger next driver after rejection: ${error.message}`);
+        }
+      }, 1000);
+
+      this.logger.log(`Driver ${driverId} rejected ride ${rideId}, moving to next driver`);
+
+      return {
+        success: true,
+        message: 'Ride request rejected. System will find another driver.',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to reject ride ${rideId} by driver ${driverId}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to reject ride');
+    }
   }
 }

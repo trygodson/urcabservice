@@ -249,6 +249,42 @@ export class DriverRideController {
     return await this.driverRidesService.markRideReachedDestination(rideId, driverId, body);
   }
 
+  @Post(':id/reject')
+  @ApiOperation({ summary: 'Reject a ride request (Driver only)' })
+  @ApiParam({
+    name: 'id',
+    description: 'Ride ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Ride rejected successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Ride not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Ride cannot be rejected',
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async rejectRide(@Param('id') rideId: string, @Body() body: { reason?: string }, @CurrentUser() user: User) {
+    if (!Types.ObjectId.isValid(rideId)) {
+      throw new BadRequestException('Invalid ride ID format');
+    }
+
+    const driverId = new Types.ObjectId(user._id);
+    return await this.driverRidesService.rejectRide(rideId, driverId, body.reason);
+  }
+
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel a ride (Driver only)' })
   @ApiParam({

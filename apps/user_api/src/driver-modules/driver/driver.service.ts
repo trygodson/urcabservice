@@ -535,44 +535,25 @@ export class DriverService {
       // Check if profile is complete
       const isProfileComplete = verificationStatus.hasCompleteDocumentation;
 
-      // Get active subscription plan
-      await this.subscriptionRepository.getOrCreateFreeSubscription(_id);
+      // Get active (paid) subscription plan
       const activeSubscription = await this.subscriptionRepository.findActiveSubscription(_id);
 
       let activePlan = null;
       if (activeSubscription) {
-        if (activeSubscription.type === 'free') {
-          activePlan = {
-            _id: activeSubscription._id.toString(),
-            planId: null,
-            planName: 'Free Plan',
-            planType: 'free',
-            startDate: activeSubscription.startDate,
-            endDate: activeSubscription.endDate,
-            expiryDate: activeSubscription.endDate,
-            price: 0,
-            status: activeSubscription.status,
-            dailyRideRequests: activeSubscription.dailyRideRequests || 0,
-            dailyLimit: 3,
-            remainingRequests: Math.max(0, 3 - (activeSubscription.dailyRideRequests || 0)),
-            isUnlimited: false,
-          };
-        } else {
-          // Get plan details for paid subscription
-          const plan = await this.subscriptionPlanRepository.findById(activeSubscription.planId?.toString() || '');
-          activePlan = {
-            _id: activeSubscription._id.toString(),
-            planId: activeSubscription.planId?.toString() || '',
-            planName: plan?.name || '',
-            planType: activeSubscription.type,
-            startDate: activeSubscription.startDate,
-            endDate: activeSubscription.endDate,
-            expiryDate: activeSubscription.endDate,
-            price: activeSubscription.price,
-            status: activeSubscription.status,
-            isUnlimited: true,
-          };
-        }
+        // Get plan details for active paid subscription
+        const plan = await this.subscriptionPlanRepository.findById(activeSubscription.planId?.toString() || '');
+        activePlan = {
+          _id: activeSubscription._id.toString(),
+          planId: activeSubscription.planId?.toString() || '',
+          planName: plan?.name || '',
+          planType: activeSubscription.type,
+          startDate: activeSubscription.startDate,
+          endDate: activeSubscription.endDate,
+          expiryDate: activeSubscription.endDate,
+          price: activeSubscription.price,
+          status: activeSubscription.status,
+          isUnlimited: true,
+        };
       }
 
       delete user.fcmToken;
@@ -713,13 +694,10 @@ export class DriverService {
 
   async getSubscriptionPlans(driverId: string): Promise<SubscriptionPlansListResponseDto> {
     try {
-      // Ensure driver has a free subscription
-      await this.subscriptionRepository.getOrCreateFreeSubscription(driverId);
-
       // Get all active subscription plans
       const plans = await this.subscriptionPlanRepository.findActivePlans();
 
-      // Get driver's active subscription (including free plan)
+      // Get driver's active subscription
       const activeSubscription = await this.subscriptionRepository.findActiveSubscription(driverId);
 
       // Map plans with driver's subscription status
@@ -746,35 +724,18 @@ export class DriverService {
       // Format active subscription info if exists
       let activeSubscriptionInfo = undefined;
       if (activeSubscription) {
-        // Handle free plan
-        if (activeSubscription.type === 'free') {
-          activeSubscriptionInfo = {
-            _id: activeSubscription._id.toString(),
-            planId: null,
-            planName: 'Free Plan',
-            startDate: activeSubscription.startDate,
-            endDate: activeSubscription.endDate,
-            expiryDate: activeSubscription.endDate,
-            price: 0,
-            status: activeSubscription.status,
-            dailyRideRequests: activeSubscription.dailyRideRequests || 0,
-            dailyLimit: 3,
-            remainingRequests: Math.max(0, 3 - (activeSubscription.dailyRideRequests || 0)),
-          };
-        } else {
-          // Handle paid plans
-          const plan = plans.find((p) => p._id.toString() === activeSubscription.planId?.toString());
-          activeSubscriptionInfo = {
-            _id: activeSubscription._id.toString(),
-            planId: activeSubscription.planId?.toString() || '',
-            planName: plan?.name || '',
-            startDate: activeSubscription.startDate,
-            endDate: activeSubscription.endDate,
-            expiryDate: activeSubscription.endDate,
-            price: activeSubscription.price,
-            status: activeSubscription.status,
-          };
-        }
+        // Handle paid plans only
+        const plan = plans.find((p) => p._id.toString() === activeSubscription.planId?.toString());
+        activeSubscriptionInfo = {
+          _id: activeSubscription._id.toString(),
+          planId: activeSubscription.planId?.toString() || '',
+          planName: plan?.name || '',
+          startDate: activeSubscription.startDate,
+          endDate: activeSubscription.endDate,
+          expiryDate: activeSubscription.endDate,
+          price: activeSubscription.price,
+          status: activeSubscription.status,
+        };
       }
 
       return {
@@ -1202,13 +1163,9 @@ export class DriverService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       // Get user with password fields
-      const user = await this.userRepository.findOne(
-        { _id: new Types.ObjectId(userId) },
-        [],
-        {
-          select: 'passwordSalt passwordHash email',
-        },
-      );
+      const user = await this.userRepository.findOne({ _id: new Types.ObjectId(userId) }, [], {
+        select: 'passwordSalt passwordHash email',
+      });
 
       if (!user) {
         throw new NotFoundException('User not found');
@@ -1245,7 +1202,11 @@ export class DriverService {
       };
     } catch (error) {
       this.logger.error(`Failed to change password for driver ${userId}:`, error);
-      if (error instanceof NotFoundException || error instanceof UnauthorizedException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to change password');

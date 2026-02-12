@@ -11,6 +11,14 @@ interface AdminUserCreatedPayload {
   createdBy: string;
 }
 
+interface AdminPasswordResetPayload {
+  userId: string;
+  email: string;
+  fullName: string;
+  otpCode: string;
+  expiryMinutes: number;
+}
+
 @Injectable()
 export class AdminNotificationListener {
   private readonly logger = new Logger(AdminNotificationListener.name);

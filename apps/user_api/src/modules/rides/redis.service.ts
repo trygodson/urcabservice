@@ -156,6 +156,103 @@ export class RedisService implements OnModuleDestroy {
     await this.client.del(`socket:${userType}:${userId}`);
   }
 
+  // Store driver notification queue for a ride
+  async storeDriverQueue(rideId: string, driverIds: string[], ttl: number = 600): Promise<void> {
+    await this.client.setex(`ride_driver_queue:${rideId}`, ttl, JSON.stringify(driverIds));
+  }
+
+  // Get driver queue for a ride
+  async getDriverQueue(rideId: string): Promise<string[] | null> {
+    const data = await this.client.get(`ride_driver_queue:${rideId}`);
+    return data ? JSON.parse(data) : null;
+  }
+
+  // Get current driver being notified
+  async getCurrentNotifiedDriver(rideId: string): Promise<string | null> {
+    return await this.client.get(`ride_current_driver:${rideId}`);
+  }
+
+  // Set current driver being notified
+  async setCurrentNotifiedDriver(rideId: string, driverId: string, ttl: number = 60): Promise<void> {
+    await this.client.setex(`ride_current_driver:${rideId}`, ttl, driverId);
+  }
+
+  // Remove current driver and move to next
+  async moveToNextDriver(rideId: string): Promise<string | null> {
+    const queue = await this.getDriverQueue(rideId);
+    if (!queue || queue.length === 0) {
+      await this.client.del(`ride_current_driver:${rideId}`);
+      return null;
+    }
+
+    const nextDriverId = queue.shift();
+    await this.storeDriverQueue(rideId, queue);
+    if (nextDriverId) {
+      await this.setCurrentNotifiedDriver(rideId, nextDriverId);
+    } else {
+      await this.client.del(`ride_current_driver:${rideId}`);
+    }
+
+    return nextDriverId || null;
+  }
+
+  // Mark driver as notified (for tracking)
+  async markDriverNotified(rideId: string, driverId: string): Promise<void> {
+    await this.client.sadd(`ride_notified_drivers:${rideId}`, driverId);
+    await this.client.expire(`ride_notified_drivers:${rideId}`, 600);
+  }
+
+  // Check if driver was already notified
+  async wasDriverNotified(rideId: string, driverId: string): Promise<boolean> {
+    return (await this.client.sismember(`ride_notified_drivers:${rideId}`, driverId)) === 1;
+  }
+
+  // Clear all driver queue data for a ride
+  async clearDriverQueue(rideId: string): Promise<void> {
+    await this.client.del(`ride_driver_queue:${rideId}`);
+    await this.client.del(`ride_current_driver:${rideId}`);
+    await this.client.del(`ride_notified_drivers:${rideId}`);
+  }
+
+  // Track driver cancellation for a passenger (exclusion period)
+  // Store with TTL matching the exclusion period (default 30 minutes = 1800 seconds)
+  async trackDriverCancellation(
+    driverId: string,
+    passengerId: string,
+    exclusionPeriodSeconds: number = 1800,
+  ): Promise<void> {
+    const key = `driver_cancellation:${driverId}:${passengerId}`;
+    await this.client.setex(key, exclusionPeriodSeconds, Date.now().toString());
+  }
+
+  // Check if driver is excluded from receiving requests from a passenger
+  async isDriverExcluded(driverId: string, passengerId: string): Promise<boolean> {
+    const key = `driver_cancellation:${driverId}:${passengerId}`;
+    const exists = await this.client.exists(key);
+    return exists === 1;
+  }
+
+  // Get exclusion expiry time for a driver-passenger pair
+  async getDriverExclusionExpiry(driverId: string, passengerId: string): Promise<number | null> {
+    const key = `driver_cancellation:${driverId}:${passengerId}`;
+    const ttl = await this.client.ttl(key);
+    if (ttl === -2) {
+      // Key doesn't exist
+      return null;
+    }
+    if (ttl === -1) {
+      // Key exists but has no expiry (shouldn't happen with our implementation)
+      return null;
+    }
+    return Date.now() + ttl * 1000; // Return expiry timestamp
+  }
+
+  // Remove exclusion (if needed for admin override)
+  async removeDriverExclusion(driverId: string, passengerId: string): Promise<void> {
+    const key = `driver_cancellation:${driverId}:${passengerId}`;
+    await this.client.del(key);
+  }
+
   onModuleDestroy() {
     this.client.disconnect();
     this.subscriber.disconnect();
