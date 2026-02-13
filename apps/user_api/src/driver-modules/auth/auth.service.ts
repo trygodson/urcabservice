@@ -351,7 +351,9 @@ export class AuthService {
   }
 
   async resetPassword(data: ResetPasswordDto) {
-    const user = await this.userRepository.findOne({ email: data.email });
+    const user = await this.userRepository.model
+      .findOne({ email: data.email }, [], { select: 'resetPasswordOtp resetPasswordOtpExpiry email' })
+      .lean<User>();
     if (!user) {
       throw new NotFoundException('User with this email does not exist');
     }
