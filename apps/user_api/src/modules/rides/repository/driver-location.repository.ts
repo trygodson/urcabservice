@@ -111,7 +111,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
   ): Promise<DriverLocationDocument[]> {
     try {
       this.logger.debug(`Searching for drivers near [${longitude}, ${latitude}] within ${radiusInKm}km`);
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const fifteenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       const now = new Date();
 
       const res = await this.model
