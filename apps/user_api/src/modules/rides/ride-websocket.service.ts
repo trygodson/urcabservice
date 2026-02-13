@@ -78,24 +78,6 @@ export class RideWebSocketService {
    */
   async sendRideRequestToDriver(rideRequest: RideRequest, driverFcmToken?: string): Promise<void> {
     try {
-      // Store ride request in Redis with TTL (5 minutes)
-      // await this.redisService.storeRideRequest(rideRequest.rideId, rideRequest, 300);
-
-      // // Add to driver's pending requests
-      // await this.redisService.addDriverPendingRequest(
-      //   rideRequest.driverId,
-      //   rideRequest.rideId,
-      //   300, // 5 minutes TTL
-      // );
-
-      // Send via WebSocket if driver is connected
-      // if (this.rideGateway) {
-      //   await this.rideGateway.sendRideRequestToDriver(rideRequest.driverId, {
-      //     type: 'ride_request',
-      //     data: rideRequest,
-      //   });
-      // }
-
       // Also send FCM notification as fallback
       if (driverFcmToken) {
         try {

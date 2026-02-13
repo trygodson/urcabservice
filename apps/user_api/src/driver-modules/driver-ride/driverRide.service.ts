@@ -622,7 +622,7 @@ export class DriverRideService {
         ride.status === RideStatus.RIDE_STARTED
       ) {
         const passengerId = ride.passengerId._id.toString();
-        const exclusionPeriodSeconds = 3 * 60; // 30 minutes
+        const exclusionPeriodSeconds = 3 * 60; // 3 minutes
         await this.redisService.trackDriverCancellation(driverId.toString(), passengerId, exclusionPeriodSeconds);
         this.logger.log(
           `Driver ${driverId} cancelled ride ${rideId} for passenger ${passengerId}. Excluded for ${exclusionPeriodSeconds} seconds.`,

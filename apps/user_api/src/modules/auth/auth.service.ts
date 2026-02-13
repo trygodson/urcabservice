@@ -155,72 +155,6 @@ export class AuthService {
     }
   }
 
-  // async selectCountry(user: User, countryId: string) {
-  //   console.log('Selecting country:', countryId, 'for user:', user._id);
-
-  //   // Validate ObjectId format
-  //   if (!Types.ObjectId.isValid(countryId)) {
-  //     throw new BadRequestException('Invalid country ID format');
-  //   }
-
-  //   const country = await this.countryRepository.findOne({
-  //     _id: new Types.ObjectId(countryId),
-  //     isActive: true,
-  //   });
-
-  //   console.log('Found country:', country);
-
-  //   if (!country) {
-  //     // Let's check what countries exist
-  //     const allCountries = await this.countryRepository.find({});
-  //     console.log(
-  //       'Available countries:',
-  //       allCountries.map((c) => ({ id: c._id, name: c.name })),
-  //     );
-
-  //     throw new NotFoundException(`Country not found with ID: ${countryId}`);
-  //   }
-
-  //   // Update user with country
-  //   const updatedUser = await this.userRepository.findOneAndUpdate(
-  //     { _id: user._id },
-  //     { country: country._id },
-  //   );
-
-  //   // Create wallet for user
-  //   // await this.walletsService.createWallet(user._id);
-
-  //   return {
-  //     success: true,
-  //     message: 'Country selected successfully',
-  //     data: {
-  //       country: {
-  //         name: country.name,
-  //         code: country.code,
-  //         currency: country.currency,
-  //         currencySymbol: country.currencySymbol,
-  //       },
-  //     },
-  //   };
-  // }
-
-  // async getCountries() {
-  //   const countries = await this.countryRepository.find({ isActive: true }, []);
-  //   console.log('Found countries:', countries.length);
-  //   console.log('First country:', countries[0]);
-  //   return {
-  //     success: true,
-  //     data: countries.map((country) => ({
-  //       _id: country._id,
-  //       name: country.name,
-  //       code: country.code,
-  //       flag: country.flag,
-  //       currency: country.currency,
-  //       currencySymbol: country.currencySymbol,
-  //     })),
-  //   };
-  // }
-
   async forgotPassword(email: string) {
     const user = await this.userRepository.findOne({ email });
     if (!user) {
@@ -251,11 +185,12 @@ export class AuthService {
   }
 
   async resetPassword(data: ResetPasswordDto) {
-    const user = await this.userRepository.findOne({ email: data.email });
+    const user = await this.userRepository.model
+      .findOne({ email: data.email }, [], { select: 'resetPasswordOtp resetPasswordOtpExpiry email' })
+      .lean<User>();
     if (!user) {
       throw new NotFoundException('User with this email does not exist');
     }
-
     if (
       !user.resetPasswordOtp ||
       !user.resetPasswordOtpExpiry ||
