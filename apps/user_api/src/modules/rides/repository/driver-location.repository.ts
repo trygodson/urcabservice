@@ -273,17 +273,18 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   $match: {
                     $expr: { $eq: ['$driverId', '$$driverId'] },
                     status: 'active',
+                    type: { $in: ['daily', 'weekly', 'monthly'] }, // Paid subscriptions only
                     startDate: { $lte: now },
                     endDate: { $gte: now },
                   },
                 },
                 {
                   $sort: {
-                    type: 1, // Prioritize paid subscriptions (daily, weekly, monthly) over free
+                    type: 1,
                   },
                 },
                 {
-                  $limit: 1, // Get the most relevant subscription (paid if exists, otherwise free)
+                  $limit: 1,
                 },
                 {
                   $project: {
