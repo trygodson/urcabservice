@@ -159,14 +159,12 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           {
             $lookup: {
               from: 'user',
-              localField: 'driverId',
-              foreignField: '_id',
-              as: 'driver',
+              let: { driverId: '$driverId' },
               pipeline: [
                 {
                   $match: {
+                    $expr: { $eq: ['$_id', '$$driverId'] },
                     type: 2, // Driver role
-                    // isDriverVerified: true,
                     isActive: true,
                   },
                 },
@@ -183,22 +181,20 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   },
                 },
               ],
+              as: 'driver',
             },
           },
           {
             $lookup: {
               from: 'vehicle',
-              localField: 'driverId',
-              foreignField: 'driverId',
-              as: 'vehicle',
+              let: { driverId: '$driverId' },
               pipeline: [
                 {
                   $match: {
+                    $expr: { $eq: ['$driverId', '$$driverId'] },
                     isPrimary: true,
                     isActive: true,
-                    // seatingCapacity: { $gte: passengerCount },
                     vehicleTypeId: new Types.ObjectId(vehicleTypeId),
-                    // status: 'verified',
                   },
                 },
                 {
@@ -215,41 +211,38 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   },
                 },
               ],
+              as: 'vehicle',
             },
           },
           {
             $lookup: {
               from: 'vehicleType',
-              localField: 'vehicle.vehicleTypeId',
-              foreignField: '_id',
-              as: 'vehicleTypeInfo',
+              let: { vehicleTypeIds: '$vehicle.vehicleTypeId' },
               pipeline: [
                 {
                   $match: {
+                    $expr: { $in: ['$_id', '$$vehicleTypeIds'] },
                     isActive: true,
                   },
                 },
                 {
                   $project: {
                     name: 1,
-                    // pricePerKM: 1,
                     capacity: 1,
-                    // description: 1,
-                    // iconUrl: 1,
                   },
                 },
               ],
+              as: 'vehicleTypeInfo',
             },
           },
           {
             $lookup: {
               from: 'vehicleEvp',
-              localField: 'vehicle._id',
-              foreignField: 'vehicleId',
-              as: 'vehicleEvp',
+              let: { vehicleIds: '$vehicle._id' },
               pipeline: [
                 {
                   $match: {
+                    $expr: { $in: ['$vehicleId', '$$vehicleIds'] },
                     isActive: true,
                     endDate: { $gt: now }, // Not expired
                     revokedAt: { $exists: false }, // Not revoked
@@ -268,17 +261,17 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   },
                 },
               ],
+              as: 'vehicleEvp',
             },
           },
           {
             $lookup: {
               from: 'subscriptions',
-              localField: 'driverId',
-              foreignField: 'driverId',
-              as: 'subscriptions',
+              let: { driverId: '$driverId' },
               pipeline: [
                 {
                   $match: {
+                    $expr: { $eq: ['$driverId', '$$driverId'] },
                     status: 'active',
                     startDate: { $lte: now },
                     endDate: { $gte: now },
@@ -302,6 +295,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
                   },
                 },
               ],
+              as: 'subscriptions',
             },
           },
           {
