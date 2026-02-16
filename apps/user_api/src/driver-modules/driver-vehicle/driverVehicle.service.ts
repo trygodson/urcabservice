@@ -395,6 +395,8 @@ export class VehicleService {
   private async mapToVehicleDetailsResponseDto(vehicle: Vehicle): Promise<VehicleResponseDto> {
     // Get active EVP for this vehicle
     let evp = null;
+
+    console.log(vehicle, 'vehicle');
     try {
       const vehicleId = typeof vehicle._id === 'string' ? new Types.ObjectId(vehicle._id) : vehicle._id;
       const activeEvp = await this.driverEvpRepository.findOne({
@@ -486,7 +488,7 @@ export class VehicleService {
       }
 
       // Check if EVP price is set by admin
-      if (!vehicle.evpPriceSet || !vehicle.evpPrice || vehicle.evpPrice <= 0) {
+      if (!vehicle.evpPrice || vehicle.evpPrice <= 0) {
         throw new BadRequestException('EVP price has not been set by admin yet');
       }
 
