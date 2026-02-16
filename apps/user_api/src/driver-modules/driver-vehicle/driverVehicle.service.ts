@@ -473,6 +473,8 @@ export class VehicleService {
     try {
       const vehicleObjectId = new Types.ObjectId(vehicleId);
       const vehicle = await this.vehicleRepository.getVehicleById(vehicleObjectId);
+      const settings = await this.settingsModel.findOne().exec();
+      const evpPrice = settings.globalVehicleEvpPrice;
 
       if (!vehicle) {
         throw new NotFoundException('Vehicle not found');
@@ -488,7 +490,7 @@ export class VehicleService {
       }
 
       // Check if EVP price is set by admin
-      if (!vehicle.evpPrice || vehicle.evpPrice <= 0) {
+      if (!evpPrice || evpPrice <= 0) {
         throw new BadRequestException('EVP price has not been set by admin yet');
       }
 
@@ -558,17 +560,17 @@ export class VehicleService {
 
         const walletBalance = balanceResult.length > 0 ? Math.max(0, balanceResult[0].balance) : 0;
 
-        if (walletBalance < vehicle.evpPrice) {
+        if (walletBalance < evpPrice) {
           throw new BadRequestException(
             `Insufficient wallet balance. Your balance is RM${walletBalance.toFixed(
               2,
-            )}, but the EVP price is RM${vehicle.evpPrice.toFixed(2)}`,
+            )}, but the EVP price is RM${evpPrice.toFixed(2)}`,
           );
         }
 
         // Deduct from wallet and create transaction
         const withdrawableBalanceBefore = walletBalance;
-        const withdrawableBalanceAfter = withdrawableBalanceBefore - vehicle.evpPrice;
+        const withdrawableBalanceAfter = withdrawableBalanceBefore - evpPrice;
         const totalBalanceAfter = driverWallet.depositBalance + withdrawableBalanceAfter;
 
         // Generate transaction reference
@@ -583,7 +585,7 @@ export class VehicleService {
           status: TransactionStatus.COMPLETED,
           category: TransactionCategory.EVP_PAYMENT,
           balanceType: BalanceType.WITHDRAWABLE,
-          amount: vehicle.evpPrice,
+          amount: evpPrice,
           currency: driverWallet.currency || 'MYR',
           currencySymbol: driverWallet.currencySymbol || 'RM',
           depositBalanceBefore: driverWallet.depositBalance,
@@ -596,7 +598,7 @@ export class VehicleService {
           paymentMethod: PaymentMethod.WALLET,
           metadata: {
             vehicleId: vehicleId,
-            evpPrice: vehicle.evpPrice,
+            evpPrice: evpPrice,
           },
           completedAt: new Date(),
         });
@@ -626,7 +628,7 @@ export class VehicleService {
           message: 'EVP payment completed successfully',
           data: {
             transactionRef: transaction.transactionRef,
-            amount: vehicle.evpPrice,
+            amount: evpPrice,
             paymentMethod: PaymentMethod.WALLET,
             vehicleId: vehicleId,
           },
@@ -650,7 +652,7 @@ export class VehicleService {
           .findOne({
             category: TransactionCategory.EVP_PAYMENT,
             status: TransactionStatus.PENDING,
-            amount: vehicle.evpPrice,
+            amount: evpPrice,
             'metadata.vehicleId': vehicleId,
           })
           .sort({ createdAt: -1 }) // Get the most recent transaction
@@ -663,7 +665,7 @@ export class VehicleService {
             data: {
               transactionRef: pendingTrnx.transactionRef,
               transactionId: pendingTrnx._id.toString(),
-              amount: vehicle.evpPrice,
+              amount: evpPrice,
               paymentMethod: PaymentMethod.CARD,
               vehicleId: vehicleId,
             },
@@ -680,7 +682,7 @@ export class VehicleService {
           status: TransactionStatus.PENDING,
           category: TransactionCategory.EVP_PAYMENT,
           balanceType: BalanceType.WITHDRAWABLE,
-          amount: vehicle.evpPrice,
+          amount: evpPrice,
           currency: driverWallet.currency || 'MYR',
           currencySymbol: driverWallet.currencySymbol || 'RM',
           depositBalanceBefore: driverWallet.depositBalance,
@@ -693,7 +695,7 @@ export class VehicleService {
           paymentMethod: PaymentMethod.CARD,
           metadata: {
             vehicleId: vehicleId,
-            evpPrice: vehicle.evpPrice,
+            evpPrice: evpPrice,
           },
         });
 
@@ -711,7 +713,7 @@ export class VehicleService {
           data: {
             transactionRef: transaction.transactionRef,
             transactionId: transaction._id.toString(),
-            amount: vehicle.evpPrice,
+            amount: evpPrice,
             paymentMethod: PaymentMethod.CARD,
             vehicleId: vehicleId,
           },
