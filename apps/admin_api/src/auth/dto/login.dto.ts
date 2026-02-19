@@ -18,7 +18,11 @@ export class LoginDto {
   @IsStrongPassword()
   password: string;
 
-  ß;
+  @ApiPropertyOptional({})
+  @IsString()
+  @IsOptional()
+  fcmToken: string = null;
+
   // @AutoMap()
   // @ApiProperty()
   // @IsOptional()

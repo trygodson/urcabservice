@@ -120,8 +120,8 @@ export class AuthService {
         // const needsOnboarding = !user.country || !user.isOnboardingComplete;
 
         if (user.type === Role.ADMIN || user.type === Role.SUPER_ADMIN) {
-          // body?.fcmToken &&
-          //   (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
+          body?.fcmToken &&
+            (await this.userRepository.findOneAndUpdate({ _id: user._id }, { fcmToken: body.fcmToken }));
           // console.log(user, 'user');
           // Get role and permissions
           let permissions: string[] = [];
@@ -419,10 +419,9 @@ export class AuthService {
 
   async resetPassword(data: ResetPasswordDto): Promise<{ success: boolean; message: string }> {
     try {
-      const user = await this.userRepository.findOne({
-        email: data.email,
-        type: { $in: [Role.ADMIN, Role.SUPER_ADMIN] },
-      });
+      const user = await this.userRepository.model
+        .findOne({ email: data.email }, [], { select: 'resetPasswordOtp resetPasswordOtpExpiry email' })
+        .lean<User>();
 
       if (!user) {
         throw new NotFoundException('User with this email does not exist');

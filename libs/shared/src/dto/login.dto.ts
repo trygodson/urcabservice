@@ -1,12 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 // import { AutoMap } from '@automapper/classes';
 import { Type } from 'class-transformer';
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsStrongPassword,
-} from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsStrongPassword } from 'class-validator';
 
 export class LoginDto {
   // @AutoMap()
@@ -23,9 +18,7 @@ export class LoginDto {
   @IsStrongPassword()
   password: string;
 
-  @ApiPropertyOptional({
-    example: 'Password@123',
-  })
+  @ApiPropertyOptional({})
   @IsString()
   @IsOptional()
   fcmToken: string = null;
