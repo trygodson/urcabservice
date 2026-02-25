@@ -647,7 +647,11 @@ export class DriverRideService {
       setTimeout(async () => {
         try {
           const rideData = await this.rideRepository.findById(rideId);
-          if (rideData && rideData.status === RideStatus.PENDING_DRIVER_ACCEPTANCE) {
+          if (
+            rideData &&
+            (rideData.status === RideStatus.PENDING_DRIVER_ACCEPTANCE ||
+              rideData.status === RideStatus.REJECTED_BY_DRIVER)
+          ) {
             // Get passenger data for notification
             const passengerData = await this.userRepository.findById(rideData.passengerId._id.toString());
             // Trigger next driver notification

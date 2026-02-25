@@ -137,7 +137,7 @@ export class RideRepository extends AbstractRepository<Ride> {
             ],
           },
         })
-        .populate('driverId', 'firstName lastName phone photo email rating')
+        .populate('driverId', 'firstName lastName fullName phone photo email rating')
         .sort({ updatedAt: -1 })
         .exec();
 
