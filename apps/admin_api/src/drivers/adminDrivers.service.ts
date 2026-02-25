@@ -1856,7 +1856,7 @@ export class AdminDriversService {
         amount: transaction.amount,
         paymentMethod: transaction.paymentMethod || 'N/A',
         status: transaction.status,
-        date: transaction.createdAt,
+        date: transaction.updatedAt,
         vehicleId: transaction.metadata?.vehicleId?.toString(),
         vehicleType: vehicleType
           ? {
