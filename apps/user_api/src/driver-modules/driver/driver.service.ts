@@ -759,6 +759,22 @@ export class DriverService {
       }
 
       const isOnline = status === DriverOnlineStatus.ONLINE;
+
+      // If going online, check if driver has an active ride
+      if (isOnline) {
+        const activeRide = await this.rideRepository.findActiveRideByDriver(new Types.ObjectId(driverId));
+        if (activeRide) {
+          this.logger.warn(
+            `Driver ${driverId} attempted to go online but has an active ride ${activeRide._id} with status: ${activeRide.status}`,
+          );
+          throw new BadRequestException(
+            `You have an active ride (${activeRide.status.toLowerCase().replace('_', ' ')}). ` +
+              `Please complete or cancel your current ride before going online. ` +
+              `Ride ID: ${activeRide._id}`,
+          );
+        }
+      }
+
       const updateData: any = {
         status,
         isAvailableForRides: isOnline,

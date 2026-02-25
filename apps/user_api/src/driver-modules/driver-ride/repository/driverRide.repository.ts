@@ -96,7 +96,7 @@ export class DriverRideRepository extends AbstractRepository<RideDocument> {
             ],
           },
         })
-        .populate('passengerId', 'firstName lastName phone photo email rating')
+        .populate('passengerId', 'firstName lastName fullName phone photo email rating')
         .sort({ updatedAt: -1 })
         .exec();
 

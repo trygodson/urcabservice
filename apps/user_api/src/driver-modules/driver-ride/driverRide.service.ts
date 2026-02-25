@@ -643,6 +643,21 @@ export class DriverRideService {
           updatedRide,
         );
       }
+      // // Trigger next driver notification - use a small delay to ensure rejection is processed
+      setTimeout(async () => {
+        try {
+          const rideData = await this.rideRepository.findById(rideId);
+          if (rideData && rideData.status === RideStatus.PENDING_DRIVER_ACCEPTANCE) {
+            // Get passenger data for notification
+            const passengerData = await this.userRepository.findById(rideData.passengerId._id.toString());
+            // Trigger next driver notification
+            await this.ridesService.notifyNextDriver(rideData, passengerData);
+            this.logger.log(`Driver ${driverId} rejected ride ${rideId}, next driver notification triggered`);
+          }
+        } catch (error) {
+          this.logger.error(`Failed to trigger next driver after rejection: ${error.message}`);
+        }
+      }, 1000);
 
       this.logger.log(`Ride ${rideId} cancelled by driver ${driverId}. Reason: ${reason}`);
       return this.mapToResponseDto(updatedRide);
@@ -1238,22 +1253,6 @@ export class DriverRideService {
         );
       }
 
-      // Trigger next driver notification - use a small delay to ensure rejection is processed
-      setTimeout(async () => {
-        try {
-          const rideData = await this.rideRepository.findById(rideId);
-          if (rideData && rideData.status === RideStatus.PENDING_DRIVER_ACCEPTANCE) {
-            // Get passenger data for notification
-            const passengerData = await this.userRepository.findById(rideData.passengerId._id.toString());
-            // Trigger next driver notification
-            await this.ridesService.notifyNextDriver(rideData, passengerData);
-            this.logger.log(`Driver ${driverId} rejected ride ${rideId}, next driver notification triggered`);
-          }
-        } catch (error) {
-          this.logger.error(`Failed to trigger next driver after rejection: ${error.message}`);
-        }
-      }, 1000);
-
       this.logger.log(`Driver ${driverId} rejected ride ${rideId}, moving to next driver`);
 
       return {
@@ -1261,6 +1260,7 @@ export class DriverRideService {
         message: 'Ride request rejected. System will find another driver.',
       };
     } catch (error) {
+      console.log(error);
       this.logger.error(`Failed to reject ride ${rideId} by driver ${driverId}`, error.stack);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
