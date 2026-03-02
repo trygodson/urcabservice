@@ -181,4 +181,52 @@ export class FirebaseNotificationService {
       return false;
     }
   }
+
+  /**
+   * Send a generic push notification
+   */
+  async sendPushNotification(
+    fcmToken: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+    priority: 'high' | 'normal' = 'normal',
+  ): Promise<string | null> {
+    try {
+      const message: admin.messaging.Message = {
+        token: fcmToken,
+        notification: { title, body },
+        data: data || {},
+        android: {
+          priority,
+          notification: {
+            channelId: priority === 'high' ? 'high_priority' : 'default',
+            priority: priority === 'high' ? 'high' : 'default',
+            defaultSound: true,
+            defaultVibrateTimings: priority === 'high',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: { title, body },
+              sound: 'default',
+              badge: 1,
+              'content-available': priority === 'high' ? 1 : 0,
+            },
+          },
+          headers: {
+            'apns-priority': priority === 'high' ? '10' : '5',
+          },
+        },
+      };
+
+      const response = await this.firebase.messaging.send(message);
+      this.logger.log(`Push notification sent: ${response}`);
+      return response;
+    } catch (error) {
+      this.logger.error(`Failed to send push notification`, error.stack);
+      return null;
+    }
+  }
 }

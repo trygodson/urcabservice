@@ -23,6 +23,9 @@ import {
   WalletRepository,
   WalletSchema,
   NotificationsModule,
+  Notification,
+  NotificationSchema,
+  NotificationRepository,
 } from '@urcab-workspace/shared';
 import { DriverLocationRepository } from '../driver-location/repository/driver-location.repository';
 
@@ -47,6 +50,7 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
       { name: RefreshToken.name, schema: RefreshTokenSchema },
       { name: DriverLocation.name, schema: DriverLocationSchema },
       { name: Wallet.name, schema: WalletSchema },
+      { name: Notification.name, schema: NotificationSchema },
       // { name: RefreshToken.name, schema: RefreshTokenSchema },
       // { name: Country.name, schema: CountrySchema },
       // { name: Wallet.name, schema: WalletSchema },
@@ -61,6 +65,7 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
     UserRepository,
     DriverLocationRepository,
     RefreshTokenRepository,
+    NotificationRepository,
   ],
   exports: [AuthService],
 })

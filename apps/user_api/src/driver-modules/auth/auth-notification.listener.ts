@@ -1,7 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { EmailNotificationService } from '@urcab-workspace/shared';
+import {
+  EmailNotificationService,
+  FirebaseNotificationService,
+  UserRepository,
+  NotificationRepository,
+  Role,
+  NotificationType,
+  NotificationStatus,
+  NotificationPriority,
+} from '@urcab-workspace/shared';
 import { ConfigService } from '@nestjs/config';
+import { Types } from 'mongoose';
 
 interface UserRegisteredPayload {
   userId: string;
@@ -32,6 +42,9 @@ export class AuthNotificationListener {
 
   constructor(
     private readonly emailNotificationService: EmailNotificationService,
+    private readonly firebaseNotificationService: FirebaseNotificationService,
+    private readonly userRepository: UserRepository,
+    private readonly notificationRepository: NotificationRepository,
     private readonly configService: ConfigService,
   ) {}
 
@@ -98,7 +111,7 @@ export class AuthNotificationListener {
   @OnEvent('auth.email_verified', { async: true })
   async handleEmailVerified(payload: { userId: string; email: string; fullName: string }) {
     try {
-      const { email, fullName } = payload;
+      const { email, fullName, userId } = payload;
 
       const subject = 'Email Verified Successfully';
       const html = this.getEmailVerifiedTemplate(fullName);
@@ -111,9 +124,86 @@ export class AuthNotificationListener {
         text,
       });
 
-      this.logger.log(`Email verification confirmation sent to ${email} for user ${payload.userId}`);
+      this.logger.log(`Email verification confirmation sent to ${email} for user ${userId}`);
+
+      // Send push notification to super admin
+      await this.notifySuperAdminAboutDriverVerification(userId, email, fullName);
     } catch (error) {
       this.logger.error(`Failed to send email verification confirmation to ${payload.email}`, error.stack);
+    }
+  }
+
+  /**
+   * Notify super admin when a driver successfully verifies their OTP
+   */
+  private async notifySuperAdminAboutDriverVerification(
+    driverId: string,
+    driverEmail: string,
+    driverFullName: string,
+  ): Promise<void> {
+    try {
+      // Find super admin user
+      const superAdmin = await this.userRepository.findOne({
+        type: Role.SUPER_ADMIN,
+        isActive: true,
+      });
+
+      if (!superAdmin) {
+        this.logger.warn('Super admin not found, skipping notification');
+        return;
+      }
+
+      if (!superAdmin.fcmToken) {
+        this.logger.warn('Super admin does not have FCM token, skipping push notification');
+        return;
+      }
+
+      const title = '🚗 New Driver Verified';
+      const message = `Driver ${driverFullName} (${driverEmail}) has successfully verified their email and is ready for onboarding.`;
+
+      // Send push notification
+      const pushNotificationId = await this.firebaseNotificationService.sendPushNotification(
+        superAdmin.fcmToken,
+        title,
+        message,
+        {
+          type: 'driver_verified',
+          driverId: driverId,
+          driverEmail: driverEmail,
+          driverName: driverFullName,
+        },
+        'high',
+      );
+
+      // Create notification record in database
+      const notificationData: any = {
+        userId: new Types.ObjectId(superAdmin._id),
+        type: 'driver_verified', // Custom type for driver verification
+        title,
+        message,
+        status: pushNotificationId ? NotificationStatus.SENT : NotificationStatus.FAILED,
+        priority: NotificationPriority.HIGH,
+        relatedEntityId: new Types.ObjectId(driverId),
+        relatedEntityType: 'driver',
+        data: {
+          driverId,
+          driverEmail,
+          driverName: driverFullName,
+        },
+        isPushSent: !!pushNotificationId,
+        isSystem: true,
+        sentAt: new Date(),
+      };
+
+      if (pushNotificationId) {
+        notificationData.pushNotificationId = pushNotificationId;
+      }
+
+      await this.notificationRepository.create(notificationData);
+
+      this.logger.log(`Super admin notified about driver verification: ${driverId}`);
+    } catch (error) {
+      this.logger.error(`Failed to notify super admin about driver verification`, error.stack);
     }
   }
 
