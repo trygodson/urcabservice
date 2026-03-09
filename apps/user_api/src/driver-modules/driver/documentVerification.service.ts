@@ -83,7 +83,7 @@ export class DocumentVerificationStatusService {
     },
     {
       documentType: DocumentType.PAMANDU,
-      isRequired: true,
+      isRequired: false,
       displayName: 'Pamandu Certificate',
       description: 'Professional driving certification',
       hasExpiry: true,

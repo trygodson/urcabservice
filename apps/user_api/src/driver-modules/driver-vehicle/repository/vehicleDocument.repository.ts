@@ -280,7 +280,7 @@ export class VehicleDocumentRepository extends AbstractRepository<VehicleDocumen
     return [
       VehicleDocumentType.CAR_INSURANCE,
       VehicleDocumentType.PUSPAKOM_INSPECTION,
-      VehicleDocumentType.TAXI_PERMIT_VEHICLE,
+      // VehicleDocumentType.TAXI_PERMIT_VEHICLE,
     ];
   }
 
