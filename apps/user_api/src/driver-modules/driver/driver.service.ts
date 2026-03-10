@@ -28,11 +28,12 @@ import {
   WalletTransaction,
   Settings,
   SettingsDocument,
+  DriverEvpRepository,
 } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Vehicle, DocumentStatus, Ride } from '@urcab-workspace/shared';
+import { Vehicle, DocumentStatus, Ride, VehicleStatus } from '@urcab-workspace/shared';
 import { DocumentVerificationStatusService } from './documentVerification.service';
 import {
   CreateSubscriptionTransactionDto,
@@ -91,6 +92,7 @@ export class DriverService {
     private readonly vehicleRepository: VehicleRepository,
     private readonly ratingRepository: RatingRepository,
     private readonly firebaseNotificationService: FirebaseNotificationService,
+    private readonly driverEvpRepository: DriverEvpRepository,
   ) {}
   private generateTransactionRef(type: TransactionType, category: TransactionCategory): string {
     const prefix = type === TransactionType.CREDIT ? 'CR' : 'DB';
@@ -153,6 +155,36 @@ export class DriverService {
     const user = await this.userRepository.findOne({ _id: new Types.ObjectId(driverId), type: UserRolesEnum.DRIVER });
     if (!user) {
       throw new NotFoundException(`Driver with ID ${driverId} not found`);
+    }
+
+    // Check that driver has at least one verified vehicle with complete documentation
+    const driverObjectId = new Types.ObjectId(driverId);
+    const verifiedVehicles = await this.vehicleRepository.find({
+      driverId: driverObjectId,
+      isActive: true,
+      status: VehicleStatus.VERIFIED,
+      hasCompleteDocumentation: true,
+    });
+
+    if (!verifiedVehicles || verifiedVehicles.length === 0) {
+      throw new BadRequestException(
+        'You must have at least one verified vehicle with complete documentation before purchasing a subscription.',
+      );
+    }
+
+    // Check that there is at least one active EVP for a verified vehicle
+    const verifiedVehicleIds = verifiedVehicles.map((v) => v._id);
+    const activeVehicleEvp = await this.driverEvpRepository.findOne({
+      vehicleId: { $in: verifiedVehicleIds },
+      isActive: true,
+      endDate: { $gt: new Date() },
+      revokedAt: { $exists: false },
+    });
+
+    if (!activeVehicleEvp) {
+      throw new BadRequestException(
+        'You must have at least one active EVP for a verified vehicle before purchasing a subscription.',
+      );
     }
 
     // Check if driver already has an active PAID subscription (free plan is allowed to upgrade)
