@@ -227,7 +227,7 @@ export class AuthService {
         audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
-      const user = await this.userRepository.findOne({ email: payload.email });
+      const user = await this.userRepository.findOne({ email: payload.email, type: Role.PASSENGER, signedUpWith: 'google' });
       if (user) {
         return await this.login(user);
       }
@@ -263,6 +263,8 @@ export class AuthService {
 
       const user = await this.userRepository.create({
         email: payload.email,
+        type: Role.PASSENGER,
+        signedUpWith: 'google',
         fullName: payload.given_name + ' ' + payload.family_name,
         // lastName: payload.family_name,
         passwordHash: randomPassword,
@@ -422,7 +424,7 @@ export class AuthService {
     return theuser;
   }
   async verifyLocalUser(email: string, password: string): Promise<User | never> {
-    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email' }, [], {
+    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email', type: Role.PASSENGER }, [], {
       select: 'passwordSalt passwordHash isEmailConfirmed type email',
     });
 

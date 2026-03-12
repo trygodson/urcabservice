@@ -394,7 +394,7 @@ export class AuthService {
         audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
-      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google' });
+      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google', type: Role.DRIVER });
       if (user) {
         return await this.login(user);
       }
@@ -588,7 +588,7 @@ export class AuthService {
     return theuser;
   }
   async verifyLocalUser(email: string, password: string): Promise<User | never> {
-    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email' }, [], {
+    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email', type: Role.DRIVER }, [], {
       select: 'passwordSalt passwordHash isEmailConfirmed type email',
     });
 
