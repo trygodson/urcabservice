@@ -446,12 +446,11 @@ export class AuthService {
       const access_token = await this.generateAccessTokens(user);
 
       // console.log(access_token, '=====the access_token===');
-      this.eventEmitter.emit('auth.user_registered', {
+      this.eventEmitter.emit('auth.user_welcome', {
         userId: user._id.toString(),
         email: user.email,
         fullName: user.fullName || '',
         userType: 'driver',
-        // verificationToken: otp,
       });
       return {
         success: true,

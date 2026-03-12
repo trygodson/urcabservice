@@ -274,19 +274,14 @@ export class AuthService {
       });
 
       // Emit user registered event (Google sign-up - email already verified)
-      this.eventEmitter.emit('auth.user_registered', {
+      this.eventEmitter.emit('auth.user_welcome', {
         userId: user._id.toString(),
         email: user.email,
         fullName: user.fullName || '',
         userType: 'passenger',
       });
 
-      // Emit email verified event since Google already verified the email
-      this.eventEmitter.emit('auth.email_verified', {
-        userId: user._id.toString(),
-        email: user.email,
-        fullName: user.fullName || '',
-      });
+     
 
       // const refresh_token = await this.generateRefreshToken(user, ipAddress);
       const access_token = await this.generateAccessTokens(user);

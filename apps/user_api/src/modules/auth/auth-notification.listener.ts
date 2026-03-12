@@ -54,6 +54,22 @@ export class AuthNotificationListener {
       this.logger.error(`Failed to send registration emails to ${payload.email}`, error.stack);
     }
   }
+  
+  @OnEvent('auth.user_welcome', { async: true })
+  async handleUserGoogleWelcome(payload: UserRegisteredPayload) {
+    try {
+      const { email, fullName, userType } = payload;
+
+      // Send welcome email
+      await this.emailNotificationService.sendWelcomeEmail(email, fullName, userType);
+
+      
+
+      this.logger.log(`Welcome and verification emails sent to ${email} for user ${payload.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send registration emails to ${payload.email}`, error.stack);
+    }
+  }
 
   @OnEvent('auth.email_verification_requested', { async: true })
   async handleEmailVerificationRequested(payload: EmailVerificationPayload) {
