@@ -27,6 +27,17 @@ export class User extends AbstractDocument {
   })
   roleId?: Types.ObjectId; // Reference to custom role
 
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: false,
+    enum: ['email', 'google', 'facebook', 'apple'],
+    default: 'email',
+  })
+  signedUpWith?: string;
+
+
   @ApiProperty()
   @Prop({
     type: String,

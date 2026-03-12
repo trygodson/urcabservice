@@ -220,7 +220,7 @@ export class AuthService {
     try {
       const client = new OAuth2Client({
         clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
-        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
+        // clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
@@ -241,7 +241,7 @@ export class AuthService {
     try {
       const client = new OAuth2Client({
         clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
-        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
+        // clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
@@ -286,12 +286,12 @@ export class AuthService {
         fullName: user.fullName || '',
       });
 
-      const refresh_token = await this.generateRefreshToken(user, ipAddress);
+      // const refresh_token = await this.generateRefreshToken(user, ipAddress);
       const access_token = await this.generateAccessTokens(user);
 
       return {
         success: true,
-        refreshToken: refresh_token,
+        // refreshToken: refresh_token,
         accessToken: access_token,
         needsOnboarding: true,
       };
@@ -360,7 +360,7 @@ export class AuthService {
 
   async generateRefreshToken(user: User, ipAddress: string) {
     try {
-      const prevRefresh = await this.refreshTokenReposiotry.findOne({
+      const prevRefresh = await this.refreshTokenReposiotry.model.findOne({
         user: user._id,
         revoked: false,
       });
@@ -407,6 +407,22 @@ export class AuthService {
 
   async verifyUser(email: string, password: string): Promise<User | never> {
     const theuser = await this.userRepository.findOne({ email: email }, [], {
+      select: 'passwordSalt passwordHash isEmailConfirmed type email',
+    });
+
+    if (!theuser) {
+      throw new UnauthorizedException('User Does Not Exist');
+    }
+
+    const isPasswordValid = await bcrypt.hash(password, theuser.passwordSalt);
+
+    if (isPasswordValid != theuser.passwordHash) {
+      throw new UnauthorizedException('Credentials Not Valid');
+    }
+    return theuser;
+  }
+  async verifyLocalUser(email: string, password: string): Promise<User | never> {
+    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email' }, [], {
       select: 'passwordSalt passwordHash isEmailConfirmed type email',
     });
 

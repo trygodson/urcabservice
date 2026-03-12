@@ -27,7 +27,7 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
     driverId: Types.ObjectId,
     longitude: number,
     latitude: number,
-    status: DriverOnlineStatus = DriverOnlineStatus.ONLINE,
+   
     options?: {
       heading?: number;
       speed?: number;
@@ -55,9 +55,8 @@ export class DriverLocationRepository extends AbstractRepository<DriverLocationD
           type: 'Point',
           coordinates: [parseFloat(longitude.toString()), parseFloat(latitude.toString())],
         },
-        status,
+        
         lastLocationUpdate: new Date(),
-        isAvailableForRides: status === DriverOnlineStatus.ONLINE,
         ...(options?.heading !== undefined && { heading: options.heading }),
         ...(options?.speed !== undefined && { speed: options.speed }),
         ...(options?.accuracy !== undefined && { accuracy: options.accuracy }),

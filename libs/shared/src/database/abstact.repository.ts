@@ -43,7 +43,7 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
       return null;
     }
 
-    if (document._id) {
+    if (document?._id) {
       (document as any)._id = document._id.toString();
     }
 

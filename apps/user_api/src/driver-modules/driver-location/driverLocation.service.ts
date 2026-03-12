@@ -23,7 +23,7 @@ export class DriverLocationService {
       const {
         longitude,
         latitude,
-        status = null,
+       
         heading = undefined,
         speed = undefined,
         accuracy = undefined,
@@ -34,7 +34,7 @@ export class DriverLocationService {
         driverId,
         longitude,
         latitude,
-        status || DriverOnlineStatus.ONLINE,
+        
         {
           heading,
           speed,

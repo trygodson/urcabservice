@@ -387,14 +387,14 @@ export class AuthService {
     try {
       const client = new OAuth2Client({
         clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
-        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
+        // clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
         audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
-      const user = await this.userRepository.findOne({ email: payload.email });
+      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google' });
       if (user) {
         return await this.login(user);
       }
@@ -408,7 +408,7 @@ export class AuthService {
     try {
       const client = new OAuth2Client({
         clientId: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
-        clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
+        // clientSecret: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_SECRET'),
       });
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
@@ -416,6 +416,7 @@ export class AuthService {
       });
       const payload = ticket.getPayload();
 
+      // console.log(payload, '=====the payload===');
       // Check if user already exists
       const existingUser = await this.userRepository.findOne({
         email: payload.email,
@@ -429,20 +430,32 @@ export class AuthService {
       const randomPassword = await bcrypt.hash(generateRandomString(8), passSalt);
 
       const user = await this.userRepository.create({
+        type: Role.DRIVER,
         email: payload.email,
         fullName: payload.given_name + ' ' + payload.family_name,
         passwordHash: randomPassword,
         passwordSalt: passSalt,
         isEmailConfirmed: true,
+        signedUpWith: 'google',
         emailConfirmationDate: timeZoneMoment().toDate(),
       });
 
-      const refresh_token = await this.generateRefreshToken(user, ipAddress);
+      // console.log(user, '=====the user===');
+
+      // const refresh_token = await this.generateRefreshToken(user, ipAddress);
       const access_token = await this.generateAccessTokens(user);
 
+      // console.log(access_token, '=====the access_token===');
+      this.eventEmitter.emit('auth.user_registered', {
+        userId: user._id.toString(),
+        email: user.email,
+        fullName: user.fullName || '',
+        userType: 'driver',
+        // verificationToken: otp,
+      });
       return {
         success: true,
-        refreshToken: refresh_token,
+        // refreshToken: refresh_token,
         accessToken: access_token,
         needsOnboarding: true,
       };
@@ -464,7 +477,7 @@ export class AuthService {
         },
         [],
       );
-      console.log(res, '=====the res===');
+      // console.log(res, '=====the res===');
       if (res && !res.isEmailConfirmed) {
         if (res.emailConfirmationCode === verifyToken.otpCode) {
           if (decodedToken.data?.type === Role.DRIVER) {
@@ -513,7 +526,7 @@ export class AuthService {
 
   async generateRefreshToken(user: User, ipAddress: string) {
     try {
-      const prevRefresh = await this.refreshTokenReposiotry.findOne({
+      const prevRefresh = await this.refreshTokenReposiotry.model.findOne({
         user: user._id,
         revoked: false,
       });
@@ -560,6 +573,22 @@ export class AuthService {
 
   async verifyUser(email: string, password: string): Promise<User | never> {
     const theuser = await this.userRepository.findOne({ email: email }, [], {
+      select: 'passwordSalt passwordHash isEmailConfirmed type email',
+    });
+
+    if (!theuser) {
+      throw new UnauthorizedException('User Does Not Exist');
+    }
+
+    const isPasswordValid = await bcrypt.hash(password, theuser.passwordSalt);
+
+    if (isPasswordValid != theuser.passwordHash) {
+      throw new UnauthorizedException('Credentials Not Valid');
+    }
+    return theuser;
+  }
+  async verifyLocalUser(email: string, password: string): Promise<User | never> {
+    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email' }, [], {
       select: 'passwordSalt passwordHash isEmailConfirmed type email',
     });
 
