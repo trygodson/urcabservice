@@ -227,9 +227,13 @@ export class AuthService {
         audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
-      const user = await this.userRepository.findOne({ email: payload.email, type: Role.PASSENGER, signedUpWith: 'google' });
+      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google' });
       if (user) {
-        return await this.login(user);
+        if(user.type === Role.PASSENGER) {
+          return await this.login(user);
+        } else {
+          throw new NotFoundException('No account found. Invalid user');
+        }
       }
       throw new NotFoundException('No account found. Please sign up.');
     } catch (error) {
@@ -257,6 +261,8 @@ export class AuthService {
         throw new ConflictException('User already exists. Please sign in.');
       }
 
+
+      // console.log(payload, '=====the payload===');
       // Create new user
       const passSalt = await bcrypt.genSalt();
       const randomPassword = await bcrypt.hash(generateRandomString(8), passSalt);
@@ -267,6 +273,7 @@ export class AuthService {
         signedUpWith: 'google',
         fullName: payload.given_name + ' ' + payload.family_name,
         // lastName: payload.family_name,
+        photo: payload.picture,
         passwordHash: randomPassword,
         passwordSalt: passSalt,
         isEmailConfirmed: true,

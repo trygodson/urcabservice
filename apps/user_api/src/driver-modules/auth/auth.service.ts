@@ -394,9 +394,13 @@ export class AuthService {
         audience: this.configService.getOrThrow('GOOGLE_OAUTH_CLIENT_ID'),
       });
       const payload = ticket.getPayload();
-      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google', type: Role.DRIVER });
+      const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google',  });
       if (user) {
-        return await this.login(user);
+        if(user.type === Role.DRIVER) {
+          return await this.login(user);
+        } else {
+          throw new NotFoundException('No account found. Invalid user');
+        }
       }
       throw new NotFoundException('No account found. Please sign up.');
     } catch (error) {
@@ -435,23 +439,23 @@ export class AuthService {
         fullName: payload.given_name + ' ' + payload.family_name,
         passwordHash: randomPassword,
         passwordSalt: passSalt,
+        photo: payload.picture,
         isEmailConfirmed: true,
         signedUpWith: 'google',
         emailConfirmationDate: timeZoneMoment().toDate(),
       });
 
       // console.log(user, '=====the user===');
-
-      // const refresh_token = await this.generateRefreshToken(user, ipAddress);
-      const access_token = await this.generateAccessTokens(user);
-
-      // console.log(access_token, '=====the access_token===');
       this.eventEmitter.emit('auth.user_welcome', {
         userId: user._id.toString(),
         email: user.email,
         fullName: user.fullName || '',
         userType: 'driver',
       });
+      // const refresh_token = await this.generateRefreshToken(user, ipAddress);
+      const access_token = await this.generateAccessTokens(user);
+
+     
       return {
         success: true,
         // refreshToken: refresh_token,
