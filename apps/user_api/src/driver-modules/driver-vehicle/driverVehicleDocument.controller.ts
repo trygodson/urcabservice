@@ -24,6 +24,10 @@ import {
   PuspakomInspectionDetailsDto,
   TaxiPermitVehicleDetailsDto,
   AuthorizationLetterDetailsDto,
+  RoadTaxDetailsDto,
+  GrantDetailsDto,
+  EHailingInsuranceDetailsDto,
+  KadPemanduDetailsDto,
 } from './dto/uploadVehicleDocument.dto';
 import {
   JwtAuthGuard,
@@ -392,6 +396,86 @@ export class VehicleDocumentController {
       VehicleDocumentType.AUTHORIZATION_LETTER,
       driverId,
     );
+  }
+
+  // ===== Road Tax Document Endpoints =====
+  @Post('road-tax')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.DRIVER)
+  async uploadRoadTax(@Param('vehicleId') vehicleId: string, @Body() roadTaxDetails: RoadTaxDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.uploadRoadTaxDocument(vehicleId, new Types.ObjectId(user._id), roadTaxDetails);
+  }
+
+  @Put('road-tax/:documentId')
+  @SetRolesMetaData(Role.DRIVER)
+  async updateRoadTax(@Param('vehicleId') vehicleId: string, @Param('documentId') documentId: string, @Body() roadTaxDetails: RoadTaxDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.updateRoadTaxDocument(documentId, new Types.ObjectId(user._id), roadTaxDetails);
+  }
+
+  @Get('road-tax')
+  @SetRolesMetaData(Role.DRIVER)
+  async getRoadTax(@Param('vehicleId') vehicleId: string, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.getVehicleDocumentByType(vehicleId, VehicleDocumentType.ROAD_TAX, new Types.ObjectId(user._id));
+  }
+
+  // ===== Grant Document Endpoints =====
+  @Post('grant')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.DRIVER)
+  async uploadGrant(@Param('vehicleId') vehicleId: string, @Body() grantDetails: GrantDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.uploadGrantDocument(vehicleId, new Types.ObjectId(user._id), grantDetails);
+  }
+
+  @Put('grant/:documentId')
+  @SetRolesMetaData(Role.DRIVER)
+  async updateGrant(@Param('vehicleId') vehicleId: string, @Param('documentId') documentId: string, @Body() grantDetails: GrantDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.updateGrantDocument(documentId, new Types.ObjectId(user._id), grantDetails);
+  }
+
+  @Get('grant')
+  @SetRolesMetaData(Role.DRIVER)
+  async getGrant(@Param('vehicleId') vehicleId: string, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.getVehicleDocumentByType(vehicleId, VehicleDocumentType.GRANT, new Types.ObjectId(user._id));
+  }
+
+  // ===== E-Hailing Insurance Document Endpoints =====
+  @Post('e-hailing-insurance')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.DRIVER)
+  async uploadEHailingInsurance(@Param('vehicleId') vehicleId: string, @Body() details: EHailingInsuranceDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.uploadEHailingInsuranceDocument(vehicleId, new Types.ObjectId(user._id), details);
+  }
+
+  @Put('e-hailing-insurance/:documentId')
+  @SetRolesMetaData(Role.DRIVER)
+  async updateEHailingInsurance(@Param('vehicleId') vehicleId: string, @Param('documentId') documentId: string, @Body() details: EHailingInsuranceDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.updateEHailingInsuranceDocument(documentId, new Types.ObjectId(user._id), details);
+  }
+
+  @Get('e-hailing-insurance')
+  @SetRolesMetaData(Role.DRIVER)
+  async getEHailingInsurance(@Param('vehicleId') vehicleId: string, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.getVehicleDocumentByType(vehicleId, VehicleDocumentType.E_HAILING_INSURANCE, new Types.ObjectId(user._id));
+  }
+
+  // ===== Kad Pemandu Document Endpoints =====
+  @Post('kad-pemandu')
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.DRIVER)
+  async uploadKadPemandu(@Param('vehicleId') vehicleId: string, @Body() details: KadPemanduDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.uploadKadPemanduDocument(vehicleId, new Types.ObjectId(user._id), details);
+  }
+
+  @Put('kad-pemandu/:documentId')
+  @SetRolesMetaData(Role.DRIVER)
+  async updateKadPemandu(@Param('vehicleId') vehicleId: string, @Param('documentId') documentId: string, @Body() details: KadPemanduDetailsDto, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.updateKadPemanduDocument(documentId, new Types.ObjectId(user._id), details);
+  }
+
+  @Get('kad-pemandu')
+  @SetRolesMetaData(Role.DRIVER)
+  async getKadPemandu(@Param('vehicleId') vehicleId: string, @CurrentUser() user: User) {
+    return await this.vehicleDocumentService.getVehicleDocumentByType(vehicleId, VehicleDocumentType.KAD_PEMANDU, new Types.ObjectId(user._id));
   }
 
   // ===== Document Status and Summary Endpoints =====

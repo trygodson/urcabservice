@@ -96,16 +96,16 @@ export class DrivingLicenseDocumentService {
   }
 
   private validateDrivingLicenseDetails(drivingLicenseDetails: DrivingLicenseDetailsDto): void {
+    if (!drivingLicenseDetails.fullName || drivingLicenseDetails.fullName.trim().length === 0) {
+      throw new BadRequestException('Full name is required');
+    }
+
     if (!drivingLicenseDetails.licenseNumber || drivingLicenseDetails.licenseNumber.trim().length === 0) {
       throw new BadRequestException('License number is required');
     }
 
-    if (!drivingLicenseDetails.licenseClass) {
+    if (!drivingLicenseDetails.licenseClass || drivingLicenseDetails.licenseClass.trim().length === 0) {
       throw new BadRequestException('License class is required');
-    }
-
-    if (!drivingLicenseDetails.licenseType) {
-      throw new BadRequestException('License type is required');
     }
 
     if (!drivingLicenseDetails.expiryDate) {

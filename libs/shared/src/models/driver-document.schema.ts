@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { DocumentStatus, DocumentType, LicenseClass, LicenseType } from '../enums';
+import { DocumentStatus, DocumentType, OKUDisabilityType } from '../enums';
 import { User } from './user.schema';
 
 export interface NRICDetails {
@@ -16,7 +16,8 @@ export interface NRICDetails {
 
 export interface PassportDetails {
   passportHolderName: string;
-  passportNumber: string;
+  passportNumber?: string;
+  citizenship: string;
   issueDate: Date;
   expiryDate: Date;
   imageUrl: string;
@@ -30,24 +31,26 @@ export interface PSVLicenseDetails {
   backImageUrl: string;
 }
 
-export interface PamanduDetails {
-  imageUrl: string;
-  expiryDate: Date;
-}
-
 export interface DrivingLicenseDetails {
+  fullName: string;
   licenseClass: string;
-  licenseType: string;
   licenseNumber: string;
   expiryDate: Date;
   frontImageUrl: string;
   backImageUrl: string;
 }
 
-export interface TaxiPermitDriverDetails {
-  imageUrl: string;
-  issueDate: Date;
-  expiryDate: Date;
+export interface OKUCardDetails {
+  frontImageUrl: string;
+  disabilities: string[];
+  medicalLetterImageUrl: string;
+}
+
+export interface BankDetails {
+  bankBookImageUrl: string;
+  accountHolderName: string;
+  accountNumber: string;
+  bankName: string;
 }
 
 @Schema({ collection: 'driverdocuments', timestamps: true })
@@ -94,6 +97,7 @@ export class DriverDocument extends AbstractDocument {
     type: {
       passportHolderName: { type: String },
       passportNumber: { type: String },
+      citizenship: { type: String },
       issueDate: { type: Date },
       expiryDate: { type: Date },
       imageUrl: { type: String },
@@ -118,18 +122,8 @@ export class DriverDocument extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: {
-      imageUrl: { type: String },
-      expiryDate: { type: Date },
-    },
-    // required: false,
-  })
-  pamanduDetails?: PamanduDetails;
-
-  @ApiProperty()
-  @Prop({
-    type: {
-      licenseClass: { type: String, enum: LicenseClass },
-      licenseType: { type: String, enum: LicenseType },
+      fullName: { type: String },
+      licenseClass: { type: String },
       licenseNumber: { type: String },
       expiryDate: { type: Date },
       frontImageUrl: { type: String },
@@ -142,13 +136,25 @@ export class DriverDocument extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: {
-      imageUrl: { type: String },
-      issueDate: { type: Date },
-      expiryDate: { type: Date },
+      frontImageUrl: { type: String },
+      disabilities: [{ type: String }],
+      medicalLetterImageUrl: { type: String },
     },
     // required: false,
   })
-  taxiPermitDriverDetails?: TaxiPermitDriverDetails;
+  okuCardDetails?: OKUCardDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      bankBookImageUrl: { type: String },
+      accountHolderName: { type: String },
+      accountNumber: { type: String },
+      bankName: { type: String },
+    },
+    // required: false,
+  })
+  bankDetails?: BankDetails;
 
   @ApiProperty()
   @Prop({

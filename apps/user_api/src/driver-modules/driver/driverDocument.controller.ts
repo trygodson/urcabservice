@@ -29,9 +29,9 @@ import {
   NRICDetailsDto,
   PassportDetailsDto,
   PSVLicenseDetailsDto,
-  PamanduDetailsDto,
   DrivingLicenseDetailsDto,
-  TaxiPermitDriverDetailsDto,
+  OKUCardDetailsDto,
+  BankDetailsDto,
   DriverDocumentResponseDto,
   DriverDocumentsSummaryDto,
 } from './dto';
@@ -40,9 +40,9 @@ import {
 import { NRICDocumentService } from './nricDocument.service';
 import { PassportDocumentService } from './passportDocument.service';
 import { PSVLicenseDocumentService } from './psvLicenseDocument.service';
-import { PamanduDocumentService } from './pamanduDocument.service';
 import { DrivingLicenseDocumentService } from './drivingLicenseDocument.service';
-import { TaxiPermitDocumentService } from './taxiDocument.service';
+import { OKUCardDocumentService } from './okuCardDocument.service';
+import { BankDetailsDocumentService } from './bankDetailsDocument.service';
 import {
   DocumentVerificationStatusService,
   ComplianceReport,
@@ -59,9 +59,9 @@ export class DriverDocumentController {
     private readonly nricDocumentService: NRICDocumentService,
     private readonly passportDocumentService: PassportDocumentService,
     private readonly psvLicenseDocumentService: PSVLicenseDocumentService,
-    private readonly pamanduDocumentService: PamanduDocumentService,
     private readonly drivingLicenseDocumentService: DrivingLicenseDocumentService,
-    private readonly taxiPermitDocumentService: TaxiPermitDocumentService,
+    private readonly okuCardDocumentService: OKUCardDocumentService,
+    private readonly bankDetailsDocumentService: BankDetailsDocumentService,
     private readonly documentVerificationStatusService: DocumentVerificationStatusService,
   ) {}
 
@@ -226,57 +226,6 @@ export class DriverDocumentController {
     return await this.psvLicenseDocumentService.getPSVLicenseDocument(driverId);
   }
 
-  // ===== Pamandu Document Endpoints =====
-  @Post('pamandu')
-  @ApiOperation({ summary: 'Upload Pamandu certificate document' })
-  @ApiBody({ type: PamanduDetailsDto })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Pamandu document uploaded successfully',
-    type: DriverDocumentResponseDto,
-  })
-  @HttpCode(HttpStatus.CREATED)
-  @SetRolesMetaData(Role.DRIVER)
-  async uploadPamanduDocument(
-    @Body() pamanduDetails: PamanduDetailsDto,
-    @CurrentUser() user: User,
-  ): Promise<DriverDocumentResponseDto> {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.pamanduDocumentService.uploadPamanduDocument(driverId, pamanduDetails);
-  }
-
-  @Put('pamandu/:documentId')
-  @ApiOperation({ summary: 'Update Pamandu certificate document' })
-  @ApiParam({ name: 'documentId', description: 'Document ID', type: 'string' })
-  @ApiBody({ type: PamanduDetailsDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Pamandu document updated successfully',
-    type: DriverDocumentResponseDto,
-  })
-  @SetRolesMetaData(Role.DRIVER)
-  async updatePamanduDocument(
-    @Param('documentId') documentId: string,
-    @Body() pamanduDetails: PamanduDetailsDto,
-    @CurrentUser() user: User,
-  ): Promise<DriverDocumentResponseDto> {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.pamanduDocumentService.updatePamanduDocument(documentId, driverId, pamanduDetails);
-  }
-
-  @Get('pamandu')
-  @ApiOperation({ summary: 'Get Pamandu certificate document' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Pamandu document retrieved successfully',
-    type: DriverDocumentResponseDto,
-  })
-  @SetRolesMetaData(Role.DRIVER)
-  async getPamanduDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
-    const driverId = new Types.ObjectId(user._id);
-    return await this.pamanduDocumentService.getPamanduDocument(driverId);
-  }
-
   // ===== Driving License Document Endpoints =====
   @Post('driving-license')
   @ApiOperation({ summary: 'Upload driving license document' })
@@ -332,55 +281,106 @@ export class DriverDocumentController {
     return await this.drivingLicenseDocumentService.getDrivingLicenseDocument(driverId);
   }
 
-  // ===== Taxi Permit Document Endpoints =====
-  @Post('taxi-permit')
-  @ApiOperation({ summary: 'Upload taxi permit document' })
-  @ApiBody({ type: TaxiPermitDriverDetailsDto })
+  // ===== OKU Card Document Endpoints =====
+  @Post('oku-card')
+  @ApiOperation({ summary: 'Upload OKU card document (optional, only for OKU drivers)' })
+  @ApiBody({ type: OKUCardDetailsDto })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Taxi permit document uploaded successfully',
+    description: 'OKU card document uploaded successfully',
     type: DriverDocumentResponseDto,
   })
   @HttpCode(HttpStatus.CREATED)
   @SetRolesMetaData(Role.DRIVER)
-  async uploadTaxiPermitDocument(
-    @Body() taxiPermitDetails: TaxiPermitDriverDetailsDto,
+  async uploadOKUCardDocument(
+    @Body() okuCardDetails: OKUCardDetailsDto,
     @CurrentUser() user: User,
   ): Promise<DriverDocumentResponseDto> {
     const driverId = new Types.ObjectId(user._id);
-    return await this.taxiPermitDocumentService.uploadTaxiPermitDocument(driverId, taxiPermitDetails);
+    return await this.okuCardDocumentService.uploadOKUCardDocument(driverId, okuCardDetails);
   }
 
-  @Put('taxi-permit/:documentId')
-  @ApiOperation({ summary: 'Update taxi permit document' })
+  @Put('oku-card/:documentId')
+  @ApiOperation({ summary: 'Update OKU card document' })
   @ApiParam({ name: 'documentId', description: 'Document ID', type: 'string' })
-  @ApiBody({ type: TaxiPermitDriverDetailsDto })
+  @ApiBody({ type: OKUCardDetailsDto })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Taxi permit document updated successfully',
+    description: 'OKU card document updated successfully',
     type: DriverDocumentResponseDto,
   })
   @SetRolesMetaData(Role.DRIVER)
-  async updateTaxiPermitDocument(
+  async updateOKUCardDocument(
     @Param('documentId') documentId: string,
-    @Body() taxiPermitDetails: TaxiPermitDriverDetailsDto,
+    @Body() okuCardDetails: OKUCardDetailsDto,
     @CurrentUser() user: User,
   ): Promise<DriverDocumentResponseDto> {
     const driverId = new Types.ObjectId(user._id);
-    return await this.taxiPermitDocumentService.updateTaxiPermitDocument(documentId, driverId, taxiPermitDetails);
+    return await this.okuCardDocumentService.updateOKUCardDocument(documentId, driverId, okuCardDetails);
   }
 
-  @Get('taxi-permit')
-  @ApiOperation({ summary: 'Get taxi permit document' })
+  @Get('oku-card')
+  @ApiOperation({ summary: 'Get OKU card document' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Taxi permit document retrieved successfully',
+    description: 'OKU card document retrieved successfully',
     type: DriverDocumentResponseDto,
   })
   @SetRolesMetaData(Role.DRIVER)
-  async getTaxiPermitDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
+  async getOKUCardDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
     const driverId = new Types.ObjectId(user._id);
-    return await this.taxiPermitDocumentService.getTaxiPermitDocument(driverId);
+    return await this.okuCardDocumentService.getOKUCardDocument(driverId);
+  }
+
+  // ===== Bank Details Document Endpoints =====
+  @Post('bank-details')
+  @ApiOperation({ summary: 'Upload bank details document' })
+  @ApiBody({ type: BankDetailsDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Bank details document uploaded successfully',
+    type: DriverDocumentResponseDto,
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.DRIVER)
+  async uploadBankDetailsDocument(
+    @Body() bankDetails: BankDetailsDto,
+    @CurrentUser() user: User,
+  ): Promise<DriverDocumentResponseDto> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.bankDetailsDocumentService.uploadBankDetailsDocument(driverId, bankDetails);
+  }
+
+  @Put('bank-details/:documentId')
+  @ApiOperation({ summary: 'Update bank details document' })
+  @ApiParam({ name: 'documentId', description: 'Document ID', type: 'string' })
+  @ApiBody({ type: BankDetailsDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bank details document updated successfully',
+    type: DriverDocumentResponseDto,
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async updateBankDetailsDocument(
+    @Param('documentId') documentId: string,
+    @Body() bankDetails: BankDetailsDto,
+    @CurrentUser() user: User,
+  ): Promise<DriverDocumentResponseDto> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.bankDetailsDocumentService.updateBankDetailsDocument(documentId, driverId, bankDetails);
+  }
+
+  @Get('bank-details')
+  @ApiOperation({ summary: 'Get bank details document' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bank details document retrieved successfully',
+    type: DriverDocumentResponseDto,
+  })
+  @SetRolesMetaData(Role.DRIVER)
+  async getBankDetailsDocument(@CurrentUser() user: User): Promise<DriverDocumentResponseDto | null> {
+    const driverId = new Types.ObjectId(user._id);
+    return await this.bankDetailsDocumentService.getBankDetailsDocument(driverId);
   }
 
   // ===== Document Verification Status Endpoints =====
@@ -564,12 +564,12 @@ export class DriverDocumentController {
         return await this.passportDocumentService.getPassportDocument(driverId);
       case DocumentType.PSV_LICENSE:
         return await this.psvLicenseDocumentService.getPSVLicenseDocument(driverId);
-      case DocumentType.PAMANDU:
-        return await this.pamanduDocumentService.getPamanduDocument(driverId);
       case DocumentType.DRIVING_LICENSE:
         return await this.drivingLicenseDocumentService.getDrivingLicenseDocument(driverId);
-      case DocumentType.TAXI_PERMIT_DRIVER:
-        return await this.taxiPermitDocumentService.getTaxiPermitDocument(driverId);
+      case DocumentType.OKU_CARD:
+        return await this.okuCardDocumentService.getOKUCardDocument(driverId);
+      case DocumentType.BANK_DETAILS:
+        return await this.bankDetailsDocumentService.getBankDetailsDocument(driverId);
       default:
         return null;
     }

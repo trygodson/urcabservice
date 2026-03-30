@@ -13,9 +13,10 @@ import {
   IsMongoId,
   IsNumber,
   Min,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DocumentType, LicenseClass, LicenseType, DriverOnlineStatus } from '@urcab-workspace/shared';
+import { DocumentType, DriverOnlineStatus, OKUDisabilityType } from '@urcab-workspace/shared';
 
 export * from './subscription-plans-response.dto';
 export * from './get-earnings.dto';
@@ -162,10 +163,15 @@ export class PassportDetailsDto {
   @Length(1, 100)
   passportHolderName: string;
 
-  @ApiProperty({ description: 'Passport number' })
+  @ApiProperty({ description: 'Passport number', required: false })
+  @IsString()
+  @IsOptional()
+  passportNumber?: string;
+
+  @ApiProperty({ description: 'Citizenship status' })
   @IsString()
   @IsNotEmpty()
-  passportNumber: string;
+  citizenship: string;
 
   @ApiProperty({ description: 'Passport issue date' })
   @IsDateString()
@@ -203,26 +209,19 @@ export class PSVLicenseDetailsDto {
   backImageUrl: string;
 }
 
-export class PamanduDetailsDto {
-  @ApiProperty({ description: 'URL to Pamandu certificate image' })
-  @IsUrl()
-  imageUrl: string;
-
-  @ApiProperty({ description: 'Pamandu certificate expiry date' })
-  @IsDateString()
-  expiryDate: string;
-}
-
 export class DrivingLicenseDetailsDto {
-  @ApiProperty({ enum: LicenseClass, description: 'Driving license class' })
-  @IsEnum(LicenseClass)
-  licenseClass: LicenseClass;
+  @ApiProperty({ description: 'Full name as shown on driving license' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  fullName: string;
 
-  @ApiProperty({ enum: LicenseType, description: 'Driving license type' })
-  @IsEnum(LicenseType)
-  licenseType: LicenseType;
+  @ApiProperty({ description: 'Driving license class (manually entered, e.g. B, B2, D, etc.)' })
+  @IsString()
+  @IsNotEmpty()
+  licenseClass: string;
 
-  @ApiProperty({ description: 'Driving license number' })
+  @ApiProperty({ description: 'Driving license registration number' })
   @IsString()
   @IsNotEmpty()
   licenseNumber: string;
@@ -240,18 +239,48 @@ export class DrivingLicenseDetailsDto {
   backImageUrl: string;
 }
 
-export class TaxiPermitDriverDetailsDto {
-  @ApiProperty({ description: 'URL to taxi permit image' })
+export class OKUCardDetailsDto {
+  @ApiProperty({ description: 'URL to front image of OKU card' })
   @IsUrl()
-  imageUrl: string;
+  frontImageUrl: string;
 
-  @ApiProperty({ description: 'Taxi permit issue date' })
-  @IsDateString()
-  issueDate: string;
+  @ApiProperty({
+    enum: OKUDisabilityType,
+    isArray: true,
+    description: 'List of disability types',
+    example: [OKUDisabilityType.PHYSICAL, OKUDisabilityType.HEARING_IMPAIRMENT],
+  })
+  @IsArray()
+  @IsEnum(OKUDisabilityType, { each: true })
+  disabilities: OKUDisabilityType[];
 
-  @ApiProperty({ description: 'Taxi permit expiry date' })
-  @IsDateString()
-  expiryDate: string;
+  @ApiProperty({ description: 'URL to medical letter image' })
+  @IsUrl()
+  medicalLetterImageUrl: string;
+}
+
+export class BankDetailsDto {
+  @ApiProperty({ description: 'URL to bank book image' })
+  @IsUrl()
+  bankBookImageUrl: string;
+
+  @ApiProperty({ description: 'Account holder name' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  accountHolderName: string;
+
+  @ApiProperty({ description: 'Bank account number' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 50)
+  accountNumber: string;
+
+  @ApiProperty({ description: 'Bank name' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  bankName: string;
 }
 
 export class CreateDriverDocumentDto {
@@ -283,12 +312,6 @@ export class CreateDriverDocumentDto {
   @Type(() => PSVLicenseDetailsDto)
   psvLicenseDetails?: PSVLicenseDetailsDto;
 
-  @ApiPropertyOptional({ type: PamanduDetailsDto, description: 'Pamandu details (required for PAMANDU document type)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => PamanduDetailsDto)
-  pamanduDetails?: PamanduDetailsDto;
-
   @ApiPropertyOptional({
     type: DrivingLicenseDetailsDto,
     description: 'Driving license details (required for DRIVING_LICENSE document type)',
@@ -298,14 +321,17 @@ export class CreateDriverDocumentDto {
   @Type(() => DrivingLicenseDetailsDto)
   drivingLicenseDetails?: DrivingLicenseDetailsDto;
 
-  @ApiPropertyOptional({
-    type: TaxiPermitDriverDetailsDto,
-    description: 'Taxi permit details (required for TAXI_PERMIT_DRIVER document type)',
-  })
+  @ApiPropertyOptional({ type: OKUCardDetailsDto, description: 'OKU card details (required for OKU_CARD document type)' })
   @IsOptional()
   @ValidateNested()
-  @Type(() => TaxiPermitDriverDetailsDto)
-  taxiPermitDriverDetails?: TaxiPermitDriverDetailsDto;
+  @Type(() => OKUCardDetailsDto)
+  okuCardDetails?: OKUCardDetailsDto;
+
+  @ApiPropertyOptional({ type: BankDetailsDto, description: 'Bank details (required for BANK_DETAILS document type)' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BankDetailsDto)
+  bankDetails?: BankDetailsDto;
 
   @ApiPropertyOptional({ description: 'General expiry date for the document' })
   @IsOptional()
@@ -332,23 +358,23 @@ export class UpdateDriverDocumentDto {
   @Type(() => PSVLicenseDetailsDto)
   psvLicenseDetails?: PSVLicenseDetailsDto;
 
-  @ApiPropertyOptional({ type: PamanduDetailsDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => PamanduDetailsDto)
-  pamanduDetails?: PamanduDetailsDto;
-
   @ApiPropertyOptional({ type: DrivingLicenseDetailsDto })
   @IsOptional()
   @ValidateNested()
   @Type(() => DrivingLicenseDetailsDto)
   drivingLicenseDetails?: DrivingLicenseDetailsDto;
 
-  @ApiPropertyOptional({ type: TaxiPermitDriverDetailsDto })
+  @ApiPropertyOptional({ type: OKUCardDetailsDto })
   @IsOptional()
   @ValidateNested()
-  @Type(() => TaxiPermitDriverDetailsDto)
-  taxiPermitDriverDetails?: TaxiPermitDriverDetailsDto;
+  @Type(() => OKUCardDetailsDto)
+  okuCardDetails?: OKUCardDetailsDto;
+
+  @ApiPropertyOptional({ type: BankDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BankDetailsDto)
+  bankDetails?: BankDetailsDto;
 
   @ApiPropertyOptional({ description: 'General expiry date for the document' })
   @IsOptional()
@@ -378,14 +404,14 @@ export class DriverDocumentResponseDto {
   @ApiPropertyOptional({ type: PSVLicenseDetailsDto })
   psvLicenseDetails?: PSVLicenseDetailsDto;
 
-  @ApiPropertyOptional({ type: PamanduDetailsDto })
-  pamanduDetails?: PamanduDetailsDto;
-
   @ApiPropertyOptional({ type: DrivingLicenseDetailsDto })
   drivingLicenseDetails?: DrivingLicenseDetailsDto;
 
-  @ApiPropertyOptional({ type: TaxiPermitDriverDetailsDto })
-  taxiPermitDriverDetails?: TaxiPermitDriverDetailsDto;
+  @ApiPropertyOptional({ type: OKUCardDetailsDto })
+  okuCardDetails?: OKUCardDetailsDto;
+
+  @ApiPropertyOptional({ type: BankDetailsDto })
+  bankDetails?: BankDetailsDto;
 
   @ApiPropertyOptional()
   expiryDate?: Date;

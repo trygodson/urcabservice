@@ -10,6 +10,7 @@ import {
   ValidateNested,
   Length,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { VehicleDocumentType } from '@urcab-workspace/shared';
@@ -27,12 +28,13 @@ export class CarInsuranceDetailsDto {
   @IsDateString()
   insuranceExpiryDate: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Policy type',
     enum: ['comprehensive', 'third_party', 'third_party_fire_theft'],
   })
+  @IsOptional()
   @IsEnum(['comprehensive', 'third_party', 'third_party_fire_theft'])
-  policyType: string;
+  policyType?: string;
 
   @ApiProperty({ description: 'Insurance provider name' })
   @IsString()
@@ -81,6 +83,11 @@ export class PuspakomInspectionDetailsDto {
   @ApiProperty({ description: 'Puspakom inspection certificate image URL' })
   @IsUrl()
   imageUrl: string;
+
+  @ApiPropertyOptional({ description: 'Payment status (yes=true, no=false)' })
+  @IsOptional()
+  @IsBoolean()
+  paymentStatus?: boolean;
 
   @ApiPropertyOptional({ description: 'Inspection date' })
   @IsOptional()
@@ -164,6 +171,29 @@ export class AuthorizationLetterDetailsDto {
   expiryDate?: string;
 }
 
+export class RoadTaxDetailsDto {
+  @ApiProperty() @IsUrl() frontImageUrl: string;
+  @ApiProperty() @IsDateString() expiryDate: string;
+}
+
+export class GrantDetailsDto {
+  @ApiProperty() @IsUrl() frontImageUrl: string;
+  @ApiProperty() @IsString() @IsNotEmpty() ownerName: string;
+  @ApiProperty() @IsString() @IsNotEmpty() ownerIcNumber: string;
+}
+
+export class EHailingInsuranceDetailsDto {
+  @ApiProperty() @IsUrl() frontImageUrl: string;
+  @ApiProperty() @IsUrl() backImageUrl: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() expiryDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() provider?: string;
+}
+
+export class KadPemanduDetailsDto {
+  @ApiProperty() @IsUrl() imageUrl: string;
+  @ApiProperty() @IsDateString() expiryDate: string;
+}
+
 export class CreateVehicleDocumentDto {
   @ApiProperty({
     enum: VehicleDocumentType,
@@ -201,6 +231,30 @@ export class CreateVehicleDocumentDto {
   @ValidateNested()
   @Type(() => AuthorizationLetterDetailsDto)
   authorizationLetterDetails?: AuthorizationLetterDetailsDto;
+
+  @ApiPropertyOptional({ type: RoadTaxDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RoadTaxDetailsDto)
+  roadTaxDetails?: RoadTaxDetailsDto;
+
+  @ApiPropertyOptional({ type: GrantDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GrantDetailsDto)
+  grantDetails?: GrantDetailsDto;
+
+  @ApiPropertyOptional({ type: EHailingInsuranceDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EHailingInsuranceDetailsDto)
+  eHailingInsuranceDetails?: EHailingInsuranceDetailsDto;
+
+  @ApiPropertyOptional({ type: KadPemanduDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => KadPemanduDetailsDto)
+  kadPemanduDetails?: KadPemanduDetailsDto;
 
   @ApiPropertyOptional({ description: 'General expiry date for the document' })
   @IsOptional()
@@ -244,6 +298,30 @@ export class UpdateVehicleDocumentDto {
   @Type(() => AuthorizationLetterDetailsDto)
   authorizationLetterDetails?: AuthorizationLetterDetailsDto;
 
+  @ApiPropertyOptional({ type: RoadTaxDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RoadTaxDetailsDto)
+  roadTaxDetails?: RoadTaxDetailsDto;
+
+  @ApiPropertyOptional({ type: GrantDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GrantDetailsDto)
+  grantDetails?: GrantDetailsDto;
+
+  @ApiPropertyOptional({ type: EHailingInsuranceDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EHailingInsuranceDetailsDto)
+  eHailingInsuranceDetails?: EHailingInsuranceDetailsDto;
+
+  @ApiPropertyOptional({ type: KadPemanduDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => KadPemanduDetailsDto)
+  kadPemanduDetails?: KadPemanduDetailsDto;
+
   @ApiPropertyOptional({ description: 'General expiry date for the document' })
   @IsOptional()
   @IsDateString()
@@ -285,6 +363,18 @@ export class VehicleDocumentResponseDto {
 
   @ApiPropertyOptional({ type: AuthorizationLetterDetailsDto })
   authorizationLetterDetails?: AuthorizationLetterDetailsDto;
+
+  @ApiPropertyOptional({ type: RoadTaxDetailsDto })
+  roadTaxDetails?: RoadTaxDetailsDto;
+
+  @ApiPropertyOptional({ type: GrantDetailsDto })
+  grantDetails?: GrantDetailsDto;
+
+  @ApiPropertyOptional({ type: EHailingInsuranceDetailsDto })
+  eHailingInsuranceDetails?: EHailingInsuranceDetailsDto;
+
+  @ApiPropertyOptional({ type: KadPemanduDetailsDto })
+  kadPemanduDetails?: KadPemanduDetailsDto;
 
   @ApiPropertyOptional()
   expiryDate?: Date;

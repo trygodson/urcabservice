@@ -119,9 +119,19 @@ export enum DocumentType {
   NRIC = 'nric',
   PASSPORT = 'passport',
   PSV_LICENSE = 'psv_license',
-  PAMANDU = 'pamandu',
   DRIVING_LICENSE = 'driving_license',
-  TAXI_PERMIT_DRIVER = 'taxi_permit_driver',
+  OKU_CARD = 'oku_card',
+  BANK_DETAILS = 'bank_details',
+}
+
+export enum OKUDisabilityType {
+  SPEECH_IMPAIRMENT = 'speech_impairment',
+  HEARING_IMPAIRMENT = 'hearing_impairment',
+  PHYSICAL = 'physical',
+  LEARNING = 'learning',
+  MULTIPLE_DISABILITIES = 'multiple_disabilities',
+  MENTAL = 'mental',
+  VISUAL = 'visual',
 }
 
 export enum DocumentStatus {
@@ -132,11 +142,43 @@ export enum DocumentStatus {
   RESUBMITTED = 'resubmitted',
 }
 
+export enum VehicleBodyType {
+  MOTOKAR = 'motokar',
+  JIP = 'jip',
+  VAN = 'van',
+  PICKUP = 'pickup',
+  MUV = 'muv',
+}
+
+export enum VehicleOwnership {
+  PRIVATE_OWN_CAR = 'private_own_car',
+  RENTAL_CAR = 'rental_car',
+}
+
+export enum VehicleAssemblyInfo {
+  CKD = 'ckd',
+  CBU = 'cbu',
+}
+
+export enum InsuredNameType {
+  INSURED_UNDER_MY_NAME = 'insured_under_my_name',
+  ALL_UNNAMED_DRIVER_POLICY = 'all_unnamed_driver_policy',
+}
+
+export enum DriveCity {
+  SABAH_SARAWAK = 'sabah_sarawak',
+  WEST_MALAYSIA = 'west_malaysia',
+}
+
 export enum VehicleDocumentType {
+  ROAD_TAX = 'road_tax',
+  GRANT = 'grant',
+  E_HAILING_INSURANCE = 'e_hailing_insurance',
   CAR_INSURANCE = 'car_insurance',
-  CAR_RENTAL_AGREEMENT = 'car_rental_agreement',
-  PUSPAKOM_INSPECTION = 'puspakom_inspection',
+  KAD_PEMANDU = 'kad_pemandu',
   TAXI_PERMIT_VEHICLE = 'taxi_permit_vehicle',
+  PUSPAKOM_INSPECTION = 'puspakom_inspection',
+  CAR_RENTAL_AGREEMENT = 'car_rental_agreement',
   AUTHORIZATION_LETTER = 'authorization_letter',
 }
 

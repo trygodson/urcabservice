@@ -66,21 +66,7 @@ export class EmailNotificationService {
         ? options.to.map((email) => ({ email, name: 'John Doe' }))
         : [{ email: options.to, name: 'John Doe' }];
 
-      // // Convert CC recipients if provided
-      // const ccRecipients = options.cc
-      //   ? Array.isArray(options.cc)
-      //     ? options.cc.map((email) => ({ email }))
-      //     : [{ email: options.cc }]
-      //   : undefined;
-
-      // // Convert BCC recipients if provided
-      // const bccRecipients = options.bcc
-      //   ? Array.isArray(options.bcc)
-      //     ? options.bcc.map((email) => ({ email }))
-      //     : [{ email: options.bcc }]
-      //   : undefined;
-
-      // Prepare Brevo API payload
+     
       const payload: any = {
         sender: {
           email: this.senderEmail,
@@ -102,18 +88,6 @@ export class EmailNotificationService {
         )}</pre></body></html>`;
       }
 
-      // Add CC if provided
-      // if (ccRecipients && ccRecipients.length > 0) {
-      //   payload.cc = ccRecipients;
-      // }
-
-      // // Add BCC if provided
-      // if (bccRecipients && bccRecipients.length > 0) {
-      //   payload.bcc = bccRecipients;
-      // }
-
-      // console.log(payload, '====email payload====');
-      // Send email via Brevo API
       const response = await firstValueFrom(
         this.httpService.post(this.brevoApiUrl, payload, {
           headers: {

@@ -275,12 +275,22 @@ export class VehicleDocumentRepository extends AbstractRepository<VehicleDocumen
     }
   }
 
-  async getRequiredDocumentTypes(): Promise<VehicleDocumentType[]> {
-    // In Malaysia, these are typically required for taxi/ride-sharing vehicles
+  async getRequiredDocumentTypes(vehicleTypeName?: string): Promise<VehicleDocumentType[]> {
+    if (vehicleTypeName?.toLowerCase().includes('taxi')) {
+      return [
+        VehicleDocumentType.ROAD_TAX,
+        VehicleDocumentType.GRANT,
+        VehicleDocumentType.CAR_INSURANCE,
+        VehicleDocumentType.KAD_PEMANDU,
+        VehicleDocumentType.TAXI_PERMIT_VEHICLE,
+        VehicleDocumentType.PUSPAKOM_INSPECTION,
+      ];
+    }
     return [
+      VehicleDocumentType.ROAD_TAX,
+      VehicleDocumentType.GRANT,
       VehicleDocumentType.CAR_INSURANCE,
       VehicleDocumentType.PUSPAKOM_INSPECTION,
-      // VehicleDocumentType.TAXI_PERMIT_VEHICLE,
     ];
   }
 

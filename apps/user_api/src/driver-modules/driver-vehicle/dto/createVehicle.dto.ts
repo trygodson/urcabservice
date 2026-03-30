@@ -13,18 +13,21 @@ import {
   Matches,
   ArrayMaxSize,
   IsMongoId,
+  IsDateString,
+  IsEnum,
 } from 'class-validator';
+import { VehicleBodyType, VehicleOwnership, VehicleAssemblyInfo, InsuredNameType, DriveCity } from '@urcab-workspace/shared';
 
 export class CreateVehicleDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Vehicle name/brand',
     example: 'Toyota Camry',
     maxLength: 50,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Length(1, 50)
-  name: string;
+  name?: string;
 
   @ApiProperty({
     description: 'Vehicle make',
@@ -77,26 +80,56 @@ export class CreateVehicleDto {
   @Matches(/^[A-Z0-9\s\-]+$/i, { message: 'License plate contains invalid characters' })
   licensePlate: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Vehicle Identification Number (VIN)',
     example: 'JH4KA4540MC123456',
     maxLength: 50,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Length(10, 50)
-  vin: string;
+  vin?: string;
 
-  // @ApiProperty({
-  //   description: 'Seating capacity',
-  //   example: 4,
-  //   minimum: 2,
-  //   maximum: 8,
-  // })
-  // @IsNumber()
-  // @Min(2)
-  // @Max(8)
-  // seatingCapacity: number;
+  @ApiPropertyOptional({ description: 'Seating capacity', minimum: 1, maximum: 20 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(20)
+  seatingCapacity?: number;
+
+  @ApiPropertyOptional({ description: 'Body type', enum: VehicleBodyType })
+  @IsOptional()
+  @IsEnum(VehicleBodyType)
+  bodyType?: string;
+
+  @ApiPropertyOptional({ description: 'Vehicle ownership', enum: VehicleOwnership })
+  @IsOptional()
+  @IsEnum(VehicleOwnership)
+  vehicleOwnership?: string;
+
+  @ApiPropertyOptional({ description: 'Assembly info', enum: VehicleAssemblyInfo })
+  @IsOptional()
+  @IsEnum(VehicleAssemblyInfo)
+  assemblyInfo?: string;
+
+  @ApiPropertyOptional({ description: 'Registered date' })
+  @IsOptional()
+  @IsDateString()
+  registeredDate?: string;
+
+  @ApiPropertyOptional({ description: 'Insured name type', enum: InsuredNameType })
+  @IsOptional()
+  @IsEnum(InsuredNameType)
+  insuredName?: string;
+
+  @ApiPropertyOptional({ description: 'Authorization letter image URL' })
+  @IsOptional()
+  @IsUrl()
+  authorizationLetterImageUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Drive city', enum: DriveCity })
+  @IsOptional()
+  @IsEnum(DriveCity)
+  driveCity?: string;
 
   @ApiPropertyOptional({
     description: 'Vehicle type',
@@ -247,16 +280,47 @@ export class UpdateVehicleDto {
   @Length(10, 50)
   vin?: string;
 
-  @ApiPropertyOptional({
-    description: 'Seating capacity',
-    minimum: 2,
-    maximum: 8,
-  })
+  @ApiPropertyOptional({ description: 'Seating capacity', minimum: 1, maximum: 20 })
   @IsOptional()
   @IsNumber()
-  @Min(2)
-  @Max(8)
+  @Min(1)
+  @Max(20)
   seatingCapacity?: number;
+
+  @ApiPropertyOptional({ description: 'Body type', enum: VehicleBodyType })
+  @IsOptional()
+  @IsEnum(VehicleBodyType)
+  bodyType?: string;
+
+  @ApiPropertyOptional({ description: 'Vehicle ownership', enum: VehicleOwnership })
+  @IsOptional()
+  @IsEnum(VehicleOwnership)
+  vehicleOwnership?: string;
+
+  @ApiPropertyOptional({ description: 'Assembly info', enum: VehicleAssemblyInfo })
+  @IsOptional()
+  @IsEnum(VehicleAssemblyInfo)
+  assemblyInfo?: string;
+
+  @ApiPropertyOptional({ description: 'Registered date' })
+  @IsOptional()
+  @IsDateString()
+  registeredDate?: string;
+
+  @ApiPropertyOptional({ description: 'Insured name type', enum: InsuredNameType })
+  @IsOptional()
+  @IsEnum(InsuredNameType)
+  insuredName?: string;
+
+  @ApiPropertyOptional({ description: 'Authorization letter image URL' })
+  @IsOptional()
+  @IsUrl()
+  authorizationLetterImageUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Drive city', enum: DriveCity })
+  @IsOptional()
+  @IsEnum(DriveCity)
+  driveCity?: string;
 
   @ApiPropertyOptional({
     description: 'Vehicle type',
@@ -409,6 +473,27 @@ export class VehicleResponseDto {
     isActive: boolean;
     notes?: string;
   };
+
+  @ApiPropertyOptional()
+  bodyType?: string;
+
+  @ApiPropertyOptional()
+  vehicleOwnership?: string;
+
+  @ApiPropertyOptional()
+  assemblyInfo?: string;
+
+  @ApiPropertyOptional()
+  registeredDate?: Date;
+
+  @ApiPropertyOptional()
+  insuredName?: string;
+
+  @ApiPropertyOptional()
+  authorizationLetterImageUrl?: string;
+
+  @ApiPropertyOptional()
+  driveCity?: string;
 
   @ApiProperty()
   createdAt: Date;

@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { VehicleStatus } from '../enums';
+import { VehicleStatus, VehicleBodyType, VehicleOwnership, VehicleAssemblyInfo, InsuredNameType, DriveCity } from '../enums';
 import { User } from './user.schema';
 import { VehicleType } from './vehicleType.schema';
 
@@ -19,7 +19,7 @@ export class Vehicle extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: String,
-    required: true,
+    required: false,
     maxlength: 50,
   })
   name: string; // e.g., Toyota, Honda
@@ -68,7 +68,7 @@ export class Vehicle extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: String,
-    required: true,
+    required: false,
     unique: true,
     maxlength: 50,
   })
@@ -85,7 +85,7 @@ export class Vehicle extends AbstractDocument {
   @ApiProperty()
   @Prop({
     type: Number,
-    // required: true,
+    required: false,
     min: 2,
     max: 8,
   })
@@ -255,6 +255,34 @@ export class Vehicle extends AbstractDocument {
     min: 1,
   })
   evpPeriod?: number; // EVP validity period in days
+
+  @ApiProperty()
+  @Prop({ type: String, required: false, enum: VehicleBodyType })
+  bodyType?: string;
+
+  @ApiProperty()
+  @Prop({ type: String, required: false, enum: VehicleOwnership })
+  vehicleOwnership?: string;
+
+  @ApiProperty()
+  @Prop({ type: String, required: false, enum: VehicleAssemblyInfo })
+  assemblyInfo?: string;
+
+  @ApiProperty()
+  @Prop({ type: Date, required: false })
+  registeredDate?: Date;
+
+  @ApiProperty()
+  @Prop({ type: String, required: false, enum: InsuredNameType })
+  insuredName?: string;
+
+  @ApiProperty()
+  @Prop({ type: String, required: false })
+  authorizationLetterImageUrl?: string;
+
+  @ApiProperty()
+  @Prop({ type: String, required: false, enum: DriveCity })
+  driveCity?: string;
 
   createdAt: Date;
   updatedAt: Date;

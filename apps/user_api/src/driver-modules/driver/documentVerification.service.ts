@@ -82,18 +82,18 @@ export class DocumentVerificationStatusService {
       hasExpiry: true,
     },
     {
-      documentType: DocumentType.PAMANDU,
-      isRequired: false,
-      displayName: 'Pamandu Certificate',
-      description: 'Professional driving certification',
-      hasExpiry: true,
+      documentType: DocumentType.BANK_DETAILS,
+      isRequired: true,
+      displayName: 'Bank Details',
+      description: 'Bank account details for payment processing',
+      hasExpiry: false,
     },
     {
-      documentType: DocumentType.TAXI_PERMIT_DRIVER,
-      isRequired: true,
-      displayName: 'Taxi Permit (Driver)',
-      description: 'Taxi driver permit for specific areas',
-      hasExpiry: true,
+      documentType: DocumentType.OKU_CARD,
+      isRequired: false,
+      displayName: 'OKU Card',
+      description: 'Persons with Disabilities (OKU) card — required only for OKU drivers',
+      hasExpiry: false,
     },
   ];
 
@@ -486,25 +486,14 @@ export class DocumentVerificationStatusService {
             psvExpiry: document.psvLicenseDetails.psvExpiry?.toISOString(),
           }
         : undefined,
-      pamanduDetails: document.pamanduDetails
-        ? {
-            ...document.pamanduDetails,
-            expiryDate: document.pamanduDetails.expiryDate?.toISOString(),
-          }
-        : undefined,
       drivingLicenseDetails: document.drivingLicenseDetails
         ? {
             ...document.drivingLicenseDetails,
             expiryDate: document.drivingLicenseDetails.expiryDate?.toISOString(),
           }
         : undefined,
-      taxiPermitDriverDetails: document.taxiPermitDriverDetails
-        ? {
-            ...document.taxiPermitDriverDetails,
-            issueDate: document.taxiPermitDriverDetails.issueDate?.toISOString(),
-            expiryDate: document.taxiPermitDriverDetails.expiryDate?.toISOString(),
-          }
-        : undefined,
+      okuCardDetails: document.okuCardDetails,
+      bankDetails: document.bankDetails,
       expiryDate: document.expiryDate,
       verifiedByAdminId: document.verifiedByAdminId?.toString(),
       verifiedAt: document.verifiedAt,

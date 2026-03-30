@@ -25,6 +25,7 @@ export interface CarRentalAgreementDetails {
 
 export interface PuspakomInspectionDetails {
   imageUrl: string;
+  paymentStatus?: boolean;
   inspectionDate?: Date;
   inspectionType?: string;
   certificateNumber?: string;
@@ -47,6 +48,29 @@ export interface AuthorizationLetterDetails {
   authorizedDriverName?: string;
   effectiveDate?: Date;
   expiryDate?: Date;
+}
+
+export interface RoadTaxDetails {
+  frontImageUrl: string;
+  expiryDate: Date;
+}
+
+export interface GrantDetails {
+  frontImageUrl: string;
+  ownerName: string;
+  ownerIcNumber: string;
+}
+
+export interface EHailingInsuranceDetails {
+  frontImageUrl: string;
+  backImageUrl: string;
+  expiryDate?: Date;
+  provider?: string;
+}
+
+export interface KadPemanduDetails {
+  imageUrl: string;
+  expiryDate: Date;
 }
 
 @Schema({ collection: 'vehicledocuments', timestamps: true })
@@ -115,6 +139,7 @@ export class VehicleDocumentRecord extends AbstractDocument {
   @Prop({
     type: {
       imageUrl: { type: String },
+      paymentStatus: { type: Boolean },
       inspectionDate: { type: Date },
       inspectionType: { type: String },
       certificateNumber: { type: String },
@@ -151,6 +176,45 @@ export class VehicleDocumentRecord extends AbstractDocument {
     // required: false,
   })
   authorizationLetterDetails?: AuthorizationLetterDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      frontImageUrl: { type: String },
+      expiryDate: { type: Date },
+    },
+  })
+  roadTaxDetails?: RoadTaxDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      frontImageUrl: { type: String },
+      ownerName: { type: String },
+      ownerIcNumber: { type: String },
+    },
+  })
+  grantDetails?: GrantDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      frontImageUrl: { type: String },
+      backImageUrl: { type: String },
+      expiryDate: { type: Date },
+      provider: { type: String },
+    },
+  })
+  eHailingInsuranceDetails?: EHailingInsuranceDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      imageUrl: { type: String },
+      expiryDate: { type: Date },
+    },
+  })
+  kadPemanduDetails?: KadPemanduDetails;
 
   @ApiProperty()
   @Prop({

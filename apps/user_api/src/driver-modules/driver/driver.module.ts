@@ -42,10 +42,10 @@ import { DriverDocumentRepository } from './repository/driveDocument.repository'
 import { DriverDocumentController } from './driverDocument.controller';
 import { DrivingLicenseDocumentService } from './drivingLicenseDocument.service';
 import { NRICDocumentService } from './nricDocument.service';
-import { PamanduDocumentService } from './pamanduDocument.service';
 import { PassportDocumentService } from './passportDocument.service';
 import { PSVLicenseDocumentService } from './psvLicenseDocument.service';
-import { TaxiPermitDocumentService } from './taxiDocument.service';
+import { OKUCardDocumentService } from './okuCardDocument.service';
+import { BankDetailsDocumentService } from './bankDetailsDocument.service';
 import { DocumentVerificationStatusService } from './documentVerification.service';
 import { DriverController } from './driver.controller';
 import { DriverService } from './driver.service';
@@ -83,10 +83,10 @@ import { DriverService } from './driver.service';
   providers: [
     DrivingLicenseDocumentService,
     NRICDocumentService,
-    PamanduDocumentService,
     PassportDocumentService,
     PSVLicenseDocumentService,
-    TaxiPermitDocumentService,
+    OKUCardDocumentService,
+    BankDetailsDocumentService,
     DocumentVerificationStatusService,
     DriverDocumentRepository,
     RideRepository,

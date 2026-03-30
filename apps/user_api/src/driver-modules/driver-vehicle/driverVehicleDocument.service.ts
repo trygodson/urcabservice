@@ -8,7 +8,11 @@ import {
   CarInsuranceDetailsDto,
   CarRentalAgreementDetailsDto,
   CreateVehicleDocumentDto,
+  EHailingInsuranceDetailsDto,
+  GrantDetailsDto,
+  KadPemanduDetailsDto,
   PuspakomInspectionDetailsDto,
+  RoadTaxDetailsDto,
   TaxiPermitVehicleDetailsDto,
   UpdateVehicleDocumentDto,
   VehicleDocumentResponseDto,
@@ -422,6 +426,149 @@ export class VehicleDocumentService {
     }
   }
 
+  // ===== Road Tax Document Methods =====
+  async uploadRoadTaxDocument(vehicleId: string, driverId: Types.ObjectId, roadTaxDetails: RoadTaxDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const vehicleObjectId = new Types.ObjectId(vehicleId);
+      await this.verifyVehicleOwnership(vehicleObjectId, driverId);
+      const documentData: any = {
+        documentType: VehicleDocumentType.ROAD_TAX,
+        roadTaxDetails: { ...roadTaxDetails, expiryDate: new Date(roadTaxDetails.expiryDate) },
+        expiryDate: new Date(roadTaxDetails.expiryDate),
+        isRequired: true,
+      };
+      const savedDocument = await this.vehicleDocumentRepository.createVehicleDocument(vehicleObjectId, driverId, documentData);
+      await this.updateVehicleDocumentationStatus(vehicleObjectId);
+      return this.mapToResponseDto(savedDocument);
+    } catch (error) {
+      this.logger.error(`Failed to upload road tax document for vehicle ${vehicleId}`, error.stack);
+      throw error;
+    }
+  }
+
+  async updateRoadTaxDocument(documentId: string, driverId: Types.ObjectId, roadTaxDetails: RoadTaxDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const documentObjectId = new Types.ObjectId(documentId);
+      const existingDocument = await this.vehicleDocumentRepository.getVehicleDocumentById(documentObjectId);
+      if (!existingDocument || existingDocument.documentType !== VehicleDocumentType.ROAD_TAX) throw new NotFoundException('Road tax document not found');
+      if (existingDocument.uploadedByDriverId.toString() !== driverId.toString()) throw new BadRequestException('Document does not belong to this driver');
+      if (existingDocument.status === VehicleDocumentStatus.VERIFIED) throw new BadRequestException('Cannot update verified document.');
+      const updateData = { roadTaxDetails: { ...roadTaxDetails, expiryDate: new Date(roadTaxDetails.expiryDate) }, expiryDate: new Date(roadTaxDetails.expiryDate), status: VehicleDocumentStatus.PENDING };
+      const updatedDocument = await this.vehicleDocumentRepository.updateVehicleDocument(documentObjectId, updateData);
+      await this.updateVehicleDocumentationStatus(existingDocument.vehicleId);
+      return this.mapToResponseDto(updatedDocument!);
+    } catch (error) {
+      this.logger.error(`Failed to update road tax document ${documentId}`, error.stack);
+      throw error;
+    }
+  }
+
+  // ===== Grant Document Methods =====
+  async uploadGrantDocument(vehicleId: string, driverId: Types.ObjectId, grantDetails: GrantDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const vehicleObjectId = new Types.ObjectId(vehicleId);
+      await this.verifyVehicleOwnership(vehicleObjectId, driverId);
+      const documentData: any = { documentType: VehicleDocumentType.GRANT, grantDetails, isRequired: true };
+      const savedDocument = await this.vehicleDocumentRepository.createVehicleDocument(vehicleObjectId, driverId, documentData);
+      await this.updateVehicleDocumentationStatus(vehicleObjectId);
+      return this.mapToResponseDto(savedDocument);
+    } catch (error) {
+      this.logger.error(`Failed to upload grant document for vehicle ${vehicleId}`, error.stack);
+      throw error;
+    }
+  }
+
+  async updateGrantDocument(documentId: string, driverId: Types.ObjectId, grantDetails: GrantDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const documentObjectId = new Types.ObjectId(documentId);
+      const existingDocument = await this.vehicleDocumentRepository.getVehicleDocumentById(documentObjectId);
+      if (!existingDocument || existingDocument.documentType !== VehicleDocumentType.GRANT) throw new NotFoundException('Grant document not found');
+      if (existingDocument.uploadedByDriverId.toString() !== driverId.toString()) throw new BadRequestException('Document does not belong to this driver');
+      if (existingDocument.status === VehicleDocumentStatus.VERIFIED) throw new BadRequestException('Cannot update verified document.');
+      const updateData = { grantDetails, status: VehicleDocumentStatus.PENDING };
+      const updatedDocument = await this.vehicleDocumentRepository.updateVehicleDocument(documentObjectId, updateData);
+      await this.updateVehicleDocumentationStatus(existingDocument.vehicleId);
+      return this.mapToResponseDto(updatedDocument!);
+    } catch (error) {
+      this.logger.error(`Failed to update grant document ${documentId}`, error.stack);
+      throw error;
+    }
+  }
+
+  // ===== E-Hailing Insurance Document Methods =====
+  async uploadEHailingInsuranceDocument(vehicleId: string, driverId: Types.ObjectId, eHailingInsuranceDetails: EHailingInsuranceDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const vehicleObjectId = new Types.ObjectId(vehicleId);
+      await this.verifyVehicleOwnership(vehicleObjectId, driverId);
+      const documentData: any = {
+        documentType: VehicleDocumentType.E_HAILING_INSURANCE,
+        eHailingInsuranceDetails: { ...eHailingInsuranceDetails, expiryDate: eHailingInsuranceDetails.expiryDate ? new Date(eHailingInsuranceDetails.expiryDate) : undefined },
+        expiryDate: eHailingInsuranceDetails.expiryDate ? new Date(eHailingInsuranceDetails.expiryDate) : undefined,
+        isRequired: false,
+      };
+      const savedDocument = await this.vehicleDocumentRepository.createVehicleDocument(vehicleObjectId, driverId, documentData);
+      await this.updateVehicleDocumentationStatus(vehicleObjectId);
+      return this.mapToResponseDto(savedDocument);
+    } catch (error) {
+      this.logger.error(`Failed to upload e-hailing insurance document for vehicle ${vehicleId}`, error.stack);
+      throw error;
+    }
+  }
+
+  async updateEHailingInsuranceDocument(documentId: string, driverId: Types.ObjectId, eHailingInsuranceDetails: EHailingInsuranceDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const documentObjectId = new Types.ObjectId(documentId);
+      const existingDocument = await this.vehicleDocumentRepository.getVehicleDocumentById(documentObjectId);
+      if (!existingDocument || existingDocument.documentType !== VehicleDocumentType.E_HAILING_INSURANCE) throw new NotFoundException('E-hailing insurance document not found');
+      if (existingDocument.uploadedByDriverId.toString() !== driverId.toString()) throw new BadRequestException('Document does not belong to this driver');
+      if (existingDocument.status === VehicleDocumentStatus.VERIFIED) throw new BadRequestException('Cannot update verified document.');
+      const updateData = { eHailingInsuranceDetails: { ...eHailingInsuranceDetails, expiryDate: eHailingInsuranceDetails.expiryDate ? new Date(eHailingInsuranceDetails.expiryDate) : undefined }, expiryDate: eHailingInsuranceDetails.expiryDate ? new Date(eHailingInsuranceDetails.expiryDate) : undefined, status: VehicleDocumentStatus.PENDING };
+      const updatedDocument = await this.vehicleDocumentRepository.updateVehicleDocument(documentObjectId, updateData);
+      await this.updateVehicleDocumentationStatus(existingDocument.vehicleId);
+      return this.mapToResponseDto(updatedDocument!);
+    } catch (error) {
+      this.logger.error(`Failed to update e-hailing insurance document ${documentId}`, error.stack);
+      throw error;
+    }
+  }
+
+  // ===== Kad Pemandu Document Methods =====
+  async uploadKadPemanduDocument(vehicleId: string, driverId: Types.ObjectId, kadPemanduDetails: KadPemanduDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const vehicleObjectId = new Types.ObjectId(vehicleId);
+      await this.verifyVehicleOwnership(vehicleObjectId, driverId);
+      const documentData: any = {
+        documentType: VehicleDocumentType.KAD_PEMANDU,
+        kadPemanduDetails: { ...kadPemanduDetails, expiryDate: new Date(kadPemanduDetails.expiryDate) },
+        expiryDate: new Date(kadPemanduDetails.expiryDate),
+        isRequired: true,
+      };
+      const savedDocument = await this.vehicleDocumentRepository.createVehicleDocument(vehicleObjectId, driverId, documentData);
+      await this.updateVehicleDocumentationStatus(vehicleObjectId);
+      return this.mapToResponseDto(savedDocument);
+    } catch (error) {
+      this.logger.error(`Failed to upload kad pemandu document for vehicle ${vehicleId}`, error.stack);
+      throw error;
+    }
+  }
+
+  async updateKadPemanduDocument(documentId: string, driverId: Types.ObjectId, kadPemanduDetails: KadPemanduDetailsDto): Promise<VehicleDocumentResponseDto> {
+    try {
+      const documentObjectId = new Types.ObjectId(documentId);
+      const existingDocument = await this.vehicleDocumentRepository.getVehicleDocumentById(documentObjectId);
+      if (!existingDocument || existingDocument.documentType !== VehicleDocumentType.KAD_PEMANDU) throw new NotFoundException('Kad Pemandu document not found');
+      if (existingDocument.uploadedByDriverId.toString() !== driverId.toString()) throw new BadRequestException('Document does not belong to this driver');
+      if (existingDocument.status === VehicleDocumentStatus.VERIFIED) throw new BadRequestException('Cannot update verified document.');
+      const updateData = { kadPemanduDetails: { ...kadPemanduDetails, expiryDate: new Date(kadPemanduDetails.expiryDate) }, expiryDate: new Date(kadPemanduDetails.expiryDate), status: VehicleDocumentStatus.PENDING };
+      const updatedDocument = await this.vehicleDocumentRepository.updateVehicleDocument(documentObjectId, updateData);
+      await this.updateVehicleDocumentationStatus(existingDocument.vehicleId);
+      return this.mapToResponseDto(updatedDocument!);
+    } catch (error) {
+      this.logger.error(`Failed to update kad pemandu document ${documentId}`, error.stack);
+      throw error;
+    }
+  }
+
   // ===== Vehicle Documentation Progress and Status Methods =====
   async getVehicleDocumentationProgress(
     vehicleId: string,
@@ -440,7 +587,12 @@ export class VehicleDocumentService {
   }> {
     try {
       const summary = await this.getVehicleDocumentsSummary(vehicleId, driverId);
-      const requiredTypes = await this.vehicleDocumentRepository.getRequiredDocumentTypes();
+      const vehicle = await this.vehicleRepository.getVehicleById(new Types.ObjectId(vehicleId));
+      const vehicleTypeName = ((vehicle?.vehicleTypeId as any)?.name || '').toLowerCase();
+      const isTaxi = vehicleTypeName.includes('taxi');
+      const requiredTypes = isTaxi
+        ? [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.KAD_PEMANDU, VehicleDocumentType.TAXI_PERMIT_VEHICLE, VehicleDocumentType.PUSPAKOM_INSPECTION]
+        : [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.PUSPAKOM_INSPECTION];
 
       const missingDocuments = requiredTypes.filter((type) => {
         const doc = summary.documents.find((d) => d.documentType === type);
@@ -457,7 +609,11 @@ export class VehicleDocumentService {
       if (missingDocuments.length > 0) {
         const nextDocType = missingDocuments[0];
         const docNames = {
+          [VehicleDocumentType.ROAD_TAX]: 'Road Tax',
+          [VehicleDocumentType.GRANT]: 'Grant',
           [VehicleDocumentType.CAR_INSURANCE]: 'Car Insurance',
+          [VehicleDocumentType.E_HAILING_INSURANCE]: 'E-Hailing Insurance',
+          [VehicleDocumentType.KAD_PEMANDU]: 'Kad Pemandu',
           [VehicleDocumentType.PUSPAKOM_INSPECTION]: 'Puspakom Inspection',
           [VehicleDocumentType.TAXI_PERMIT_VEHICLE]: 'Taxi Permit',
           [VehicleDocumentType.CAR_RENTAL_AGREEMENT]: 'Car Rental Agreement',
@@ -874,15 +1030,24 @@ export class VehicleDocumentService {
       // Verify vehicle belongs to driver
       await this.verifyVehicleOwnership(vehicleObjectId, driverId);
 
+      const vehicle = await this.vehicleRepository.getVehicleById(vehicleObjectId);
+      const vehicleTypeName = ((vehicle?.vehicleTypeId as any)?.name || '').toLowerCase();
+      const isTaxi = vehicleTypeName.includes('taxi');
+
       const documents = await this.vehicleDocumentRepository.getAllVehicleDocuments(vehicleObjectId);
-      const requiredTypes = await this.vehicleDocumentRepository.getRequiredDocumentTypes();
+      const requiredTypes = isTaxi
+        ? [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.KAD_PEMANDU, VehicleDocumentType.TAXI_PERMIT_VEHICLE, VehicleDocumentType.PUSPAKOM_INSPECTION]
+        : [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.PUSPAKOM_INSPECTION];
 
       const documentMap = new Map();
       documents.forEach((doc) => {
         documentMap.set(doc.documentType, doc);
       });
 
-      const documentStatuses = Object.values(VehicleDocumentType).map((docType) => {
+      const visibleDocTypes = isTaxi
+        ? [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.E_HAILING_INSURANCE, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.KAD_PEMANDU, VehicleDocumentType.TAXI_PERMIT_VEHICLE, VehicleDocumentType.PUSPAKOM_INSPECTION]
+        : [VehicleDocumentType.ROAD_TAX, VehicleDocumentType.GRANT, VehicleDocumentType.E_HAILING_INSURANCE, VehicleDocumentType.CAR_INSURANCE, VehicleDocumentType.PUSPAKOM_INSPECTION];
+      const documentStatuses = visibleDocTypes.map((docType) => {
         const document = documentMap.get(docType);
         const isRequired = requiredTypes.includes(docType);
 
@@ -1066,6 +1231,22 @@ export class VehicleDocumentService {
         }
         break;
 
+      case VehicleDocumentType.ROAD_TAX:
+        if (!createDocumentDto.roadTaxDetails) throw new BadRequestException('Road tax details are required');
+        break;
+
+      case VehicleDocumentType.GRANT:
+        if (!createDocumentDto.grantDetails) throw new BadRequestException('Grant details are required');
+        break;
+
+      case VehicleDocumentType.E_HAILING_INSURANCE:
+        if (!createDocumentDto.eHailingInsuranceDetails) throw new BadRequestException('E-hailing insurance details are required');
+        break;
+
+      case VehicleDocumentType.KAD_PEMANDU:
+        if (!createDocumentDto.kadPemanduDetails) throw new BadRequestException('Kad Pemandu details are required');
+        break;
+
       default:
         throw new BadRequestException(`Unsupported document type: ${documentType}`);
     }
@@ -1111,6 +1292,16 @@ export class VehicleDocumentService {
             effectiveDate: document.authorizationLetterDetails.effectiveDate?.toISOString(),
             expiryDate: document.authorizationLetterDetails.expiryDate?.toISOString(),
           }
+        : undefined,
+      roadTaxDetails: document.roadTaxDetails
+        ? { ...document.roadTaxDetails?._doc, expiryDate: document.roadTaxDetails.expiryDate?.toISOString() }
+        : undefined,
+      grantDetails: document.grantDetails ? { ...document.grantDetails?._doc } : undefined,
+      eHailingInsuranceDetails: document.eHailingInsuranceDetails
+        ? { ...document.eHailingInsuranceDetails?._doc, expiryDate: document.eHailingInsuranceDetails.expiryDate?.toISOString() }
+        : undefined,
+      kadPemanduDetails: document.kadPemanduDetails
+        ? { ...document.kadPemanduDetails?._doc, expiryDate: document.kadPemanduDetails.expiryDate?.toISOString() }
         : undefined,
       expiryDate: document.expiryDate,
       verifiedByAdminId: document.verifiedByAdminId?.toString(),

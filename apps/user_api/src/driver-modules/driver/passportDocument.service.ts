@@ -105,8 +105,8 @@ export class PassportDocumentService {
       throw new BadRequestException('Passport holder name is required');
     }
 
-    if (!passportDetails.passportNumber || passportDetails.passportNumber.trim().length === 0) {
-      throw new BadRequestException('Passport number is required');
+    if (!passportDetails.citizenship || passportDetails.citizenship.trim().length === 0) {
+      throw new BadRequestException('Citizenship is required');
     }
 
     if (!passportDetails.issueDate) {
