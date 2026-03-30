@@ -17,9 +17,17 @@ interface NRICDetails {
 interface PassportDetails {
   passportHolderName: string;
   passportNumber: string;
+  citizenship: string;
   issueDate: Date;
   expiryDate: Date;
   imageUrl: string;
+}
+
+interface BankDetails {
+  bankBookImageUrl: string;
+  accountHolderName: string;
+  accountNumber: string;
+  bankName: string;
 }
 
 @Schema({ collection: 'passengerdocuments', timestamps: true })
@@ -66,13 +74,24 @@ export class PassengerDocument extends AbstractDocument {
     type: {
       passportHolderName: { type: String },
       passportNumber: { type: String },
+      citizenship: { type: String },
       issueDate: { type: Date },
       expiryDate: { type: Date },
       imageUrl: { type: String },
     },
-    // required: false,
   })
   passportDetails?: PassportDetails;
+
+  @ApiProperty()
+  @Prop({
+    type: {
+      bankBookImageUrl: { type: String },
+      accountHolderName: { type: String },
+      accountNumber: { type: String },
+      bankName: { type: String },
+    },
+  })
+  bankDetails?: BankDetails;
 
   @ApiProperty()
   @Prop({

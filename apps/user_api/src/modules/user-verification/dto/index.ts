@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsDate, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsDate, IsOptional, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DocumentStatus, DocumentType } from '@urcab-workspace/shared';
 import { Types } from 'mongoose';
@@ -31,9 +31,18 @@ export class UserDocumentResponseDto {
   passportDetails?: {
     passportHolderName: string;
     passportNumber: string;
+    citizenship: string;
     issueDate: Date;
     expiryDate: Date;
     imageUrl: string;
+  };
+
+  @ApiProperty({ required: false })
+  bankDetails?: {
+    bankBookImageUrl: string;
+    accountHolderName: string;
+    accountNumber: string;
+    bankName: string;
   };
 
   @ApiProperty({ required: false })
@@ -138,6 +147,7 @@ export class UserDocumentsSummaryDto {
   documents: {
     nric: DocumentStatusDto;
     passport: DocumentStatusDto;
+    bankDetails: DocumentStatusDto;
   };
 
   @ApiProperty({ type: [ExpiringDocumentDto] })
@@ -158,6 +168,12 @@ export class PassportDetailsDto {
   @IsNotEmpty()
   @MaxLength(20)
   passportNumber: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  citizenship: string;
 
   @ApiProperty()
   @Type(() => Date)
@@ -202,15 +218,40 @@ export class NRICDetailsPassengerDto {
   @MaxLength(50)
   citizenship: string;
 
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  frontImageUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  backImageUrl?: string;
+}
+
+export class BankDetailsPassengerDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  frontImageUrl: string;
+  bankBookImageUrl: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  backImageUrl: string;
+  @MaxLength(100)
+  accountHolderName: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  accountNumber: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  bankName: string;
 }
 
 export interface PassengerDocumentResponseDto {
@@ -229,9 +270,16 @@ export interface PassengerDocumentResponseDto {
   passportDetails?: {
     passportHolderName: string;
     passportNumber: string;
+    citizenship: string;
     issueDate: string;
     expiryDate: string;
     imageUrl: string;
+  };
+  bankDetails?: {
+    bankBookImageUrl: string;
+    accountHolderName: string;
+    accountNumber: string;
+    bankName: string;
   };
   expiryDate?: Date;
   verifiedByAdminId?: string;

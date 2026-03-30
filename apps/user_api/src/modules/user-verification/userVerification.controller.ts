@@ -3,9 +3,10 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } 
 import { Types } from 'mongoose';
 import { JwtAuthGuard, Role, CurrentUser, User, SetRolesMetaData, DocumentType } from '@urcab-workspace/shared';
 
-import { NRICDetailsPassengerDto, PassportDetailsDto, UserDocumentResponseDto, UserDocumentsSummaryDto } from './dto';
+import { NRICDetailsPassengerDto, PassportDetailsDto, BankDetailsPassengerDto, UserDocumentResponseDto, UserDocumentsSummaryDto } from './dto';
 import { NRICVerificationService } from './nricVerificationService';
 import { PassportVerificationService } from './passportVerification.service';
+import { BankDetailsVerificationService } from './bankDetailsVerification.service';
 import { DocumentVerificationStatusService } from './documentVerificationStatus.service';
 
 @ApiTags('User Documents')
@@ -16,6 +17,7 @@ export class UserDocumentController {
   constructor(
     private readonly nricVerificationService: NRICVerificationService,
     private readonly passportVerificationService: PassportVerificationService,
+    private readonly bankDetailsVerificationService: BankDetailsVerificationService,
     private readonly documentVerificationStatusService: DocumentVerificationStatusService,
   ) {}
 
@@ -82,6 +84,38 @@ export class UserDocumentController {
   ): Promise<any> {
     const userId = new Types.ObjectId(user._id);
     return await this.passportVerificationService.updatePassportDocument(documentId, userId, passportDetails);
+  }
+
+  // Bank Details Endpoints
+  @Post('bank-details')
+  @ApiOperation({ summary: 'Upload bank details' })
+  @ApiBody({ type: BankDetailsPassengerDto })
+  @HttpCode(HttpStatus.CREATED)
+  @SetRolesMetaData(Role.PASSENGER)
+  async uploadBankDetails(@Body() bankDetails: BankDetailsPassengerDto, @CurrentUser() user: User): Promise<any> {
+    const userId = new Types.ObjectId(user._id);
+    return await this.bankDetailsVerificationService.uploadBankDetails(userId, bankDetails);
+  }
+
+  @Get('bank-details')
+  @ApiOperation({ summary: 'Get bank details' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async getBankDetails(@CurrentUser() user: User): Promise<any | null> {
+    const userId = new Types.ObjectId(user._id);
+    return await this.bankDetailsVerificationService.getBankDetails(userId);
+  }
+
+  @Put('bank-details/:documentId')
+  @ApiOperation({ summary: 'Update bank details' })
+  @ApiParam({ name: 'documentId', description: 'Document ID' })
+  @SetRolesMetaData(Role.PASSENGER)
+  async updateBankDetails(
+    @Param('documentId') documentId: string,
+    @Body() bankDetails: BankDetailsPassengerDto,
+    @CurrentUser() user: User,
+  ): Promise<any> {
+    const userId = new Types.ObjectId(user._id);
+    return await this.bankDetailsVerificationService.updateBankDetails(documentId, userId, bankDetails);
   }
 
   // Verification Status Endpoints

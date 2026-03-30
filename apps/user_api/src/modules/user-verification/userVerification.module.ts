@@ -4,6 +4,7 @@ import { PassengerDocument, PassengerDocumentSchema } from '@urcab-workspace/sha
 import { UserDocumentController } from './userVerification.controller';
 import { NRICVerificationService } from './nricVerificationService';
 import { PassportVerificationService } from './passportVerification.service';
+import { BankDetailsVerificationService } from './bankDetailsVerification.service';
 import { DocumentVerificationStatusService } from './documentVerificationStatus.service';
 import { PassengerDocumentRepository } from './repository/passenger-document.repository';
 
@@ -13,9 +14,10 @@ import { PassengerDocumentRepository } from './repository/passenger-document.rep
   providers: [
     NRICVerificationService,
     PassportVerificationService,
+    BankDetailsVerificationService,
     DocumentVerificationStatusService,
     // PassengerDocumentRepository,
   ],
-  exports: [NRICVerificationService, PassportVerificationService, DocumentVerificationStatusService],
+  exports: [NRICVerificationService, PassportVerificationService, BankDetailsVerificationService, DocumentVerificationStatusService],
 })
 export class UserVerificationModule {}

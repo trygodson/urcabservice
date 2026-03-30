@@ -29,6 +29,7 @@ export class DocumentVerificationStatusService {
       documents: {
         nric: this.getDocumentStatus(documents, DocumentType.NRIC),
         passport: this.getDocumentStatus(documents, DocumentType.PASSPORT),
+        bankDetails: this.getDocumentStatus(documents, DocumentType.BANK_DETAILS),
       },
       expiringDocuments: documents
         .filter((doc) => doc.isExpiringSoon)
