@@ -122,18 +122,18 @@ export class VehicleDocumentRecord extends AbstractDocument {
   })
   carInsuranceDetails?: CarInsuranceDetails;
 
-  @ApiProperty()
-  @Prop({
-    type: {
-      imageUrl: { type: String },
-      agreementNumber: { type: String },
-      rentalCompany: { type: String },
-      startDate: { type: Date },
-      endDate: { type: Date },
-    },
-    // required: false,
-  })
-  carRentalAgreementDetails?: CarRentalAgreementDetails;
+  // @ApiProperty()
+  // @Prop({
+  //   type: {
+  //     imageUrl: { type: String },
+  //     agreementNumber: { type: String },
+  //     rentalCompany: { type: String },
+  //     startDate: { type: Date },
+  //     endDate: { type: Date },
+  //   },
+  //   // required: false,
+  // })
+  // carRentalAgreementDetails?: CarRentalAgreementDetails;
 
   @ApiProperty()
   @Prop({
@@ -141,41 +141,41 @@ export class VehicleDocumentRecord extends AbstractDocument {
       imageUrl: { type: String },
       paymentStatus: { type: Boolean },
       inspectionDate: { type: Date },
-      inspectionType: { type: String },
-      certificateNumber: { type: String },
+      // inspectionType: { type: String },
+      // certificateNumber: { type: String },
       expiryDate: { type: Date },
     },
     // required: false,
   })
   puspakomInspectionDetails?: PuspakomInspectionDetails;
 
-  @ApiProperty()
-  @Prop({
-    type: {
-      imageUrl: { type: String },
-      issueDate: { type: Date },
-      expiryDate: { type: Date },
-      permitNumber: { type: String },
-      issuingAuthority: { type: String },
-    },
-    // required: false,
-  })
-  taxiPermitVehicleDetails?: TaxiPermitVehicleDetails;
+  // @ApiProperty()
+  // @Prop({
+  //   type: {
+  //     imageUrl: { type: String },
+  //     issueDate: { type: Date },
+  //     expiryDate: { type: Date },
+  //     permitNumber: { type: String },
+  //     issuingAuthority: { type: String },
+  //   },
+  //   // required: false,
+  // })
+  // taxiPermitVehicleDetails?: TaxiPermitVehicleDetails;
 
-  @ApiProperty()
-  @Prop({
-    type: {
-      imageUrl: { type: String },
-      ownerName: { type: String },
-      ownerNric: { type: String },
-      vehicleRegistrationNumber: { type: String },
-      authorizedDriverName: { type: String },
-      effectiveDate: { type: Date },
-      expiryDate: { type: Date },
-    },
-    // required: false,
-  })
-  authorizationLetterDetails?: AuthorizationLetterDetails;
+  // @ApiProperty()
+  // @Prop({
+  //   type: {
+  //     imageUrl: { type: String },
+  //     ownerName: { type: String },
+  //     ownerNric: { type: String },
+  //     vehicleRegistrationNumber: { type: String },
+  //     authorizedDriverName: { type: String },
+  //     effectiveDate: { type: Date },
+  //     expiryDate: { type: Date },
+  //   },
+  //   // required: false,
+  // })
+  // authorizationLetterDetails?: AuthorizationLetterDetails;
 
   @ApiProperty()
   @Prop({
@@ -207,14 +207,14 @@ export class VehicleDocumentRecord extends AbstractDocument {
   })
   eHailingInsuranceDetails?: EHailingInsuranceDetails;
 
-  @ApiProperty()
-  @Prop({
-    type: {
-      imageUrl: { type: String },
-      expiryDate: { type: Date },
-    },
-  })
-  kadPemanduDetails?: KadPemanduDetails;
+  // @ApiProperty()
+  // @Prop({
+  //   type: {
+  //     imageUrl: { type: String },
+  //     expiryDate: { type: Date },
+  //   },
+  // })
+  // kadPemanduDetails?: KadPemanduDetails;
 
   @ApiProperty()
   @Prop({
