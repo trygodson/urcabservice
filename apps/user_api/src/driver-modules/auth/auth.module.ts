@@ -7,7 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { JwtModule, JwtService } from '@nestjs/jwt';
 
-import { JwtDStrategy, LocalStrategy } from './strategies';
+import { LocalDStrategy } from './strategies';
 import {
   DatabaseModule,
   DriverLocation,
@@ -51,15 +51,13 @@ import { DriverLocationRepository } from '../driver-location/repository/driver-l
       { name: DriverLocation.name, schema: DriverLocationSchema },
       { name: Wallet.name, schema: WalletSchema },
       { name: Notification.name, schema: NotificationSchema },
-      // { name: RefreshToken.name, schema: RefreshTokenSchema },
-      // { name: Country.name, schema: CountrySchema },
-      // { name: Wallet.name, schema: WalletSchema },
     ]),
-    // forwardRef(() => WalletsModule),
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
+    LocalDStrategy,
+    // JwtDStrategy,
     AuthNotificationListener,
     WalletRepository,
     UserRepository,

@@ -15,7 +15,6 @@ import {
   ForgotPasswordDto,
   GoogleSignDto,
   JwtAuthGuard,
-  LocalAuthGuard,
   LoginDto,
   RegisterUserDto,
   ResetPasswordDto,
@@ -24,6 +23,7 @@ import {
   User,
   VerifyOtpDto,
 } from '@urcab-workspace/shared';
+import { LocalDriverAuthGuard } from './guards/local-driver.guard';
 
 @ApiTags('Driver Auth')
 @Controller('driver/auth')
@@ -37,7 +37,7 @@ export class AuthController {
   }
 
   @ApiBody({ type: LoginDto })
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(LocalDriverAuthGuard)
   @Post('login')
   async login(@CurrentUser() user: User, @Body() body: LoginDto) {
     return await this.authService.login(user, body);

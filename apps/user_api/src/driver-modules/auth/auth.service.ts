@@ -591,6 +591,7 @@ export class AuthService {
     return theuser;
   }
   async verifyLocalUser(email: string, password: string): Promise<User | never> {
+    console.log(email, '====email===')
     const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email', type: Role.DRIVER }, [], {
       select: 'passwordSalt passwordHash isEmailConfirmed type email',
     });

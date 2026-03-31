@@ -229,7 +229,7 @@ export class AuthService {
       const payload = ticket.getPayload();
       const user = await this.userRepository.findOne({ email: payload.email, signedUpWith: 'google' });
       if (user) {
-        if(user.type === Role.PASSENGER) {
+        if (user.type === Role.PASSENGER) {
           return await this.login(user);
         } else {
           throw new NotFoundException('No account found. Invalid user');
@@ -261,7 +261,6 @@ export class AuthService {
         throw new ConflictException('User already exists. Please sign in.');
       }
 
-
       // console.log(payload, '=====the payload===');
       // Create new user
       const passSalt = await bcrypt.genSalt();
@@ -287,8 +286,6 @@ export class AuthService {
         fullName: user.fullName || '',
         userType: 'passenger',
       });
-
-     
 
       // const refresh_token = await this.generateRefreshToken(user, ipAddress);
       const access_token = await this.generateAccessTokens(user);
@@ -426,9 +423,14 @@ export class AuthService {
     return theuser;
   }
   async verifyLocalUser(email: string, password: string): Promise<User | never> {
-    const theuser = await this.userRepository.findOne({ email: email, signedUpWith: 'email', type: Role.PASSENGER }, [], {
-      select: 'passwordSalt passwordHash isEmailConfirmed type email',
-    });
+    // console.log(email, 'the email', password);
+    const theuser = await this.userRepository.findOne(
+      { email: email, signedUpWith: 'email', type: Role.PASSENGER },
+      [],
+      {
+        select: 'passwordSalt passwordHash isEmailConfirmed type email',
+      },
+    );
 
     if (!theuser) {
       throw new UnauthorizedException('User Does Not Exist');
