@@ -28,29 +28,29 @@ export class CarInsuranceDetailsDto {
   @IsDateString()
   insuranceExpiryDate: string;
 
-  @ApiPropertyOptional({
-    description: 'Policy type',
-    enum: ['comprehensive', 'third_party', 'third_party_fire_theft'],
-  })
-  // @IsOptional()
-  @IsEnum(['comprehensive', 'third_party', 'third_party_fire_theft'])
-  policyType: string;
+  // @ApiPropertyOptional({
+  //   description: 'Policy type',
+  //   enum: ['comprehensive', 'third_party', 'third_party_fire_theft'],
+  // })
+  // // @IsOptional()
+  // @IsEnum(['comprehensive', 'third_party', 'third_party_fire_theft'])
+  // policyType: string;
 
   @ApiProperty({ description: 'Insurance provider name' })
   @IsString()
   @IsNotEmpty()
   provider: string;
 
-  @ApiPropertyOptional({ description: 'Policy number' })
-  @IsOptional()
-  @IsString()
-  policyNumber?: string;
+  // @ApiPropertyOptional({ description: 'Policy number' })
+  // @IsOptional()
+  // @IsString()
+  // policyNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Coverage amount in MYR' })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  coverageAmount?: number;
+  // @ApiPropertyOptional({ description: 'Coverage amount in MYR' })
+  // @IsOptional()
+  // @IsNumber()
+  // @Min(0)
+  // coverageAmount?: number;
 }
 
 export class CarRentalAgreementDetailsDto {

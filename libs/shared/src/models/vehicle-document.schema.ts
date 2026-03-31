@@ -9,10 +9,10 @@ export interface CarInsuranceDetails {
   frontImageUrl: string;
   backImageUrl: string;
   insuranceExpiryDate: Date;
-  policyType: string; // comprehensive, third_party, etc.
+  // policyType: string; // comprehensive, third_party, etc.
   provider: string;
-  policyNumber?: string;
-  coverageAmount?: number;
+  // policyNumber?: string;
+  // coverageAmount?: number;
 }
 
 export interface CarRentalAgreementDetails {
@@ -113,10 +113,10 @@ export class VehicleDocumentRecord extends AbstractDocument {
       frontImageUrl: { type: String },
       backImageUrl: { type: String },
       insuranceExpiryDate: { type: Date },
-      policyType: { type: String, enum: ['comprehensive', 'third_party', 'third_party_fire_theft'] },
+      // policyType: { type: String, enum: ['comprehensive', 'third_party', 'third_party_fire_theft'] },
       provider: { type: String },
-      policyNumber: { type: String },
-      coverageAmount: { type: Number },
+      // policyNumber: { type: String },
+      // coverageAmount: { type: Number },
     },
     // required: false,
   })
