@@ -32,9 +32,9 @@ export class CarInsuranceDetailsDto {
     description: 'Policy type',
     enum: ['comprehensive', 'third_party', 'third_party_fire_theft'],
   })
-  @IsOptional()
+  // @IsOptional()
   @IsEnum(['comprehensive', 'third_party', 'third_party_fire_theft'])
-  policyType?: string;
+  policyType: string;
 
   @ApiProperty({ description: 'Insurance provider name' })
   @IsString()
