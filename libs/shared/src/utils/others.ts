@@ -4,22 +4,17 @@ const moment_tz = require('moment-timezone');
 // import * as moment_tz from '';
 import * as crypto from 'crypto';
 export const CONFIG_NAMES = {
-  SINGLE_ELECTION_QUEUE_JOB_NOTIFICATION:
-    'SINGLE_ELECTION_QUEUE_JOB_NOTIFICATION',
-  STAGED_ELECTION_QUEUE_JOB_NOTIFICATION:
-    'STAGED_ELECTION_QUEUE_JOB_NOTIFICATION',
+  SINGLE_ELECTION_QUEUE_JOB_NOTIFICATION: 'SINGLE_ELECTION_QUEUE_JOB_NOTIFICATION',
+  STAGED_ELECTION_QUEUE_JOB_NOTIFICATION: 'STAGED_ELECTION_QUEUE_JOB_NOTIFICATION',
   ELECTION_TRANSACTIONS: 'ELECTION_TRANSACTIONS',
   ACTIVE_ELECTIONS_JOBS: 'ACTIVE_ELECTIONS_JOBS',
 };
 
 export const JOB_NAMES = {
   ELECTION_SEND_EMAIL: 'ELECTION_SEND_EMAIL',
-  NOTHING_TO_INITIAL_CHANGE_SINGLE_ELECTION_STATE:
-    'NOTHING_TO_INITIAL_CHANGE_SINGLE_ELECTION_STATE',
-  SET_INITIAL_TO_REMINDER_BROADCAST_SINGLE_ELECTION_STATE:
-    'SET_INITIAL_TO_REMINDER_BROADCAST_SINGLE_ELECTION_STATE',
-  SET_REMINDER_TO_KICKOFF_BROADCAST_SINGLE_ELECTION_STATE:
-    'SET_REMINDER_TO_KICKOFF_BROADCAST_SINGLE_ELECTION_STATE',
+  NOTHING_TO_INITIAL_CHANGE_SINGLE_ELECTION_STATE: 'NOTHING_TO_INITIAL_CHANGE_SINGLE_ELECTION_STATE',
+  SET_INITIAL_TO_REMINDER_BROADCAST_SINGLE_ELECTION_STATE: 'SET_INITIAL_TO_REMINDER_BROADCAST_SINGLE_ELECTION_STATE',
+  SET_REMINDER_TO_KICKOFF_BROADCAST_SINGLE_ELECTION_STATE: 'SET_REMINDER_TO_KICKOFF_BROADCAST_SINGLE_ELECTION_STATE',
   CHANGE_STAGED_ELECTION_STATE: 'CHANGE_STAGED_ELECTION_STATE',
   ELECTION_ENDED_STATE: 'ELECTION_ENDED_STATE',
   PROCESS_TRANSACTION: 'PROCESS_TRANSACTION',
@@ -28,12 +23,9 @@ export const JOB_NAMES = {
   SINGLE_ELECTION_VERIFY_AND_ADD: 'SINGLE_ELECTION_VERIFY_AND_ADD',
 
   //CREATION TO STAGE ONE
-  NOTHING_TO_INITIAL_CHANGE_STAGED_ELECTION_STATE:
-    'NOTHING_TO_INITIAL_CHANGE_STAGED_ELECTION_STATE',
-  SET_INITIAL_TO_REMINDER_BROADCAST_STAGED_ELECTION_STATE:
-    'SET_INITIAL_TO_REMINDER_BROADCAST_STAGED_ELECTION_STATE',
-  SET_REMINDER_TO_KICKOFF_BROADCAST_STAGED_ELECTION_STATE:
-    'SET_REMINDER_TO_KICKOFF_BROADCAST_STAGED_ELECTION_STATE',
+  NOTHING_TO_INITIAL_CHANGE_STAGED_ELECTION_STATE: 'NOTHING_TO_INITIAL_CHANGE_STAGED_ELECTION_STATE',
+  SET_INITIAL_TO_REMINDER_BROADCAST_STAGED_ELECTION_STATE: 'SET_INITIAL_TO_REMINDER_BROADCAST_STAGED_ELECTION_STATE',
+  SET_REMINDER_TO_KICKOFF_BROADCAST_STAGED_ELECTION_STATE: 'SET_REMINDER_TO_KICKOFF_BROADCAST_STAGED_ELECTION_STATE',
 
   //STAGE ONE
   STAGE_ONE_NOTHING_TO_INITIAL_CHANGE_STAGED_ELECTION_STATE:
@@ -52,16 +44,12 @@ export const STAGE_JOB_NAMES = {
 };
 
 export const SUBSCRIPTION_PROCCESOR_NAMES = {
-  STAGE_ONE_CANDIDATE_LIST_SUBSCRIPTION:
-    'STAGE_ONE_CANDIDATE_LIST_SUBSCRIPTION',
+  STAGE_ONE_CANDIDATE_LIST_SUBSCRIPTION: 'STAGE_ONE_CANDIDATE_LIST_SUBSCRIPTION',
 };
 export const SUBSCRIPTION_JOB_NAMES = {
-  CREATE_STAGEONE_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY:
-    'CREATE_STAGEONE_CANDIDATELIST_SUBSCRIPTION',
-  CREATE_STAGETWO_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY:
-    'CREATE_STAGETWO_CANDIDATELIST_SUBSCRIPTION',
-  CREATE_STAGETHREE_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY:
-    'CREATE_STAGETHREE_CANDIDATELIST_SUBSCRIPTION',
+  CREATE_STAGEONE_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY: 'CREATE_STAGEONE_CANDIDATELIST_SUBSCRIPTION',
+  CREATE_STAGETWO_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY: 'CREATE_STAGETWO_CANDIDATELIST_SUBSCRIPTION',
+  CREATE_STAGETHREE_CANDIDATELIST_SUBSCRIPTION_AND_SETEXPIRY: 'CREATE_STAGETHREE_CANDIDATELIST_SUBSCRIPTION',
 };
 
 export const getCronExpression = (date: Date): string => {
@@ -76,49 +64,12 @@ export const getCronExpression = (date: Date): string => {
 export const timeZoneMoment = (mm: any = moment()) => {
   return moment_tz(mm).tz('Africa/Lagos');
 };
-export const checkIfNowIsLessThanOrEqualToADay = (
-  dateTimeString: string | Date
-) => {
-  const oneDayBefore = timeZoneMoment(dateTimeString).subtract(1, 'days');
-
-  // Check if now is before or equal to one day before
-  return (
-    timeZoneMoment(moment().toISOString()).isAfter(oneDayBefore) ||
-    timeZoneMoment(moment().toISOString()).isSame(oneDayBefore)
-  );
-};
-export const checkIfNowIsLessThanOrEqualToAnHourFromPassedDate = (
-  dateTimeString: string | Date
-) => {
-  const dd = timeZoneMoment(dateTimeString).subtract(1, 'hour');
-
-  // Check if now is before or equal to one day before
-  return timeZoneMoment().isBefore(dd) || moment().isSame(dd);
-};
-export const checkIfNowIsGreaterThanADayFromPassedDate = (
-  dateTimeString: string | Date
-) => {
-  const dd = timeZoneMoment(dateTimeString).subtract(1, 'day');
-
-  // Check if now is before or equal to one day before
-  return timeZoneMoment().isBefore(dd);
-};
-
-export const checkDayiffPassedDate = (dateTimeString: string | Date) => {
-  const difference = timeZoneMoment(dateTimeString).diff(moment());
-
-  // Convert milliseconds to hours and return the absolute value
-  return moment.duration(difference).asHours();
-};
 
 export function encodeBase64(input: string): string {
   return Buffer.from(input).toString('base64');
 }
 export function sha512ComputeHash(data: string, secretKey: string): string {
-  return crypto
-    .createHmac('sha512', secretKey)
-    .update(data, 'utf8')
-    .digest('hex');
+  return crypto.createHmac('sha512', secretKey).update(data, 'utf8').digest('hex');
 }
 
 export function generatePhoneCode(length: number): string {
@@ -134,10 +85,7 @@ export function generatePhoneCode(length: number): string {
   return res;
 }
 
-export function createRefreshToken(
-  userId: number | null,
-  expiration: number
-): any {
+export function createRefreshToken(userId: number | null, expiration: number): any {
   const randomNumber = crypto.randomBytes(64);
   return {
     Token: randomNumber.toString('base64'),
@@ -163,11 +111,7 @@ export function phoneFormatter(phoneNumber: string | null): string {
   } else if (phoneNumber.startsWith('234')) {
     phoneNumber = phoneNumber.substring(3);
     phoneNumber = '+234' + phoneNumber;
-  } else if (
-    phoneNumber.length === 10 &&
-    !phoneNumber.startsWith('234') &&
-    !phoneNumber.startsWith('0')
-  ) {
+  } else if (phoneNumber.length === 10 && !phoneNumber.startsWith('234') && !phoneNumber.startsWith('0')) {
     phoneNumber = '+234' + phoneNumber;
   }
 
@@ -179,10 +123,7 @@ export function removeLeading(phoneNumber: string): string {
   let cleanedPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
 
   // Check for specific prefixes and remove them
-  if (
-    cleanedPhoneNumber.startsWith('2348') ||
-    cleanedPhoneNumber.startsWith('08')
-  ) {
+  if (cleanedPhoneNumber.startsWith('2348') || cleanedPhoneNumber.startsWith('08')) {
     cleanedPhoneNumber = cleanedPhoneNumber.substring(4);
   }
 

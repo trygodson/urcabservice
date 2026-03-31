@@ -26,9 +26,11 @@ import {
   DriverEvp,
   Settings,
   VehicleStatus,
+  timeZoneMoment,
 } from '@urcab-workspace/shared';
 import { CreateVehicleDto, UpdateVehicleDto, VehicleResponseDto, PayEvpDto } from './dto';
 import { InjectModel } from '@nestjs/mongoose';
+import * as moment from 'moment';
 
 @Injectable()
 export class VehicleService {
@@ -70,6 +72,7 @@ export class VehicleService {
 
       const savedVehicle = await this.vehicleRepository.createVehicle(driverId, {
         ...createVehicleDto,
+        registeredDate: moment(createVehicleDto.registeredDate).toDate(),
         vehicleTypeId: createVehicleDto.vehicleTypeId ? new Types.ObjectId(createVehicleDto.vehicleTypeId) : undefined,
       });
 
@@ -138,6 +141,7 @@ export class VehicleService {
 
       const updatedVehicle = await this.vehicleRepository.updateVehicle(vehicleObjectId, {
         ...updateVehicleDto,
+        registeredDate: moment(updateVehicleDto.registeredDate).toDate(),
         vehicleTypeId: updateVehicleDto.vehicleTypeId ? new Types.ObjectId(updateVehicleDto.vehicleTypeId) : undefined,
       });
 
