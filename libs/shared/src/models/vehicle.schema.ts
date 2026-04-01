@@ -2,7 +2,14 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../database';
 import { Types, SchemaTypes, Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { VehicleStatus, VehicleBodyType, VehicleOwnership, VehicleAssemblyInfo, InsuredNameType, DriveCity } from '../enums';
+import {
+  VehicleStatus,
+  VehicleBodyType,
+  VehicleOwnership,
+  VehicleAssemblyInfo,
+  InsuredNameType,
+  DriveCity,
+} from '../enums';
 import { User } from './user.schema';
 import { VehicleType } from './vehicleType.schema';
 
@@ -69,7 +76,8 @@ export class Vehicle extends AbstractDocument {
   @Prop({
     type: String,
     required: false,
-    unique: true,
+    // unique: true,
+    // sparse: true,
     maxlength: 50,
   })
   vin: string; // Vehicle Identification Number
@@ -293,8 +301,8 @@ export type VehicleDocument = Vehicle & Document;
 
 // Indexes for performance
 VehicleSchema.index({ driverId: 1 });
-VehicleSchema.index({ licensePlate: 1 });
-VehicleSchema.index({ vin: 1 });
+VehicleSchema.index({ licensePlate: 1 }, { unique: true });
+// VehicleSchema.index({ vin: 1 }, { unique: true, sparse: true });
 VehicleSchema.index({ status: 1 });
 VehicleSchema.index({ driverId: 1, isPrimary: 1 });
 VehicleSchema.index({ driverId: 1, isActive: 1 });
