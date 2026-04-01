@@ -366,7 +366,7 @@ export class VehicleService {
       year: vehicle.year,
       color: vehicle.color,
       licensePlate: vehicle.licensePlate,
-      vin: vehicle?.vin,
+      vin: vehicle?.vin ?? '',
       status: vehicle.status,
       seatingCapacity: vehicle.seatingCapacity,
       vehicleType: vehicle.vehicleTypeId,
