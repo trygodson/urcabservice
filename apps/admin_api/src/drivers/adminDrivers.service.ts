@@ -435,7 +435,10 @@ export class AdminDriversService {
     return this.vehicleRepository.find(
       { driverId: new Types.ObjectId(driverId) },
       {
-        populate: [{ path: 'verifiedByAdminId', select: 'firstName lastName email' }],
+        populate: [
+          { path: 'verifiedByAdminId', select: 'firstName lastName email' },
+          { path: 'vehicleTypeId', select: 'name iconUrl capacity isActive' },
+        ],
         sort: { isPrimary: -1, createdAt: -1 },
       },
     );
@@ -1410,13 +1413,33 @@ export class AdminDriversService {
   private readonly VEHICLE_DOCUMENT_REQUIREMENTS: any[] = [
     { documentType: VehicleDocumentType.ROAD_TAX, isRequired: true, displayName: 'Road Tax', hasExpiry: true },
     { documentType: VehicleDocumentType.GRANT, isRequired: true, displayName: 'Grant', hasExpiry: false },
-    { documentType: VehicleDocumentType.CAR_INSURANCE, isRequired: true, displayName: 'Vehicle Insurance', hasExpiry: true },
-    { documentType: VehicleDocumentType.E_HAILING_INSURANCE, isRequired: false, displayName: 'E-Hailing Insurance', hasExpiry: true },
-    { documentType: VehicleDocumentType.KAD_PEMANDU, isRequired: false, displayName: 'Kad Pemandu', hasExpiry: true },  // required for taxi only
-    { documentType: VehicleDocumentType.TAXI_PERMIT_VEHICLE, isRequired: false, displayName: 'Taxi Permit', hasExpiry: true },  // required for taxi only
-    { documentType: VehicleDocumentType.PUSPAKOM_INSPECTION, isRequired: true, displayName: 'Puspakom Inspection', hasExpiry: true },
-    { documentType: VehicleDocumentType.CAR_RENTAL_AGREEMENT, isRequired: false, displayName: 'Car Rental Agreement', hasExpiry: true },
-    { documentType: VehicleDocumentType.AUTHORIZATION_LETTER, isRequired: false, displayName: 'Authorization Letter', hasExpiry: true },
+    {
+      documentType: VehicleDocumentType.CAR_INSURANCE,
+      isRequired: true,
+      displayName: 'Vehicle Insurance',
+      hasExpiry: true,
+    },
+    {
+      documentType: VehicleDocumentType.E_HAILING_INSURANCE,
+      isRequired: false,
+      displayName: 'E-Hailing Insurance',
+      hasExpiry: true,
+    },
+    { documentType: VehicleDocumentType.KAD_PEMANDU, isRequired: false, displayName: 'Kad Pemandu', hasExpiry: true }, // required for taxi only
+    {
+      documentType: VehicleDocumentType.TAXI_PERMIT_VEHICLE,
+      isRequired: false,
+      displayName: 'Taxi Permit',
+      hasExpiry: true,
+    }, // required for taxi only
+    {
+      documentType: VehicleDocumentType.PUSPAKOM_INSPECTION,
+      isRequired: true,
+      displayName: 'Puspakom Inspection',
+      hasExpiry: true,
+    },
+    // { documentType: VehicleDocumentType.CAR_RENTAL_AGREEMENT, isRequired: false, displayName: 'Car Rental Agreement', hasExpiry: true },
+    // { documentType: VehicleDocumentType.AUTHORIZATION_LETTER, isRequired: false, displayName: 'Authorization Letter', hasExpiry: true },
   ];
   // // EVP Management Methods
   // async createDriverEvp(createDriverEvpDto: CreateDriverEvpDto, adminId: string): Promise<DriverEvpResponseDto> {
