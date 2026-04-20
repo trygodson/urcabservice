@@ -818,14 +818,19 @@ export class DriverService {
         updateData.currentRideId = null;
       }
 
-      const updatedLocation = await this.driverLocation.findOneAndUpdate(
+      let updatedLocation = await this.driverLocation.findOneAndUpdate(
         { driverId: new Types.ObjectId(driverId) },
         { $set: updateData },
-        { new: true, upsert: true },
+        { new: true },
       );
 
       if (!updatedLocation) {
-        throw new NotFoundException('Driver location not found');
+        updatedLocation = await new this.driverLocation({
+          _id: new Types.ObjectId(),
+          driverId: new Types.ObjectId(driverId),
+          location: { type: 'Point', coordinates: [0, 0] },
+          ...updateData,
+        }).save();
       }
 
       return {
